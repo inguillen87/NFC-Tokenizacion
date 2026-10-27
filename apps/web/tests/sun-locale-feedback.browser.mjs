@@ -67,6 +67,13 @@ async function withPage(name, locale, theme, width, run, standalone = false) {
     });
     await page.goto(`${origin}/?locale=${locale}&theme=${theme}${standalone ? "&standalone=1" : ""}`, { waitUntil: "domcontentloaded" });
     await page.locator("#fixture-state").waitFor({ state: "attached" });
+    check(await page.evaluate(() => {
+      const status = document.querySelector("select").closest("label").parentElement.querySelector('p[role="status"]');
+      window.__localeFeedbackNode = status;
+      if (!status) return false;
+      const paint = getComputedStyle(status), wrapper = getComputedStyle(status.parentElement);
+      return status.textContent === "" && status.getAttribute("aria-live") === "polite" && status.getAttribute("aria-atomic") === "true" && !status.closest('[hidden], [aria-hidden="true"]') && paint.display !== "none" && paint.visibility !== "hidden" && wrapper.display !== "none" && wrapper.visibility !== "hidden" && !status.parentElement.hasAttribute("data-sun-locale-feedback");
+    }), `Empty live region exists before any request without hiding it from accessibility ${name}`);
     await run(page, entry);
     check(await page.evaluate(() => window.__localeQA.unexpectedFetches.length === 0 && window.__localeGeoCalls === 0), `No unrelated transport or location ${name}`);
     check(entry.blockedWrites.length === 0 && entry.errors.length === 0, `No real write or runtime error ${name}`);
@@ -111,6 +118,7 @@ try {
       await page.locator('[data-locale-state="pending"]').waitFor();
       check(await select.isDisabled() && await select.inputValue() === locale && (await page.locator("[data-sun-locale-feedback]").innerText()).includes(copy.pending + " " + localeNames[target]), `Pending explains intended locale without committing ${name}`);
       await layout(page, "pending-" + name);
+      check(await page.evaluate(() => document.querySelector('[data-sun-locale-feedback] p[role="status"]') === window.__localeFeedbackNode && window.__localeFeedbackNode.textContent.length > 0), `Pending updates the original live-region node ${name}`);
       check(await page.evaluate(() => window.__localeQA.deadlines.size === 1), `One active preference deadline ${name}`);
       await settle(page, 0, 503);
       const retry = page.locator("[data-sun-locale-feedback] button"); await retry.waitFor();
@@ -118,12 +126,14 @@ try {
       check(await page.locator('[data-sun-locale-feedback] [role="status"]').innerText() === copy.error && await retry.innerText() === copy.retry + " " + localeNames[target], `Localized concise error and retained retry ${name}`);
       check(await select.evaluate((element) => element.getAttribute("aria-describedby") === document.querySelector('[data-sun-locale-feedback] [role="status"]').id) && await retry.evaluate((element) => document.activeElement === element), `Accessible description and keyboard retry focus ${name}`);
       const colors = await layout(page, "error-" + name);
+      check(await page.evaluate(() => document.querySelector('[data-sun-locale-feedback] p[role="status"]') === window.__localeFeedbackNode), `Failure updates the same live-region node ${name}`);
       check(theme === "light" ? colors.color === "rgb(23, 49, 59)" && colors.background === "rgb(243, 247, 245)" : colors.color === "rgb(237, 244, 246)" && colors.background === "rgb(25, 45, 55)", `Theme colors remain legible ${name}`);
       if (width === 390) await page.screenshot({ path: join(output, `error-${name}.png`) });
       await page.keyboard.press("Enter"); await requestCount(page, 2); await state(page, locale, true);
       check(await page.evaluate(() => JSON.parse(window.__localeQA.requests[1].body).locale) === target, `Explicit keyboard retry retains target ${name}`);
       await settle(page, 1, 200); await state(page, target, false);
       check(await select.inputValue() === target && await select.evaluate((element) => document.activeElement === element) && await page.locator("[data-sun-locale-feedback]").count() === 0, `Confirmed success restores ready control and focus ${name}`);
+      check(await page.evaluate(() => document.querySelector("select").closest("label").parentElement.querySelector('p[role="status"]') === window.__localeFeedbackNode && window.__localeFeedbackNode.textContent === ""), `Confirmed success empties and retains the live-region node ${name}`);
       check(await page.evaluate(() => window.__localeQA.deadlines.size === 0 && window.__localeQA.requests.every((request) => request.url === "/api/sun/locale" && request.method === "POST" && request.credentials === "same-origin" && request.cache === "no-store" && Object.keys(JSON.parse(request.body)).join() === "locale")), `Deadline cleaned and original transport contract preserved ${name}`);
       check(await page.locator("#server-evidence").innerText() === "Lectura NFC verificada" && await page.locator("#translated-copy").innerText() === labels[target].translated && await page.evaluate(() => document.documentElement.lang) === labels[target].lang, `Only presentation locale changes; evidence stays intact ${name}`);
     });
@@ -165,7 +175,7 @@ try {
     await page.waitForFunction((before) => window.__localeQA.completedOperations > before, completedBefore);
     check(await page.evaluate(() => window.__localeQA.requests[8].signal.aborted && window.__localeQA.deadlines.size === 0), "Unmount settles canceled operation and clears its deadline even when fetch ignores abort");
     await settle(page, 8, 200);
-    check(await page.locator("#fixture-state").count() === 0, "Late success after unmount cannot restore provider UI");
+    check(await page.locator("#fixture-state").count() === 0 && await page.evaluate(() => !window.__localeFeedbackNode.isConnected), "Late success after unmount cannot restore provider UI or its live region");
   });
   for (const abortBehavior of ["reject", "resolve"]) await withPage("deadline-abort-" + abortBehavior, "es-AR", "light", 390, async (page, entry) => {
     await page.evaluate((behavior) => { window.__localeQA.transportAbortBehavior = behavior; }, abortBehavior);

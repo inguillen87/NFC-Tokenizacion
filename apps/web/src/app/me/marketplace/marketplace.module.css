@@ -186,10 +186,16 @@
 }
 
 .listHeading h3:focus,
-.productBody h3:focus {
+.productBody h3:focus,
+.ageHeading:focus {
   outline: 3px solid var(--portal-accent, #08755d);
   outline-offset: 4px;
   border-radius: 0.25rem;
+}
+
+.ageHeading {
+  margin: 0;
+  font: inherit;
 }
 
 .media {

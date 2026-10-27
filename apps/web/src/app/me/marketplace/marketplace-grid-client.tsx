@@ -149,7 +149,7 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
   const listHeadingRef = useRef<HTMLHeadingElement>(null);
   const inFlight = useRef(new Set<string>());
   const agePanelPrefix = useId();
-  const ageConfirmRefs = useRef(new Map<string, HTMLButtonElement>());
+  const ageHeadingRefs = useRef(new Map<string, HTMLHeadingElement>());
   const ageInitiators = useRef(new Map<string, HTMLButtonElement>());
   const productHeadingRefs = useRef(new Map<string, HTMLHeadingElement>());
   const listActionRefs = useRef(new Map<string, HTMLButtonElement>());
@@ -160,10 +160,11 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
     const openedId = pendingAgeFocus.current;
     pendingAgeFocus.current = null;
     if (openedId && ageGateById[openedId]) {
-      const confirmation = ageConfirmRefs.current.get(openedId);
-      if (confirmation && !confirmation.disabled) {
-        confirmation.focus({ preventScroll: true });
-        confirmation.scrollIntoView({ block: "center", behavior: "instant" });
+      const heading = ageHeadingRefs.current.get(openedId);
+      if (heading) {
+        // A held opening key must not repeat onto the affirmative action.
+        heading.focus({ preventScroll: true });
+        heading.scrollIntoView({ block: "center", behavior: "instant" });
       }
     }
     const returning = pendingAgeReturn.current;
@@ -325,11 +326,11 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
       setBusyById((prev) => ({ ...prev, [item.id]: false }));
     }
   }
-  async function checkoutCart() {
+  async function checkoutCart(initiator: HTMLButtonElement) {
     if (contextUnavailable || !cartLines.length || cartBusy) return;
     const unconfirmed = cartLines.find(({ item }) => item.age_gate_required === true && acceptedAgeById[item.id] !== true);
     if (unconfirmed) {
-      openAgeConfirmation(unconfirmed.item, "list");
+      openAgeConfirmation(unconfirmed.item, "list", initiator);
       setCartStatus("Confirmá mayoría de edad en el producto indicado antes de enviar la lista.");
       return;
     }
@@ -440,9 +441,9 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
                     {item.age_gate_required ? <p className={styles.note}>Requiere confirmación de mayoría de edad.</p> : null}
                     {ageGateById[item.id] ? (
                       <div id={agePanelId} className={styles.confirmation} role="group" aria-labelledby={`${agePanelId}-title`}>
-                        <p id={`${agePanelId}-title`}>{ageGateActionById[item.id] === "list" ? "Confirmá que sos mayor de edad para agregar este producto a tu lista." : "Confirmá que sos mayor de edad para enviar esta solicitud."}</p>
+                        <h4 id={`${agePanelId}-title`} ref={node => { if (node) ageHeadingRefs.current.set(item.id, node); else ageHeadingRefs.current.delete(item.id); }} tabIndex={-1} className={styles.ageHeading}>{ageGateActionById[item.id] === "list" ? "Confirmá que sos mayor de edad para agregar este producto a tu lista." : "Confirmá que sos mayor de edad para enviar esta solicitud."}</h4>
                         <div className={styles.actions}>
-                          <button type="button" ref={node => { if (node) ageConfirmRefs.current.set(item.id, node); else ageConfirmRefs.current.delete(item.id); }} aria-describedby={`${agePanelId}-title`} disabled={cartBusy || busyById[item.id]} onClick={event => confirmAge(item, event.currentTarget)} className={`${styles.button} ${styles.primary}`}>Soy mayor de edad</button>
+                          <button type="button" aria-describedby={`${agePanelId}-title`} disabled={cartBusy || busyById[item.id]} onClick={event => confirmAge(item, event.currentTarget)} className={`${styles.button} ${styles.primary}`}>Soy mayor de edad</button>
                           <button type="button" onClick={event => cancelAgeConfirmation(item, event.currentTarget)} className={styles.button}>Cancelar</button>
                         </div>
                       </div>
@@ -492,7 +493,7 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
                 <p className={styles.note}>La marca confirma el precio final y la disponibilidad. No se realiza ningún cobro desde esta lista.</p>
               </div>
             ) : null}
-            <button type="button" disabled={contextUnavailable || !cartLines.length || cartBusy} onClick={checkoutCart} aria-busy={cartBusy} className={`${styles.button} ${styles.primary} ${styles.sendList}`}><PackageCheck className={styles.icon} aria-hidden="true" />{cartBusy ? "Enviando..." : "Enviar solicitudes"}</button>
+            <button type="button" disabled={contextUnavailable || !cartLines.length || cartBusy} onClick={event => void checkoutCart(event.currentTarget)} aria-busy={cartBusy} className={`${styles.button} ${styles.primary} ${styles.sendList}`}><PackageCheck className={styles.icon} aria-hidden="true" />{cartBusy ? "Enviando..." : "Enviar solicitudes"}</button>
             {cartStatus ? <p className={styles.feedback} role="status">{cartStatus}</p> : null}
           </div>
         </aside>

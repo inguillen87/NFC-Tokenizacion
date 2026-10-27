@@ -200,14 +200,22 @@ export async function runMarketplaceScenarios({page,base,width,theme,report,chec
   for(const actionName of ['Solicitar contacto','Agregar a la lista']){
    const action=wine().getByRole('button',{name:actionName,exact:true});
    check(await action.getAttribute('aria-expanded')==='false',`${label} ${actionName}: closed age confirmation is announced`);
-   await action.focus();await page.keyboard.press('Enter');await settleLayout();
-   const confirm=wine().getByRole('button',{name:'Soy mayor de edad',exact:true}),cancel=wine().getByRole('button',{name:'Cancelar',exact:true});
-   await confirm.waitFor();const placement=await focusPlacement(confirm);record.geometry.push({phase:`age-confirm-${actionName}`,...placement});
-   check(placement.active&&placement.fullyUsable&&placement.ownHit&&placement.focusVisible,`${label} ${actionName}: keyboard opening focuses the explicit confirmation unobstructed between header/nav`);
+   await page.evaluate(()=>{window.__marketplaceHeldAgeEvents=[];window.__marketplaceHeldAgeListener=event=>{if(event.key==='Enter')window.__marketplaceHeldAgeEvents.push({type:event.type,repeat:event.repeat,isTrusted:event.isTrusted,targetTag:event.target?.tagName});};document.addEventListener('keydown',window.__marketplaceHeldAgeListener,true);document.addEventListener('keyup',window.__marketplaceHeldAgeListener,true);});
+   await action.focus();await page.keyboard.down('Enter');await settleLayout();
+   const heading=wine().getByRole('heading',{level:4}),confirm=wine().getByRole('button',{name:'Soy mayor de edad',exact:true}),cancel=wine().getByRole('button',{name:'Cancelar',exact:true});
+   await heading.waitFor();const placement=await focusPlacement(heading);record.geometry.push({phase:`age-neutral-heading-${actionName}`,...placement});
+   check(placement.active&&placement.fullyUsable&&placement.ownHit&&placement.focusVisible&&placement.outlineWidth>=2,`${label} ${actionName}: keyboard opening focuses the neutral question with a visible outline between header/nav`);
    const panelId=await action.getAttribute('aria-controls');
    check(await action.getAttribute('aria-expanded')==='true'&&Boolean(panelId)&&await confirm.evaluate((el,id)=>el.closest('[role="group"]')?.id===id,panelId),`${label} ${actionName}: expanded trigger controls the actual age confirmation group`);
    check(requests.length===start&&await list.getByRole('button',{name:'Enviar solicitudes',exact:true}).isDisabled(),`${label} ${actionName}: focus and opening neither accept age nor send a request`);
-   await page.keyboard.press('Tab');check(await cancel.evaluate(el=>document.activeElement===el),`${label} ${actionName}: Tab reaches cancel directly`);
+   await page.keyboard.down('Enter');await settleLayout();
+   const heldEvents=await page.evaluate(()=>window.__marketplaceHeldAgeEvents);
+   check(heldEvents.length===2&&!heldEvents[0].repeat&&heldEvents[1].repeat&&heldEvents[1].isTrusted&&heldEvents[1].targetTag==='H4',`${label} ${actionName}: actual repeated Enter remains on the neutral question without a key release`);
+   check(requests.length===start&&await heading.evaluate(el=>document.activeElement===el)&&await confirm.count()===1&&await list.getByRole('button',{name:'Enviar solicitudes',exact:true}).isDisabled(),`${label} ${actionName}: held Enter never accepts age, adds a draft or sends a request`);
+   await page.keyboard.up('Enter');await page.evaluate(()=>{document.removeEventListener('keydown',window.__marketplaceHeldAgeListener,true);document.removeEventListener('keyup',window.__marketplaceHeldAgeListener,true);delete window.__marketplaceHeldAgeListener;delete window.__marketplaceHeldAgeEvents;});
+   record.scenarios.push({name:'held-enter-age-confirmation',action:actionName,events:heldEvents,zeroPost:true,zeroDraft:true,neutralQuestionFocused:true});
+   await page.keyboard.press('Tab');check(await confirm.evaluate(el=>document.activeElement===el),`${label} ${actionName}: Tab reaches the explicit affirmative action`);
+   await page.keyboard.press('Tab');check(await cancel.evaluate(el=>document.activeElement===el),`${label} ${actionName}: the next Tab reaches cancel`);
    await page.keyboard.press('Enter');await settleLayout();
    const returned=await focusPlacement(action);record.geometry.push({phase:`age-cancel-${actionName}`,...returned});
    check(returned.active&&returned.fullyUsable&&returned.ownHit&&await action.getAttribute('aria-expanded')==='false',`${label} ${actionName}: keyboard cancel restores the initiating action without a hidden panel`);
@@ -220,7 +228,7 @@ export async function runMarketplaceScenarios({page,base,width,theme,report,chec
   check(requests.length===start,`${label} cancelling age confirmation sends zero POST`);
   await wine().getByRole('button',{name:'Agregar a la lista',exact:true}).click();await wine().getByRole('button',{name:'Soy mayor de edad',exact:true}).click();
   await settleLayout();check(await wine().getByRole('button',{name:'Ver mi lista · 1 unidad',exact:true}).evaluate(el=>document.activeElement===el),`${label} explicit list confirmation transfers focus to the resulting list action`);
-  record.scenarios.push({name:'keyboard-age-confirmation',bothActions:true,confirmationFocused:true,cancelRestoresInitiator:true,noAutomaticPost:true});
+  record.scenarios.push({name:'keyboard-age-confirmation',bothActions:true,neutralHeadingFocused:true,cancelRestoresInitiator:true,noAutomaticPost:true});
   check(requests.length===start,`${label} explicit age confirmation adds draft without sending a request`);
   check(await wine().getByRole('button',{name:'Ver mi lista · 1 unidad',exact:true}).isVisible(),`${label} selected product exposes a real list shortcut instead of a repeated add`);
   await assertListJump(wine().getByRole('button',{name:'Ver mi lista · 1 unidad',exact:true}),'selected-card-list-jump');
@@ -284,7 +292,8 @@ export async function runMarketplaceScenarios({page,base,width,theme,report,chec
    const requestAction=wine().getByRole('button',{name:'Solicitar contacto',exact:true});
    await requestAction.focus();await page.keyboard.press('Enter');
    const explicitAge=wine().getByRole('button',{name:'Soy mayor de edad',exact:true});await explicitAge.waitFor();
-   check(requests.length===ageRequestStart&&await explicitAge.evaluate(el=>document.activeElement===el),`${label} direct age request waits on explicit focused confirmation with zero POST`);
+   check(requests.length===ageRequestStart&&await wine().getByRole('heading',{level:4}).evaluate(el=>document.activeElement===el),`${label} direct age request waits on the neutral question with zero POST`);
+   await page.keyboard.press('Tab');check(await explicitAge.evaluate(el=>document.activeElement===el),`${label} an explicit Tab selects the affirmative control before confirmation`);
    await page.keyboard.press('Enter');await wine().getByRole('button',{name:'Enviando...',exact:true}).waitFor();await settleLayout();
    check(requests.length===ageRequestStart+1&&requests.at(-1).body.ageGateAccepted===true&&requests.at(-1).id==='market-wine-qa',`${label} direct keyboard age confirmation sends exactly one intended product request`);
    check(await wine().getByRole('heading',{name:'Vino reserva QA',exact:true}).evaluate(el=>document.activeElement===el)&&await explicitAge.count()===0,`${label} direct request retains product focus while its initiating action is pending`);

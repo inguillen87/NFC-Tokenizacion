@@ -304,9 +304,9 @@ export function SunLocaleSwitcher({ className = "" }: { className?: string }) {
           ))}
         </select>
       </label>
-      {hasFeedback && <div className={styles.feedback} data-sun-locale-feedback data-locale-state={localePending ? "pending" : "error"}>
+      <div className={hasFeedback ? styles.feedback : styles.idleFeedback} data-sun-locale-feedback={hasFeedback ? "" : undefined} data-locale-state={hasFeedback ? (localePending ? "pending" : "error") : undefined}>
         <p id={feedbackId} className={styles.message} role="status" aria-live="polite" aria-atomic="true">
-          {localePending && localeTarget ? copy.pending + " " + LABELS[localeTarget] + "…" : copy.error}
+          {hasFeedback ? (localePending && localeTarget ? copy.pending + " " + LABELS[localeTarget] + "…" : copy.error) : ""}
         </p>
         {!localePending && localeError && localeTarget && <button
           ref={retryRef}
@@ -317,7 +317,7 @@ export function SunLocaleSwitcher({ className = "" }: { className?: string }) {
             void setLocale(localeTarget);
           }}
         >{copy.retry + " " + LABELS[localeTarget]}</button>}
-      </div>}
+      </div>
     </div>
   );
 }
