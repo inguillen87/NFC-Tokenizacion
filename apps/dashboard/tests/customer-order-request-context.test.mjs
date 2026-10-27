@@ -145,9 +145,28 @@ test("actual CRM search uses product, phone and consumer message instead of the 
   for (const search of ["Reserva", "+540000000000", "caja de regalo"]) {
     const { tableProps } = renderOrders({ search }); assert.equal(tableProps.rows.length, 1); assert.equal(tableProps.rows[0].reference, "order-qa");
   }
-  const { html, tableProps } = renderOrders({ search: "not-recorded" });
-  assert.equal(tableProps.rows.length, 0); assert.ok(html.includes(customerInboxCopy["es-AR"].orderNoMatches));
-  assert.ok(renderOrders({ records: [] }).html.includes(customerInboxCopy["es-AR"].orderNoRecords));
+  for (const locale of ["es-AR", "pt-BR", "en"]) {
+    const copy = dataTableCopy[locale], ui = customerInboxCopy[locale];
+    const { html, tableProps } = renderOrders({ search: "not-recorded", locale });
+    assert.equal(tableProps.rows.length, 0);
+    assert.equal(tableProps.externalFilter.active, true);
+    assert.equal(tableProps.externalFilter.sourceCount, 2);
+    assert.ok(html.includes(copy.filteredEmptyLabel), locale + " localized no-match feedback");
+    assert.ok(html.includes(copy.countLabel.replaceAll("{visible}", "0").replaceAll("{total}", "2")), locale + " admitted-source denominator");
+    assert.match(html, /data-testid="data-table-filtered-empty"/);
+    assert.doesNotMatch(html, /data-testid="data-table-source-empty"/);
+    assert.ok(!html.includes(ui.orderNoRecords), locale + " does not invent an empty source");
+    for (const search of ["", "not-recorded"]) {
+      const empty = renderOrders({ records: [], locale, search });
+      assert.equal(empty.tableProps.rows.length, 0);
+      assert.equal(empty.tableProps.externalFilter.active, Boolean(search));
+      assert.equal(empty.tableProps.externalFilter.sourceCount, 0);
+      assert.ok(empty.html.includes(ui.orderNoRecords), locale + " genuine empty list");
+      assert.ok(empty.html.includes(copy.countLabel.replaceAll("{visible}", "0").replaceAll("{total}", "0")), locale + " genuine empty denominator");
+      assert.match(empty.html, /data-testid="data-table-source-empty"/);
+      assert.doesNotMatch(empty.html, /data-testid="data-table-filtered-empty"/);
+    }
+  }
 });
 
 test("actual CRM keeps free text literal and translates only explicit string states", () => {
