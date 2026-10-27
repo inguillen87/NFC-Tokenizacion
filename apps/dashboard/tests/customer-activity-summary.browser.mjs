@@ -7,6 +7,7 @@ import { build } from 'esbuild';
 import postcss from 'postcss';
 import tailwindcss from 'tailwindcss';
 import { customerInboxCopy } from '../src/lib/customer-inbox-copy.ts';
+import { dataTableCopy } from '../src/lib/data-table-copy.ts';
 
 assert.ok(process.env.PLAYWRIGHT_MODULE && process.env.AXE_MODULE_PATH, 'Installed browser tools are required; this harness never downloads them');
 const { chromium } = await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href);
@@ -100,7 +101,9 @@ try {
       check(await requestsTable.locator('tbody tr').count() === 1, 'local search finds the consumer request');
     }
     await page.getByRole('searchbox',{name:ui.search}).fill('not-recorded');
-    check((await requestsTable.innerText()).includes(ui.orderNoMatches), 'no match differs from no requests');
+    check((await requestsTable.innerText()).includes(dataTableCopy[locale].filteredEmptyLabel), 'no match uses the selected locale feedback');
+    check(await requestsTable.locator('[role="status"]').textContent() === dataTableCopy[locale].countLabel.replaceAll('{visible}','0').replaceAll('{total}','2'), 'no match retains the admitted two-request denominator');
+    check(await requestsTable.getByTestId('data-table-filtered-empty').count() === 1 && await requestsTable.getByTestId('data-table-source-empty').count() === 0 && !(await requestsTable.innerText()).includes(ui.orderNoRecords), 'no match differs from a genuinely empty request list');
     await page.getByRole('searchbox',{name:ui.search}).fill('');
     check(await requestsTable.locator('tbody tr').count() === 2, 'cleared search preserves both loaded formats');
     check(await requestsTable.locator('a, form').count() === 0, 'request review has no purchase or contact action');
