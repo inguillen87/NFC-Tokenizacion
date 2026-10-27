@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -18,18 +19,27 @@ import {
   translateSunUiText,
   type SunLocale,
 } from "./sun-locale";
+import styles from "./sun-locale-feedback.module.css";
 
 type SunLocaleContextValue = {
   locale: SunLocale;
   setLocale: (locale: SunLocale) => Promise<void>;
   localePending: boolean;
   localeError: string | null;
+  localeTarget: SunLocale | null;
   text: (value: string) => string;
 };
 
 const SunLocaleContext = createContext<SunLocaleContextValue | null>(null);
 
 const TRANSLATED_ATTRIBUTES = ["aria-label", "placeholder", "title"] as const;
+const LOCALE_REQUEST_TIMEOUT_MS = 8_000;
+
+type LocaleRequest = {
+  controller: AbortController;
+  sequence: number;
+  cancel: () => void;
+};
 
 function shouldSkipTextNode(node: Node) {
   const parent = node.parentElement;
@@ -82,9 +92,13 @@ export function SunLocaleProvider({
   const [locale, setLocaleState] = useState<SunLocale>(initialLocale);
   const [localePending, setLocalePending] = useState(false);
   const [localeError, setLocaleError] = useState<string | null>(null);
+  const [localeTarget, setLocaleTarget] = useState<SunLocale | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const translatingRef = useRef(false);
-  const localeRequestRef = useRef<{ controller: AbortController; sequence: number } | null>(null);
+  const committedLocaleRef = useRef(initialLocale);
+  const mountedRef = useRef(true);
+  const localeSequenceRef = useRef(0);
+  const localeRequestRef = useRef<LocaleRequest | null>(null);
 
   const applyLocale = useCallback((nextLocale: SunLocale) => {
     const root = rootRef.current;
@@ -99,41 +113,79 @@ export function SunLocaleProvider({
   }, []);
 
   const setLocale = useCallback(async (nextLocale: SunLocale) => {
-    if (!isSunLocale(nextLocale)) return;
-    if (nextLocale === locale) return;
+    if (!mountedRef.current || !isSunLocale(nextLocale)) return;
 
-    localeRequestRef.current?.controller.abort();
+    localeRequestRef.current?.cancel();
+    localeRequestRef.current = null;
+    if (nextLocale === committedLocaleRef.current) {
+      setLocalePending(false);
+      setLocaleError(null);
+      setLocaleTarget(null);
+      return;
+    }
+
     const controller = new AbortController();
-    const sequence = (localeRequestRef.current?.sequence || 0) + 1;
-    localeRequestRef.current = { controller, sequence };
+    const sequence = ++localeSequenceRef.current;
+    let rejectRequest!: (reason: Error) => void;
+    let timedOut = false;
+    const interrupted = new Promise<never>((_, reject) => { rejectRequest = reject; });
+    // Abort is advisory: a stalled transport must still release the control on time.
+    const timeout = window.setTimeout(() => {
+      timedOut = true;
+      rejectRequest(new Error("locale_preference_timeout"));
+      controller.abort();
+    }, LOCALE_REQUEST_TIMEOUT_MS);
+    const request: LocaleRequest = {
+      controller,
+      sequence,
+      cancel: () => {
+        window.clearTimeout(timeout);
+        controller.abort();
+        rejectRequest(new Error("locale_request_cancelled"));
+      },
+    };
+    localeRequestRef.current = request;
+    const isCurrent = () => mountedRef.current && localeSequenceRef.current === sequence && localeRequestRef.current === request;
     setLocalePending(true);
     setLocaleError(null);
+    setLocaleTarget(nextLocale);
 
     try {
-      const response = await fetch("/api/sun/locale", {
+      const response = await Promise.race([fetch("/api/sun/locale", {
         method: "POST",
         credentials: "same-origin",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ locale: nextLocale }),
         cache: "no-store",
         signal: controller.signal,
-      });
+      }), interrupted]);
+      if (!isCurrent() || controller.signal.aborted) return;
       if (!response.ok) throw new Error("locale_preference_not_saved");
-      if (localeRequestRef.current?.sequence !== sequence) return;
 
+      committedLocaleRef.current = nextLocale;
       setLocaleState(nextLocale);
-    } catch (error) {
-      if (controller.signal.aborted) return;
-      setLocaleError(error instanceof Error ? error.message : "locale_preference_not_saved");
+      setLocaleTarget(null);
+    } catch {
+      if (!isCurrent()) return;
+      setLocaleError(timedOut ? "locale_preference_timeout" : "locale_preference_not_saved");
     } finally {
-      if (localeRequestRef.current?.sequence === sequence) {
+      window.clearTimeout(timeout);
+      if (isCurrent()) {
         localeRequestRef.current = null;
         setLocalePending(false);
       }
     }
-  }, [locale]);
+  }, []);
 
-  useLayoutEffect(() => () => localeRequestRef.current?.controller.abort(), []);
+  useLayoutEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      const request = localeRequestRef.current;
+      localeRequestRef.current = null;
+      request?.cancel();
+    };
+  }, []);
 
   useLayoutEffect(() => {
     applyLocale(locale);
@@ -166,8 +218,9 @@ export function SunLocaleProvider({
     setLocale,
     localePending,
     localeError,
+    localeTarget,
     text: (source) => translateSunUiText(source, locale),
-  }), [locale, localeError, localePending, setLocale]);
+  }), [locale, localeError, localePending, localeTarget, setLocale]);
 
   return (
     <SunLocaleContext.Provider value={value}>
@@ -198,30 +251,73 @@ const ARIA_LABELS: Record<SunLocale, string> = {
   en: "Select passport language",
 };
 
-export function SunLocaleSwitcher() {
-  const { locale, setLocale, localePending, localeError } = useSunLocale();
+const FEEDBACK: Record<SunLocale, { pending: string; error: string; retry: string }> = {
+  "es-AR": { pending: "Cambiando a", error: "No pudimos confirmar el idioma. Reintentá.", retry: "Reintentar:" },
+  "pt-BR": { pending: "Mudando para", error: "Não foi possível confirmar o idioma. Tente novamente.", retry: "Tentar novamente:" },
+  en: { pending: "Changing to", error: "We could not confirm the language. Please try again.", retry: "Retry:" },
+};
+
+export function SunLocaleSwitcher({ className = "" }: { className?: string }) {
+  const { locale, setLocale, localePending, localeError, localeTarget } = useSunLocale();
+  const feedbackId = useId();
+  const selectRef = useRef<HTMLSelectElement>(null);
+  const retryRef = useRef<HTMLButtonElement>(null);
+  const initiatedHereRef = useRef(false);
+  const copy = FEEDBACK[locale];
+  const hasFeedback = localePending || Boolean(localeError && localeTarget);
+
+  useLayoutEffect(() => {
+    if (localePending || !initiatedHereRef.current) return;
+    initiatedHereRef.current = false;
+    const active = document.activeElement;
+    // Restore the local keyboard path without taking focus from another action.
+    if (active !== document.body && active !== document.documentElement && active !== selectRef.current && active !== retryRef.current) return;
+    if (localeError && localeTarget) retryRef.current?.focus();
+    else selectRef.current?.focus();
+  }, [localePending, localeError, localeTarget]);
 
   return (
-    <label className="locale-switcher inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-0 text-xs font-semibold text-slate-200">
-      <span aria-hidden className="locale-switcher__icon">ID</span>
-      <select
-        value={locale}
-        disabled={localePending}
-        aria-busy={localePending}
-        data-locale-error={localeError || undefined}
-        className="min-h-11 bg-transparent pr-1 text-xs font-semibold"
-        aria-label={ARIA_LABELS[locale]}
-        onChange={(event) => {
-          const nextLocale = event.target.value;
-          if (isSunLocale(nextLocale)) void setLocale(nextLocale);
-        }}
-      >
-        {SUN_LOCALES.map((item) => (
-          <option key={item} value={item} className="locale-switcher__option">
-            {LABELS[item]}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div className={`${styles.switcher} ${className}`}>
+      <label className={`locale-switcher inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-0 text-xs font-semibold text-slate-200 ${styles.control}`}>
+        <span aria-hidden className="locale-switcher__icon">ID</span>
+        <select
+          ref={selectRef}
+          value={locale}
+          disabled={localePending}
+          aria-busy={localePending}
+          data-locale-error={localeError || undefined}
+          className="min-h-11 bg-transparent pr-1 text-xs font-semibold"
+          aria-label={ARIA_LABELS[locale]}
+          aria-describedby={hasFeedback ? feedbackId : undefined}
+          onChange={(event) => {
+            const nextLocale = event.target.value;
+            if (isSunLocale(nextLocale)) {
+              initiatedHereRef.current = true;
+              void setLocale(nextLocale);
+            }
+          }}
+        >
+          {SUN_LOCALES.map((item) => (
+            <option key={item} value={item} className="locale-switcher__option">
+              {LABELS[item]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className={hasFeedback ? styles.feedback : styles.idleFeedback} data-sun-locale-feedback={hasFeedback ? "" : undefined} data-locale-state={hasFeedback ? (localePending ? "pending" : "error") : undefined}>
+        <p id={feedbackId} className={styles.message} role="status" aria-live="polite" aria-atomic="true">
+          {hasFeedback ? (localePending && localeTarget ? copy.pending + " " + LABELS[localeTarget] + "…" : copy.error) : ""}
+        </p>
+        {!localePending && localeError && localeTarget && <button
+          ref={retryRef}
+          type="button"
+          className={styles.retry}
+          onClick={() => {
+            initiatedHereRef.current = true;
+            void setLocale(localeTarget);
+          }}
+        >{copy.retry + " " + LABELS[localeTarget]}</button>}
+      </div>
+    </div>
   );
 }

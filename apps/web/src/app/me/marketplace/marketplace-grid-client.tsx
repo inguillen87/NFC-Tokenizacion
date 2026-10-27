@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ArrowDown, Minus, PackageCheck, Plus, Search, ShoppingCart, X } from "lucide-react";
 import styles from "./marketplace.module.css";
 import { sendMarketplaceRequest } from "./marketplace-request";
@@ -148,6 +148,52 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
   const searchRef = useRef<HTMLInputElement>(null);
   const listHeadingRef = useRef<HTMLHeadingElement>(null);
   const inFlight = useRef(new Set<string>());
+  const agePanelPrefix = useId();
+  const ageHeadingRefs = useRef(new Map<string, HTMLHeadingElement>());
+  const ageInitiators = useRef(new Map<string, HTMLButtonElement>());
+  const productHeadingRefs = useRef(new Map<string, HTMLHeadingElement>());
+  const listActionRefs = useRef(new Map<string, HTMLButtonElement>());
+  const pendingAgeFocus = useRef<string | null>(null);
+  const pendingAgeReturn = useRef<{ id: string; from: HTMLElement } | null>(null);
+
+  useEffect(() => {
+    const openedId = pendingAgeFocus.current;
+    pendingAgeFocus.current = null;
+    if (openedId && ageGateById[openedId]) {
+      const heading = ageHeadingRefs.current.get(openedId);
+      if (heading) {
+        // A held opening key must not repeat onto the affirmative action.
+        heading.focus({ preventScroll: true });
+        heading.scrollIntoView({ block: "center", behavior: "instant" });
+      }
+    }
+    const returning = pendingAgeReturn.current;
+    pendingAgeReturn.current = null;
+    // Only restore focus for this explicit close. A network response must not
+    // pull focus away from another control the customer has since chosen.
+    if (returning && !ageGateById[returning.id] &&
+        (document.activeElement === returning.from || document.activeElement === document.body)) {
+      const initiator = ageInitiators.current.get(returning.id);
+      const listAction = listActionRefs.current.get(returning.id);
+      const target = initiator?.isConnected && !initiator.disabled ? initiator
+        : listAction?.isConnected && !listAction.disabled ? listAction : productHeadingRefs.current.get(returning.id);
+      target?.focus({ preventScroll: true });
+      target?.scrollIntoView({ block: "center", behavior: "instant" });
+    }
+  }, [ageGateById]);
+
+  function openAgeConfirmation(item: Listing, action: "request" | "list", initiator?: HTMLButtonElement) {
+    if (initiator) ageInitiators.current.set(item.id, initiator);
+    pendingAgeFocus.current = item.id;
+    setAgeGateById((prev) => ({ ...prev, [item.id]: true }));
+    setAgeGateActionById((prev) => ({ ...prev, [item.id]: action }));
+  }
+
+  function cancelAgeConfirmation(item: Listing, from: HTMLButtonElement) {
+    pendingAgeReturn.current = { id: item.id, from };
+    setAgeGateById((prev) => ({ ...prev, [item.id]: false }));
+    setFeedbackById((prev) => ({ ...prev, [item.id]: "" }));
+  }
 
   const filteredItems = useMemo(() => {
     const q = searchText(query.trim());
@@ -193,11 +239,10 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
     searchRef.current?.scrollIntoView({ block: "center", behavior: "instant" });
   }
 
-  function addToCart(item: Listing, ageGateAccepted = acceptedAgeById[item.id] === true) {
+  function addToCart(item: Listing, ageGateAccepted = acceptedAgeById[item.id] === true, initiator?: HTMLButtonElement) {
     if (contextUnavailable || cartBusy || busyById[item.id] || !item.id) return;
     if (item.age_gate_required === true && !ageGateAccepted) {
-      setAgeGateById((prev) => ({ ...prev, [item.id]: true }));
-      setAgeGateActionById((prev) => ({ ...prev, [item.id]: "list" }));
+      openAgeConfirmation(item, "list", initiator);
       setFeedbackById((prev) => ({ ...prev, [item.id]: "Confirmá mayoría de edad para agregar este producto a la lista." }));
       return;
     }
@@ -216,13 +261,12 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
     });
   }
 
-  async function requestToBuy(item: Listing, options: { ageGateAccepted?: boolean; quantity?: number; message?: string } = {}) {
+  async function requestToBuy(item: Listing, options: { ageGateAccepted?: boolean; quantity?: number; message?: string } = {}, initiator?: HTMLButtonElement) {
     if (contextUnavailable || tapContextDeniedRef.current || !item.id || inFlight.current.has(item.id) || requestedById[item.id]) return false;
     const needsAgeGate = item.age_gate_required === true;
     const ageGateAccepted = options.ageGateAccepted === true || acceptedAgeById[item.id] === true;
     if (needsAgeGate && !ageGateAccepted) {
-      setAgeGateById((prev) => ({ ...prev, [item.id]: true }));
-      setAgeGateActionById((prev) => ({ ...prev, [item.id]: "request" }));
+      openAgeConfirmation(item, "request", initiator);
       setFeedbackById((prev) => ({ ...prev, [item.id]: "Confirmá mayoría de edad para enviar la solicitud a la marca." }));
       return false;
     }
@@ -282,12 +326,11 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
       setBusyById((prev) => ({ ...prev, [item.id]: false }));
     }
   }
-  async function checkoutCart() {
+  async function checkoutCart(initiator: HTMLButtonElement) {
     if (contextUnavailable || !cartLines.length || cartBusy) return;
     const unconfirmed = cartLines.find(({ item }) => item.age_gate_required === true && acceptedAgeById[item.id] !== true);
     if (unconfirmed) {
-      setAgeGateById((prev) => ({ ...prev, [unconfirmed.item.id]: true }));
-      setAgeGateActionById((prev) => ({ ...prev, [unconfirmed.item.id]: "list" }));
+      openAgeConfirmation(unconfirmed.item, "list", initiator);
       setCartStatus("Confirmá mayoría de edad en el producto indicado antes de enviar la lista.");
       return;
     }
@@ -322,8 +365,9 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
     setCartBusy(false);
   }
 
-  function confirmAge(item: Listing) {
+  function confirmAge(item: Listing, from: HTMLButtonElement) {
     if (cartBusy || busyById[item.id]) return;
+    pendingAgeReturn.current = { id: item.id, from };
     setAcceptedAgeById((prev) => ({ ...prev, [item.id]: true }));
     setAgeGateById((prev) => ({ ...prev, [item.id]: false }));
     setFeedbackById((prev) => ({ ...prev, [item.id]: "" }));
@@ -379,6 +423,7 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
               const requestAlreadySent = requestedById[item.id] === true;
               const displayImg = item.imageUrl || item.image_url || item.photoUrl || item.photo_url;
               const photoFailed = Boolean(displayImg && failedPhotos[item.id] === displayImg);
+              const agePanelId = `${agePanelPrefix}-${encodeURIComponent(item.id)}-age`;
               const disabledReason = contextUnavailable ? "Las consultas de esta lectura ya no están habilitadas."
                 : !["available", "active", "in_stock"].includes(status.toLowerCase()) ? "La marca debe confirmar disponibilidad antes de habilitar consultas."
                 : item.request_to_buy_enabled !== true ? "La marca no habilitó solicitudes de contacto para este producto." : null;
@@ -389,26 +434,26 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
                   </div>
                   <div className={styles.productBody}>
                     <p className={styles.brand}>{brandLabel(item)}</p>
-                    <h3>{item.title || "Producto publicado"}</h3>
+                    <h3 ref={node => { if (node) productHeadingRefs.current.set(item.id, node); else productHeadingRefs.current.delete(item.id); }} tabIndex={-1}>{item.title || "Producto publicado"}</h3>
                     {item.bid || item.batch ? <p className={styles.muted}>Lote publicado: {item.bid || item.batch}</p> : null}
                     <p className={styles.availability}>{availabilityLabel(status)}</p>
                     <p className={styles.price}>{priceLabel(item)}</p>
                     {item.age_gate_required ? <p className={styles.note}>Requiere confirmación de mayoría de edad.</p> : null}
                     {ageGateById[item.id] ? (
-                      <div className={styles.confirmation}>
-                        <p>Confirmá que sos mayor de edad para enviar esta solicitud.</p>
+                      <div id={agePanelId} className={styles.confirmation} role="group" aria-labelledby={`${agePanelId}-title`}>
+                        <h4 id={`${agePanelId}-title`} ref={node => { if (node) ageHeadingRefs.current.set(item.id, node); else ageHeadingRefs.current.delete(item.id); }} tabIndex={-1} className={styles.ageHeading}>{ageGateActionById[item.id] === "list" ? "Confirmá que sos mayor de edad para agregar este producto a tu lista." : "Confirmá que sos mayor de edad para enviar esta solicitud."}</h4>
                         <div className={styles.actions}>
-                          <button type="button" disabled={cartBusy || busyById[item.id]} onClick={() => confirmAge(item)} className={`${styles.button} ${styles.primary}`}>Soy mayor de edad</button>
-                          <button type="button" onClick={() => { setAgeGateById((prev) => ({ ...prev, [item.id]: false })); setFeedbackById((prev) => ({ ...prev, [item.id]: "" })); }} className={styles.button}>Cancelar</button>
+                          <button type="button" aria-describedby={`${agePanelId}-title`} disabled={cartBusy || busyById[item.id]} onClick={event => confirmAge(item, event.currentTarget)} className={`${styles.button} ${styles.primary}`}>Soy mayor de edad</button>
+                          <button type="button" onClick={event => cancelAgeConfirmation(item, event.currentTarget)} className={styles.button}>Cancelar</button>
                         </div>
                       </div>
                     ) : null}
                     <div className={styles.actions}>
-                      <button type="button" disabled={requestDisabled || cartBusy || busyById[item.id] || requestAlreadySent} onClick={() => requestToBuy(item, { quantity: cart[item.id] || 1 })} aria-busy={busyById[item.id] || false} className={`${styles.button} ${styles.primary}`}>
+                      <button type="button" disabled={requestDisabled || cartBusy || busyById[item.id] || requestAlreadySent} onClick={event => requestToBuy(item, { quantity: cart[item.id] || 1 }, event.currentTarget)} aria-expanded={item.age_gate_required === true ? Boolean(ageGateById[item.id]) : undefined} aria-controls={ageGateById[item.id] ? agePanelId : undefined} aria-busy={busyById[item.id] || false} className={`${styles.button} ${styles.primary}`}>
                         {requestAlreadySent ? "Solicitud enviada" : busyById[item.id] ? "Enviando..." : "Solicitar contacto"}
                       </button>
-                      {cart[item.id] ? <button type="button" onClick={revealList} className={styles.button}><ShoppingCart className={styles.icon} aria-hidden="true" /> Ver mi lista · {cart[item.id]} unidad{cart[item.id] === 1 ? "" : "es"}</button>
-                        : <button type="button" disabled={requestDisabled || cartBusy || busyById[item.id] || requestAlreadySent} onClick={() => addToCart(item)} className={styles.button}><Plus className={styles.icon} aria-hidden="true" /> Agregar a la lista</button>}
+                      {cart[item.id] ? <button type="button" ref={node => { if (node) listActionRefs.current.set(item.id, node); else listActionRefs.current.delete(item.id); }} onClick={revealList} className={styles.button}><ShoppingCart className={styles.icon} aria-hidden="true" /> Ver mi lista · {cart[item.id]} unidad{cart[item.id] === 1 ? "" : "es"}</button>
+                        : <button type="button" ref={node => { if (node) listActionRefs.current.set(item.id, node); else listActionRefs.current.delete(item.id); }} disabled={requestDisabled || cartBusy || busyById[item.id] || requestAlreadySent} onClick={event => addToCart(item, undefined, event.currentTarget)} aria-expanded={item.age_gate_required === true ? Boolean(ageGateById[item.id]) : undefined} aria-controls={ageGateById[item.id] ? agePanelId : undefined} className={styles.button}><Plus className={styles.icon} aria-hidden="true" /> Agregar a la lista</button>}
                     </div>
                     {disabledReason ? <p className={styles.note}>{disabledReason}</p> : null}
                     {feedbackById[item.id] ? <p className={styles.feedback} role="status">{feedbackById[item.id]}</p> : null}
@@ -448,7 +493,7 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
                 <p className={styles.note}>La marca confirma el precio final y la disponibilidad. No se realiza ningún cobro desde esta lista.</p>
               </div>
             ) : null}
-            <button type="button" disabled={contextUnavailable || !cartLines.length || cartBusy} onClick={checkoutCart} aria-busy={cartBusy} className={`${styles.button} ${styles.primary} ${styles.sendList}`}><PackageCheck className={styles.icon} aria-hidden="true" />{cartBusy ? "Enviando..." : "Enviar solicitudes"}</button>
+            <button type="button" disabled={contextUnavailable || !cartLines.length || cartBusy} onClick={event => void checkoutCart(event.currentTarget)} aria-busy={cartBusy} className={`${styles.button} ${styles.primary} ${styles.sendList}`}><PackageCheck className={styles.icon} aria-hidden="true" />{cartBusy ? "Enviando..." : "Enviar solicitudes"}</button>
             {cartStatus ? <p className={styles.feedback} role="status">{cartStatus}</p> : null}
           </div>
         </aside>

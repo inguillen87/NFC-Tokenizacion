@@ -3,10 +3,10 @@ import styles from "./passport.module.css";
 import { buildConsumerNextPath, fetchConsumerMe, readConsumerSession } from "../_components/consumer-api";
 import { ConsumerPortalUnavailable } from "../_components/consumer-portal-recovery";
 import { PortalShell } from "../_components/portal-shell";
-import { homeAccountStatusLabel } from "../_components/consumer-home-model";
+import { consumerAccountContact, homeAccountStatusLabel } from "../_components/consumer-home-model";
 import { ShieldCheck, UserCheck, Award, Sparkles, WalletCards, PackageCheck, ChevronRight } from "lucide-react";
 
-type Passport = { ok?: boolean; consumer?: { display_name?: string | null; email?: string | null; status?: string | null } };
+type Passport = { ok?: boolean; consumer?: { display_name?: string | null; email?: string | null; phone?: unknown; status?: string | null } };
 
 export default async function PassportPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const params = (await searchParams) || {};
@@ -18,6 +18,7 @@ export default async function PassportPage({ searchParams }: { searchParams?: Pr
   if ([consumer.display_name, consumer.email, consumer.status].some(value => value !== undefined && value !== null && typeof value !== "string")) return <ConsumerPortalUnavailable />;
   const status = typeof consumer.status === "string" ? consumer.status.trim().toLowerCase() : null;
   const accountStatusLabel = homeAccountStatusLabel(status);
+  const contact = consumerAccountContact(consumer.email, consumer.phone);
   
   const isVerif = status === "verified";
   const tone = isVerif 
@@ -43,7 +44,7 @@ export default async function PassportPage({ searchParams }: { searchParams?: Pr
             <div className="min-w-0">
               <p className={styles.amber+" text-[10px] font-black uppercase tracking-[0.2em]"}>Datos de tu cuenta</p>
               <h2 className={styles.primary+" text-xl font-black mt-0.5 break-words"}>{consumer.display_name || "Nombre no informado"}</h2>
-              <p className={styles.muted+" text-[11px] font-mono break-all"}>{consumer.email || "Correo no informado"}</p>
+              <p className={styles.muted+" text-[11px] font-mono break-all"}>{contact.kind === "email" ? contact.value : `${contact.label}: ${contact.value}`}</p>
             </div>
           </div>
           

@@ -42,9 +42,7 @@ export function SunPassportHeader({
         <a href="/me" className={styles.accountLink} data-testid="sun-account-link" referrerPolicy="no-referrer">
           {text("Mi cuenta")}
         </a>
-        <div className={styles.locale}>
-          <SunLocaleSwitcher />
-        </div>
+        <SunLocaleSwitcher className={styles.locale} />
         <div className={styles.theme}>
           <ThemeToggle locale={locale} waitForClientReady />
         </div>

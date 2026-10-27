@@ -30,6 +30,16 @@ async function assessment(page,selector,name,width,theme){
  await page.screenshot({path:join(output,`${name}-${width}-${theme}.png`),fullPage:name==='products'||name==='experience'||name==='marketplace'});
 }
 async function noOverflow(page,label){check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label);}
+async function accountContactScenarios(page,width,theme){
+ for(const [path,selector] of [['/me','[aria-labelledby="home-account-title"]'],['/me/passport','#consumer-portal-content'],['/me/privacy','[aria-labelledby="privacy-account-title"]']]){
+  await page.goto(base+path,{waitUntil:'networkidle'});const surface=page.locator(selector);await surface.waitFor();
+  const text=await surface.innerText();
+  check(text.toLocaleLowerCase('es-AR').includes('teléfono de tu cuenta')&&text.toLocaleLowerCase('es-AR').includes('terminado en 5678')&&!text.toLocaleLowerCase('es-AR').includes('correo no informado'),`${width}/${theme} ${path}: phone-only account has a meaningful masked contact`);
+  check(!(await page.content()).includes('5491112345678'),`${width}/${theme} ${path}: full synthetic phone is absent from rendered HTML and RSC`);
+  await noOverflow(page,`${width}/${theme} ${path}: account contact fits viewport`);
+  await assessment(page,selector,'account-contact-'+path.split('/').at(-1),width,theme);
+ }
+}
 async function productPhotoRecovery(page,context,width,theme){
  const observed={width,theme,failedRequests:0,updatedRequests:0,sameProductCard:false};
  report.productPhotoRecovery??=[];report.productPhotoRecovery.push(observed);
@@ -110,6 +120,7 @@ try{
   await context.addInitScript(()=>{Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){void window.__qaLocationCall();throw Error('Unexpected automatic location request');},watchPosition(){void window.__qaLocationCall();throw Error('Unexpected automatic location watch');}}});});
   const page=await context.newPage();page.on('pageerror',error=>report.errors.push({width,theme,message:error.message}));
   await page.route('**/*',route=>{const request=route.request(),url=new URL(request.url());if(!['GET','HEAD'].includes(request.method())){report.blockedWrites.push({path:url.pathname,method:request.method()});return route.abort();}return ['localhost','127.0.0.1'].includes(url.hostname)||['data:','blob:'].includes(url.protocol)?route.continue():route.abort();});
+  await accountContactScenarios(page,width,theme);
   await productPhotoRecovery(page,context,width,theme);
   await page.goto(base+'/me/products',{waitUntil:'networkidle',timeout:90000});
   const library=page.getByTestId('consumer-product-library');await library.waitFor();
