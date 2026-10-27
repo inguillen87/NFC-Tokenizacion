@@ -60,6 +60,7 @@ jobs:
           QA_OUTPUT="$RUNNER_TEMP/nexid-passport-editing/browser" node apps/dashboard/tests/passport-editing.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-passport-studio/browser" node apps/dashboard/tests/passport-studio.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-customer-activity/browser" node apps/dashboard/tests/customer-activity-summary.browser.mjs
+          CHROME_PATH="$(find "$HOME/.cache/ms-playwright" -path '*/chrome-linux/chrome' -o -path '*/chrome-linux64/chrome' | head -n 1)" QA_OUTPUT="$RUNNER_TEMP/nexid-customer-general-filter/browser" node apps/dashboard/tests/customer-general-filter-recovery.browser.mjs
           CHROME_PATH="$(find "$HOME/.cache/ms-playwright" -path '*/chrome-linux/chrome' -o -path '*/chrome-linux64/chrome' | head -n 1)" QA_OUTPUT="$RUNNER_TEMP/nexid-table-catalog-recovery/browser" node apps/dashboard/tests/table-catalog-recovery.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-member-history/browser" node apps/dashboard/tests/member-timeline-continuity.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-batch-navigation/browser" node apps/dashboard/tests/batch-workspace-navigation.browser.mjs

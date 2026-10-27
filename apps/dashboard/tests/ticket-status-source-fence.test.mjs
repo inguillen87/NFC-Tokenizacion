@@ -6,6 +6,7 @@ import {PHYSICAL_TAP_REVIEWED_SOURCES,physicalTapPublishedSourceHash} from './he
 import {crmOrderRequestPublishedSourceHash,crmOrderRequestPriorInventory} from './helpers/crm-order-request-reviewed-sources.mjs';
 import {readHistoricalBaseline,sourceHash} from './helpers/tenant-sync-reviewed-sources.mjs';
 import {customerFeedbackPriorHash,customerFeedbackPriorInventory} from './helpers/customer-feedback-reviewed-sources.mjs';
+import {crmFilterContextPriorHash} from './helpers/crm-filter-context-reviewed-sources.mjs';
 
 const baseline=readHistoricalBaseline('release-convergence',await readFile(new URL('./fixtures/release-convergence-baseline.json',import.meta.url),'utf8'));
 const changedPaths=[
@@ -30,7 +31,7 @@ test('ticket-status successor admits exactly four changed sources and one helper
 
 test('each actual successor traverses its independently retained prior and complete old physical/CRM chain',async()=>{
  for(const [path,pins]of Object.entries(TICKET_STATUS_SYNC_REVIEWED_SOURCES)){
-  const actual=customerFeedbackPriorHash(path,sourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
+  const actual=customerFeedbackPriorHash(path,crmFilterContextPriorHash(path,sourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8'))));
   assert.equal(actual,pins.after,path);
   assert.equal(baseline.expected[path],pins.historical,path+' unchanged historical pin');
   const prior=ticketStatusSyncPublishedSourceHash(path,actual,baseline.expected[path]);

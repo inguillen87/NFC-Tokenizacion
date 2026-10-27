@@ -1,4 +1,5 @@
 import {CUSTOMER_FEEDBACK_ADDED,customerFeedbackPriorHash,customerFeedbackPriorInventory,assertCustomerFeedbackAdded} from './helpers/customer-feedback-reviewed-sources.mjs';
+import {crmFilterContextPriorHash} from './helpers/crm-filter-context-reviewed-sources.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFile,readdir} from 'node:fs/promises';
@@ -55,7 +56,7 @@ test('the diagnostic UI preserves all operational sources outside the exact revi
  assert.equal(baseline.paths.length,483);
  for(const p of baseline.paths){
   const content=(await readFile(new URL('../'+p.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');
-  const actual=customerFeedbackPriorHash(p,createHash('sha256').update(content).digest('hex'));
+  const actual=customerFeedbackPriorHash(p,crmFilterContextPriorHash(p,createHash('sha256').update(content).digest('hex')));
   digest.update(p+'\0'+tenantSyncHistoricalSourceHash(p,governancePublishedSourceHash(p,marketplacePublishedSourceHash(p,rewardProgramContextPublishedSourceHash(p,crmOrderRequestPublishedSourceHash(p,physicalTapPublishedSourceHash(p,ticketStatusSyncPublishedSourceHash(p,actual,origins.expected[p]),origins.expected[p]),origins.expected[p])))),origins.expected[p])+'\n');
  }
  assert.equal(digest.digest('hex'),baseline.digest);

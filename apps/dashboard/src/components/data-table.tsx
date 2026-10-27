@@ -10,6 +10,7 @@ const defaultCopy = dataTableCopy["es-AR"];
 
 type Row = Record<string, string>;
 type RowAction = { label: string; heading: string; testId?: string; available: (row: Row) => boolean; disabled?: boolean; onClick: (row: Row) => void };
+type ExternalFilter = { active: boolean; sourceCount: number; onClear: () => void };
 
 function downloadBlob(filename: string, type: string, content: string) {
   const blob = new Blob([content], { type });
@@ -51,7 +52,7 @@ function resolveTone(value: string) {
   return "default" as const;
 }
 
-export function DataTable({ title, columns, rows, filterKey, loadingLabel, emptyLabel, searchPlaceholder = defaultCopy.searchPlaceholder, allFilterLabel = defaultCopy.allFilterLabel, refreshLabel = defaultCopy.refreshLabel, filterLabel = defaultCopy.filterLabel, countLabel = defaultCopy.countLabel, filteredEmptyLabel = defaultCopy.filteredEmptyLabel, clearFiltersLabel = defaultCopy.clearFiltersLabel, missingStatusLabel = defaultCopy.missingStatusLabel, statusMap, rowAction, refreshDisabled = false }: { title: string; columns: Array<{ key: string; label: string }>; rows: Row[]; filterKey: string; loadingLabel: string; emptyLabel: string; searchPlaceholder?: string; allFilterLabel?: string; refreshLabel?: string; filterLabel?: string; countLabel?: string; filteredEmptyLabel?: string; clearFiltersLabel?: string; missingStatusLabel?: string; statusMap?: Record<string, string>; rowAction?: RowAction; refreshDisabled?: boolean }) {
+export function DataTable({ title, columns, rows, filterKey, loadingLabel, emptyLabel, searchPlaceholder = defaultCopy.searchPlaceholder, allFilterLabel = defaultCopy.allFilterLabel, refreshLabel = defaultCopy.refreshLabel, filterLabel = defaultCopy.filterLabel, countLabel = defaultCopy.countLabel, filteredEmptyLabel = defaultCopy.filteredEmptyLabel, clearFiltersLabel = defaultCopy.clearFiltersLabel, missingStatusLabel = defaultCopy.missingStatusLabel, statusMap, rowAction, refreshDisabled = false, externalFilter }: { title: string; columns: Array<{ key: string; label: string }>; rows: Row[]; filterKey: string; loadingLabel: string; emptyLabel: string; searchPlaceholder?: string; allFilterLabel?: string; refreshLabel?: string; filterLabel?: string; countLabel?: string; filteredEmptyLabel?: string; clearFiltersLabel?: string; missingStatusLabel?: string; statusMap?: Record<string, string>; rowAction?: RowAction; refreshDisabled?: boolean; externalFilter?: ExternalFilter }) {
   const router = useRouter();
   const id = useId();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -67,13 +68,18 @@ export function DataTable({ title, columns, rows, filterKey, loadingLabel, empty
 
   const statuses = Array.from(new Set(rows.map((row) => row[filterKey])));
   const visibleStatuses = status !== "all" && !statuses.includes(status) ? [status, ...statuses] : statuses;
-  const hasFilters = Boolean(query || status !== "all");
-  const visibleCount = countLabel.replaceAll("{visible}", String(filtered.length)).replaceAll("{total}", String(rows.length));
+  // A parent may filter an already admitted sample before passing its rows.
+  // This context affects presentation/recovery only; exports still use filtered.
+  const sourceCount = externalFilter?.active && Number.isSafeInteger(externalFilter.sourceCount) && externalFilter.sourceCount >= rows.length
+    ? externalFilter.sourceCount : rows.length;
+  const hasFilters = Boolean(query || status !== "all" || externalFilter?.active);
+  const visibleCount = countLabel.replaceAll("{visible}", String(filtered.length)).replaceAll("{total}", String(sourceCount));
   const exportBase = slugify(title);
   const displayStatus = (value: string) => statusMap && Object.hasOwn(statusMap, value) && typeof statusMap[value] === "string"
     ? statusMap[value] : value;
   function clearFilters() {
     setQuery(""); setStatus("all");
+    if (externalFilter?.active) externalFilter.onClear();
     searchRef.current?.focus();
   }
 
@@ -101,8 +107,8 @@ export function DataTable({ title, columns, rows, filterKey, loadingLabel, empty
       </div>
 
       {isPending ? <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400"><div className="flex items-center gap-3"><BrandDot size={10} variant="pulse" theme="dark" />{loadingLabel}</div></div> : null}
-      {!isPending && rows.length === 0 ? <div data-testid="data-table-source-empty" className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400"><div className="flex items-center gap-4"><BrandLockup size={24} variant="static" theme="dark" />{emptyLabel}</div></div> : null}
-      {!isPending && rows.length > 0 && filtered.length === 0 ? <div data-testid="data-table-filtered-empty" className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400"><p>{filteredEmptyLabel}</p><button type="button" className="mt-3 min-h-11 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-300" onClick={clearFilters}>{clearFiltersLabel}</button></div> : null}
+      {!isPending && sourceCount === 0 ? <div data-testid="data-table-source-empty" className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400"><div className="flex items-center gap-4"><BrandLockup size={24} variant="static" theme="dark" />{emptyLabel}</div></div> : null}
+      {!isPending && sourceCount > 0 && filtered.length === 0 ? <div data-testid="data-table-filtered-empty" className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400"><p>{filteredEmptyLabel}</p><button type="button" className="mt-3 min-h-11 rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-300" onClick={clearFilters}>{clearFiltersLabel}</button></div> : null}
 
       {!isPending && filtered.length > 0 ? (
         <div className="data-table-shell overflow-x-auto rounded-2xl border border-white/10" role="region" aria-label={title} tabIndex={0}>

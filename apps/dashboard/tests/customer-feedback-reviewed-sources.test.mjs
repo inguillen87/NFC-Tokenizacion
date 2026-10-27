@@ -9,6 +9,7 @@ import { TENANT_MARKETPLACE_ADDED } from './helpers/tenant-marketplace-reviewed-
 import { REWARD_NOTICE_ADDED } from './helpers/reward-notice-reviewed-sources.mjs';
 import { CRM_ORDER_REQUEST_ADDED } from './helpers/crm-order-request-reviewed-sources.mjs';
 import { TICKET_STATUS_SYNC_ADDED, ticketStatusSyncPriorInventory } from './helpers/ticket-status-sync-reviewed-sources.mjs';
+import { crmFilterContextPriorHash } from './helpers/crm-filter-context-reviewed-sources.mjs';
 
 // Independently derived normalized Git blobs from published 60d. Never reset the historical fixtures.
 const productionBefore = {
@@ -45,7 +46,7 @@ test('customer feedback overlay pins exactly fifteen Production origins and one 
 
 for (const [name, pin] of Object.entries(CUSTOMER_FEEDBACK_CHANGED)) {
   test('customer feedback accepts only reviewed successor bytes: ' + name, async () => {
-    assert.equal(hash(await readSource(name)), pin.after);
+    assert.equal(crmFilterContextPriorHash(name, hash(await readSource(name))), pin.after);
     assert.equal(customerFeedbackPriorHash(name, pin.after), productionBefore[name]);
     for (const wrong of [pin.before, '0'.repeat(64), '', undefined]) {
       assert.throws(() => customerFeedbackPriorHash(name, wrong), /exact reviewed customer feedback increment/);

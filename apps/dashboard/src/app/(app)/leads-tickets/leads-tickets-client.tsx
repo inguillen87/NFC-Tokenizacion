@@ -83,6 +83,7 @@ export default function LeadsTicketsClient({
 }: LeadsTicketsClientProps) {
   const [activeTab, setActiveTab] = useState<"signals" | "opportunities" | "prospects" | "tickets" | "orders" | "ai_queries">("signals");
   const [searchTerm, setSearchTerm] = useState("");
+  const clearGeneralSearch = () => setSearchTerm("");
   const contentId = useId();
   const contentRef = useRef<HTMLDivElement>(null);
   const ticketLookup = useRef<TicketReferenceLookupHandle>(null);
@@ -249,7 +250,8 @@ export default function LeadsTicketsClient({
               }))}
             filterKey="status"
             loadingLabel={copy.shell.loading}
-            emptyLabel="No hay oportunidades comerciales con los filtros aplicados"
+            emptyLabel={ui.opportunityNoRecords}
+            externalFilter={{ active: Boolean(searchTerm), sourceCount: filteredOpportunities.length, onClear: clearGeneralSearch }}
             searchPlaceholder="Filtrar por columna..."
             allFilterLabel={copy.shell.all}
             refreshLabel={copy.shell.refresh}
@@ -285,7 +287,8 @@ export default function LeadsTicketsClient({
               }))}
             filterKey="status"
             loadingLabel={copy.shell.loading}
-            emptyLabel="No hay prospectos registrados"
+            emptyLabel={ui.prospectNoRecords}
+            externalFilter={{ active: Boolean(searchTerm), sourceCount: initialLeads.length, onClear: clearGeneralSearch }}
             searchPlaceholder="Filtrar..."
             allFilterLabel={copy.shell.all}
             refreshLabel={copy.shell.refresh}
@@ -304,7 +307,8 @@ export default function LeadsTicketsClient({
               .filter(row => supportTicketRowMatchesQuery(row, searchTerm))}
             filterKey="status"
             loadingLabel={copy.shell.loading}
-            emptyLabel="No hay tickets de soporte para este filtro"
+            emptyLabel={ui.ticketNoRecords}
+            externalFilter={{ active: Boolean(searchTerm), sourceCount: initialTickets.length, onClear: clearGeneralSearch }}
             searchPlaceholder="Referencia, lote o detalle"
             allFilterLabel={copy.shell.all}
             refreshLabel={copy.shell.refresh}
@@ -331,7 +335,8 @@ export default function LeadsTicketsClient({
             rows={orderRows.filter(row => customerOrderRequestMatchesQuery(row, searchTerm))}
             filterKey="status"
             loadingLabel={copy.shell.loading}
-            emptyLabel={initialOrders.length === 0 ? ui.orderNoRecords : ui.orderNoMatches}
+            emptyLabel={ui.orderNoRecords}
+            externalFilter={{ active: Boolean(searchTerm), sourceCount: orderRows.length, onClear: clearGeneralSearch }}
             searchPlaceholder={ui.orderSearch}
             allFilterLabel={copy.shell.all}
             refreshLabel={copy.shell.refresh}
