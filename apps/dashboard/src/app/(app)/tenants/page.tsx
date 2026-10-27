@@ -31,7 +31,7 @@ export default async function TenantsPage() {
           <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">Validar navegación y aislamiento por tenant.</div>
         </div>
       </Card>
-      <DataTable title="Escenarios de tenant (no clientes reales)" columns={[{ key: "tenant", label: copy.tables.tenants.tenant }, { key: "source", label: "Fuente" }, { key: "plan", label: "Plan ilustrativo" }, { key: "status", label: "Estado ilustrativo" }, { key: "region", label: copy.tables.tenants.region }]} rows={TENANT_DIRECTORY.map(({ slug, ...rest }) => rest)} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} searchPlaceholder={copy.shell.search} allFilterLabel={copy.shell.all} refreshLabel={copy.shell.refresh} statusMap={copy.statuses} />
+      <DataTable {...copy.tableFeedback} title="Escenarios de tenant (no clientes reales)" columns={[{ key: "tenant", label: copy.tables.tenants.tenant }, { key: "source", label: "Fuente" }, { key: "plan", label: "Plan ilustrativo" }, { key: "status", label: "Estado ilustrativo" }, { key: "region", label: copy.tables.tenants.region }]} rows={TENANT_DIRECTORY.map(({ slug, ...rest }) => rest)} filterKey="status" loadingLabel={copy.shell.loading} emptyLabel={copy.shell.empty} searchPlaceholder={copy.shell.search} allFilterLabel={copy.shell.all} refreshLabel={copy.shell.refresh} statusMap={copy.statuses} />
       <Card className="p-5 text-sm text-slate-300">
         <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Acciones sobre fixtures de demostración</h2>
         <div className="mt-3 grid gap-3 md:grid-cols-2">

@@ -1,7 +1,8 @@
 export const customerInboxCopy = {
   "es-AR": {
+    prospectNoRecords: "No hay prospectos en esta lista.", opportunityNoRecords: "No hay intereses comerciales en esta lista.", ticketNoRecords: "No hay tickets de soporte en esta lista.",
     orderProduct: "Producto solicitado", orderQuantity: "Cantidad informada", orderMessage: "Mensaje o notas", orderStatus: "Estado registrado",
-    orderNoRecords: "La fuente no informó solicitudes de pedido en esta muestra.", orderNoMatches: "No hay solicitudes de pedido con los filtros aplicados.", orderSearch: "Buscar por producto, contacto o mensaje",
+    orderNoRecords: "No hay solicitudes de pedido en esta lista.", orderNoMatches: "No hay solicitudes de pedido con los filtros aplicados.", orderSearch: "Buscar por producto, contacto o mensaje",
     orderHint: "Solicitudes registradas en esta muestra. No confirman una compra, un pago ni una entrega.",
     tabs: "Bandejas de atención", signals: "Señales de cliente", opportunities: "Intereses comerciales", prospects: "Prospectos", tickets: "Tickets de soporte", orders: "Solicitudes de pedido", ai_queries: "Registros del asistente",
     search: "Buscar señales por referencia, contacto o detalle", searchPlaceholder: "Referencia, contacto o detalle", missing: "No informado", unknownCount: "conteo sin confirmar",
@@ -14,8 +15,9 @@ export const customerInboxCopy = {
     unavailableTitle: "Bandeja sin datos confirmados", retry: "Reintentar carga", reloading: "Actualizando fuentes…", recovery: "Reintentar consulta las fuentes con la misma sesión y empresa; no modifica registros.", clear: "Limpiar búsqueda", ticketHint: "La búsqueda filtra los tickets cargados. La consulta exacta permite buscar por referencia completa.", signalHint: "La búsqueda filtra hasta las 80 señales cargadas más recientes.",
   },
   en: {
+    prospectNoRecords: "No prospects in this list.", opportunityNoRecords: "No commercial interests in this list.", ticketNoRecords: "No support tickets in this list.",
     orderProduct: "Requested product", orderQuantity: "Reported quantity", orderMessage: "Message or notes", orderStatus: "Recorded status",
-    orderNoRecords: "The source returned no order requests in this sample.", orderNoMatches: "No order requests match the applied filters.", orderSearch: "Search by product, contact or message",
+    orderNoRecords: "No order requests in this list.", orderNoMatches: "No order requests match the applied filters.", orderSearch: "Search by product, contact or message",
     orderHint: "Requests recorded in this sample. They do not confirm a purchase, payment or delivery.",
     tabs: "Customer inboxes", signals: "Customer signals", opportunities: "Commercial interests", prospects: "Prospects", tickets: "Support tickets", orders: "Order requests", ai_queries: "Assistant records",
     search: "Search signals by reference, contact or detail", searchPlaceholder: "Reference, contact or detail", missing: "Not provided", unknownCount: "unconfirmed count",
@@ -28,8 +30,9 @@ export const customerInboxCopy = {
     unavailableTitle: "Inbox without confirmed data", retry: "Retry loading", reloading: "Refreshing sources…", recovery: "Retry reads the sources with the same session and company; it does not change records.", clear: "Clear search", ticketHint: "Search filters loaded tickets. Exact lookup accepts a complete reference.", signalHint: "Search filters up to the 80 most recent loaded signals.",
   },
   "pt-BR": {
+    prospectNoRecords: "Nenhum prospecto nesta lista.", opportunityNoRecords: "Nenhum interesse comercial nesta lista.", ticketNoRecords: "Nenhum ticket de suporte nesta lista.",
     orderProduct: "Produto solicitado", orderQuantity: "Quantidade informada", orderMessage: "Mensagem ou notas", orderStatus: "Estado registrado",
-    orderNoRecords: "A fonte não informou solicitações de pedido nesta amostra.", orderNoMatches: "Nenhuma solicitação de pedido corresponde aos filtros aplicados.", orderSearch: "Buscar por produto, contato ou mensagem",
+    orderNoRecords: "Nenhuma solicitação de pedido nesta lista.", orderNoMatches: "Nenhuma solicitação de pedido corresponde aos filtros aplicados.", orderSearch: "Buscar por produto, contato ou mensagem",
     orderHint: "Solicitações registradas nesta amostra. Não confirmam compra, pagamento ou entrega.",
     tabs: "Caixas de atendimento", signals: "Sinais de clientes", opportunities: "Interesses comerciais", prospects: "Prospectos", tickets: "Tickets de suporte", orders: "Solicitações de pedido", ai_queries: "Registros do assistente",
     search: "Buscar sinais por referência, contato ou detalhe", searchPlaceholder: "Referência, contato ou detalhe", missing: "Não informado", unknownCount: "contagem não confirmada",

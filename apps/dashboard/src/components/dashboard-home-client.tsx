@@ -467,7 +467,7 @@ export default function DashboardHomeClient({
         {/* BRANDS & TENANTS TAB */}
         {activeTab === "tenants" && !isTenantAdmin && (
           <div className="space-y-8">
-            {overviewAvailable ? <DataTable
+            {overviewAvailable ? <DataTable {...copy.tableFeedback}
               title={copy.tables.tenants.title}
               columns={[
                 { key: "tenant", label: copy.tables.tenants.tenant },

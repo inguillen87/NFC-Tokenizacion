@@ -33,7 +33,7 @@ export default async function ExperiencesPage() {
         </div>
       </section>
 
-      <DataTable
+      <DataTable {...copy.tableFeedback}
         title="Agenda de Experiencias"
         columns={[{ key: "title", label: "Título" }, { key: "date", label: "Fecha" }, { key: "capacity", label: "Capacidad" }, { key: "status", label: "Estado" }]}
         rows={[]}

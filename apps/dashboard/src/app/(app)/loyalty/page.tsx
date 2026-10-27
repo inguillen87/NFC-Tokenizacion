@@ -136,7 +136,7 @@ export default async function LoyaltyPage({ searchParams }: { searchParams?: Pro
         </div>
       </section>
 
-      {rewardsAvailable ? <DataTable
+      {rewardsAvailable ? <DataTable {...copy.tableFeedback}
         title="Catálogo de recompensas"
         columns={[{ key: "code", label: "Código" }, { key: "title", label: "Título" }, { key: "points", label: "Costo (Pts)" }, { key: "status", label: "Estado" }]}
         rows={rewardsResponse.map((r: any) => ({ code: r.code, title: r.title, points: String(r.points), status: r.status }))}

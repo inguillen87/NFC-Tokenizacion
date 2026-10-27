@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, SectionHeading } from "@product/ui";
 import { DataTable } from "../../../components/data-table";
+import { dataTableCopy } from "../../../lib/data-table-copy";
 import { getDashboardI18n } from "../../../lib/locale";
 import { requireDashboardSession } from "../../../lib/session";
 import { createAdminPageContext, fetchAdminPage, type AdminPageContext } from "../../../lib/admin-page-access";
@@ -77,7 +78,7 @@ export default async function SupplierOrdersPage({ searchParams }: { searchParam
         ) : null}
       </Card>
 
-      <DataTable
+      <DataTable {...dataTableCopy.en}
         title="Supplier Orders"
         columns={[
           { key: "order", label: "Order" },

@@ -5,6 +5,8 @@ import {TICKET_STATUS_SYNC_SOURCE_BASE,TICKET_STATUS_SYNC_REVIEWED_SOURCES,TICKE
 import {PHYSICAL_TAP_REVIEWED_SOURCES,physicalTapPublishedSourceHash} from './helpers/physical-tap-reviewed-sources.mjs';
 import {crmOrderRequestPublishedSourceHash,crmOrderRequestPriorInventory} from './helpers/crm-order-request-reviewed-sources.mjs';
 import {readHistoricalBaseline,sourceHash} from './helpers/tenant-sync-reviewed-sources.mjs';
+import {customerFeedbackPriorHash,customerFeedbackPriorInventory} from './helpers/customer-feedback-reviewed-sources.mjs';
+import {crmFilterContextPriorHash} from './helpers/crm-filter-context-reviewed-sources.mjs';
 
 const baseline=readHistoricalBaseline('release-convergence',await readFile(new URL('./fixtures/release-convergence-baseline.json',import.meta.url),'utf8'));
 const changedPaths=[
@@ -29,7 +31,7 @@ test('ticket-status successor admits exactly four changed sources and one helper
 
 test('each actual successor traverses its independently retained prior and complete old physical/CRM chain',async()=>{
  for(const [path,pins]of Object.entries(TICKET_STATUS_SYNC_REVIEWED_SOURCES)){
-  const actual=sourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8'));
+  const actual=customerFeedbackPriorHash(path,crmFilterContextPriorHash(path,sourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8'))));
   assert.equal(actual,pins.after,path);
   assert.equal(baseline.expected[path],pins.historical,path+' unchanged historical pin');
   const prior=ticketStatusSyncPublishedSourceHash(path,actual,baseline.expected[path]);
@@ -55,19 +57,20 @@ test('old sources, arbitrary mutation, altered historical origins and swapped pa
 });
 
 test('only the exact single added helper is removed before the complete historical inventory checks',()=>{
- const prior=ticketStatusSyncPriorInventory(runtime,baseline.expected);
- assert.deepEqual(prior,runtime.filter(path=>path!==addedPath));
- assert.deepEqual(crmOrderRequestPriorInventory(prior,baseline.expected),crmOrderRequestPriorInventory(runtime.filter(path=>path!==addedPath),baseline.expected));
+ const reviewedRuntime=customerFeedbackPriorInventory(runtime);
+ const prior=ticketStatusSyncPriorInventory(reviewedRuntime,baseline.expected);
+ assert.deepEqual(prior,reviewedRuntime.filter(path=>path!==addedPath));
+ assert.deepEqual(crmOrderRequestPriorInventory(prior,baseline.expected),crmOrderRequestPriorInventory(reviewedRuntime.filter(path=>path!==addedPath),baseline.expected));
  const historicalPath=Object.keys(baseline.expected)[0];
  for(const inventory of [
-  runtime.filter(path=>path!==historicalPath),
-  [...runtime,historicalPath],
-  [...runtime,'apps/dashboard/src/unreviewed-runtime-addition.ts'],
-  runtime.filter(path=>path!==addedPath),
-  [...runtime,addedPath],
+  reviewedRuntime.filter(path=>path!==historicalPath),
+  [...reviewedRuntime,historicalPath],
+  [...reviewedRuntime,'apps/dashboard/src/unreviewed-runtime-addition.ts'],
+  reviewedRuntime.filter(path=>path!==addedPath),
+  [...reviewedRuntime,addedPath],
  ])assert.throws(()=>ticketStatusSyncPriorInventory(inventory,baseline.expected));
- assert.throws(()=>ticketStatusSyncPriorInventory(runtime,{...baseline.expected,[changedPaths[0]]:'0'.repeat(64)}));
- assert.throws(()=>ticketStatusSyncPriorInventory(runtime,{...baseline.expected,[addedPath]:'0'.repeat(64)}));
+ assert.throws(()=>ticketStatusSyncPriorInventory(reviewedRuntime,{...baseline.expected,[changedPaths[0]]:'0'.repeat(64)}));
+ assert.throws(()=>ticketStatusSyncPriorInventory(reviewedRuntime,{...baseline.expected,[addedPath]:'0'.repeat(64)}));
 });
 
 test('the added-source check rejects unknown paths, swapped successor hashes and arbitrary helper changes',()=>{
