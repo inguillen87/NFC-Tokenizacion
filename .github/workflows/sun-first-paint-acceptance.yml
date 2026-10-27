@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 jobs:
-  sun-web:
+  sun-web-passport:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
@@ -31,7 +31,7 @@ jobs:
         run: |
           npm install --prefix "$RUNNER_TEMP/sun-browser" --ignore-scripts --no-package-lock --no-audit --no-fund playwright-core@1.55.1 axe-core@4.10.3
           node "$RUNNER_TEMP/sun-browser/node_modules/playwright-core/cli.js" install --with-deps chromium
-      - name: Verify loading DOM work and explicit same-tap location
+      - name: Verify passport, loading, location and account entry
         env:
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/sun-browser/node_modules/playwright-core/index.mjs
           AXE_MODULE_PATH: ${{ runner.temp }}/sun-browser/node_modules/axe-core/axe.min.js
@@ -51,6 +51,45 @@ jobs:
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/consumer-opinion" node apps/web/tests/sun-consumer-opinion.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/deferred-tools-next" node apps/web/tests/sun-deferred-consumer-tools-next.browser.mjs
           QA_SUN_ACCOUNT_AUTHORIZED=1 QA_SOURCE="$(git rev-parse HEAD)" QA_OUTPUT="$RUNNER_TEMP/sun-evidence/sun-account" node apps/web/tests/sun-account-access.browser.mjs
+          git diff --exit-code -- apps packages package.json package-lock.json
+      - name: Upload sun-web-passport synthetic browser evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sun-web-passport-evidence
+          path: ${{ runner.temp }}/sun-evidence
+          if-no-files-found: ignore
+          retention-days: 7
+  sun-web-consumer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.15.0'
+      - name: Install exact dependencies and validate web
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm test --workspace web
+          node --test scripts/browser/brand-hero-readonly-network.test.mjs
+          npx tsc --noEmit --incremental false -p apps/web/tsconfig.json
+          npm run check:secrets
+          npm run build:web
+      - name: Install isolated browser tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/sun-browser" --ignore-scripts --no-package-lock --no-audit --no-fund playwright-core@1.55.1 axe-core@4.10.3
+          node "$RUNNER_TEMP/sun-browser/node_modules/playwright-core/cli.js" install --with-deps chromium
+      - name: Verify consumer portal and marketplace interactions
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/sun-browser/node_modules/playwright-core/index.mjs
+          AXE_MODULE_PATH: ${{ runner.temp }}/sun-browser/node_modules/axe-core/axe.min.js
+        run: |
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-access" node apps/web/tests/consumer-access.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-actions" node apps/web/tests/consumer-action-feedback.browser.mjs
           QA_SOURCE="$(git rev-parse HEAD)" QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-portal" node apps/web/tests/consumer-portal-experience.browser.mjs # includes consumer-marketplace.browser.mjs scenarios
@@ -58,6 +97,45 @@ jobs:
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-save-refresh" node apps/web/tests/consumer-save-refresh.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-portal-loading" node apps/web/tests/consumer-portal-loading.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-destination-recovery" node apps/web/tests/consumer-destination-recovery.browser.mjs
+          git diff --exit-code -- apps packages package.json package-lock.json
+      - name: Upload sun-web-consumer synthetic browser evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sun-web-consumer-evidence
+          path: ${{ runner.temp }}/sun-evidence
+          if-no-files-found: ignore
+          retention-days: 7
+  sun-web-demos-brand:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.15.0'
+      - name: Install exact dependencies and validate web
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm test --workspace web
+          node --test scripts/browser/brand-hero-readonly-network.test.mjs
+          npx tsc --noEmit --incremental false -p apps/web/tsconfig.json
+          npm run check:secrets
+          npm run build:web
+      - name: Install isolated browser tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/sun-browser" --ignore-scripts --no-package-lock --no-audit --no-fund playwright-core@1.55.1 axe-core@4.10.3
+          node "$RUNNER_TEMP/sun-browser/node_modules/playwright-core/cli.js" install --with-deps chromium
+      - name: Verify product demos, assistants and brand presentation
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/sun-browser/node_modules/playwright-core/index.mjs
+          AXE_MODULE_PATH: ${{ runner.temp }}/sun-browser/node_modules/axe-core/axe.min.js
+        run: |
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/valle-demo-map" node apps/web/tests/valle-secreto-demo-map.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/wine-demo" node apps/web/tests/sun-wine-demo.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/syngenta-demo" node apps/web/tests/syngenta-demo.browser.mjs
@@ -69,12 +147,15 @@ jobs:
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/public-visual" node scripts/browser/public-visual-next.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/brand-hero-motion" xvfb-run --auto-servernum node scripts/browser/brand-hero-motion-next.browser.mjs
           git diff --exit-code -- apps packages package.json package-lock.json
-      - name: Upload synthetic browser evidence
+      - name: Upload sun-web-demos-brand synthetic browser evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: sun-first-paint-evidence
-          path: ${{ runner.temp }}/sun-evidence
+          name: sun-web-demos-brand-evidence
+          path: |
+            ${{ runner.temp }}/sun-evidence
+            !${{ runner.temp }}/sun-evidence/brand-hero-motion/native-chrome-profile-*
+            !${{ runner.temp }}/sun-evidence/brand-hero-motion/native-chrome-profile-*/**
           if-no-files-found: ignore
           retention-days: 7
   sun-tenant-actions:
