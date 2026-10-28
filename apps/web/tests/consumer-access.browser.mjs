@@ -46,6 +46,7 @@ const observedStates=[];
 const check=(value,name)=>{report.checks.push({name,passed:Boolean(value)});assert.ok(value,name);};
 const checkPayload=(actual,expected,name)=>check(isDeepStrictEqual(actual,expected),name);
 const productNext='/me/products?fromTap=1&eventId=900001&bid=LOT-WINE-QA&tenant=consumer-qa&action=save';
+const dottedProductNext='/me/products?fromTap=1&eventId=900001&bid=LOT-WINE-QA&tenant=brand.a&action=save';
 const starts=state=>state.calls.filter(call=>call.path.endsWith('/start'));
 const afterRender=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
 function requestDocumentPath(request){try{return new URL(request.frame().url()).pathname;}catch{return null;}}
@@ -202,11 +203,12 @@ async function lateCodeSuccessfulReturn(theme){
  check(state.calls.filter(c=>!['GET','HEAD'].includes(c.method)).every(c=>['/api/consumer/auth/logout','/api/consumer/auth/start','/api/consumer/auth/verify'].includes(c.path)),`${label} restored destination does not save, associate or redeem automatically`);
  report.scenarios.push({name:'late-code-successful-return',theme,requests:state.calls});await s.context.close();
 }
-async function magicProductContinuation(width,theme){
- const s=await open(width,theme,productNext),p=s.page,state=s.state,label=`magic-product/${width}/${theme}`;
- state.identity.name='magic-email-product-continuation';
+async function magicProductContinuation(width,theme,selectedNext=productNext){
+ const suffix=selectedNext===productNext?'':'-dotted-tenant';
+ const s=await open(width,theme,selectedNext),p=s.page,state=s.state,label=`magic-product${suffix}/${width}/${theme}`;
+ state.identity.name='magic-email-product-continuation'+suffix;
  await email(p);await p.getByRole('button',{name:'Recibir código',exact:true}).click();await p.getByRole('textbox',{name:'Código de acceso',exact:true}).waitFor();
- checkPayload(starts(state)[0].payload,{email:'persona@example.test',next:productNext},`${label} email start includes product context`);
+ checkPayload(starts(state)[0].payload,{email:'persona@example.test',next:selectedNext},`${label} email start includes product context`);
  check(await p.getByRole('button',{name:'Validar y continuar',exact:true}).count()===1,`${label} verification action explains the product return`);
  const continuation=starts(state)[0].payload.next;
  state.verify={ok:true};state.verifyHttp=200;state.session={ok:true,authenticated:true};
@@ -228,7 +230,7 @@ async function magicProductContinuation(width,theme){
  const verifyCalls=state.calls.filter(call=>call.path.endsWith('/verify')),sessionCalls=state.calls.filter(call=>call.path.endsWith('/session'));
  check(state.navigationBoundaries.length===1,`${label} one product document navigation was requested`);
  const boundary=state.navigationBoundaries[0],before=boundary.requests;
- check(boundary.url===productNext&&!boundary.truncated,`${label} product navigation snapshot is exact and complete`);
+ check(boundary.url===selectedNext&&!boundary.truncated,`${label} product navigation snapshot is exact and complete`);
  const beforeVerify=before.filter(call=>call.path.endsWith('/verify')),beforeSession=before.filter(call=>call.path.endsWith('/session'));
  check(beforeVerify.length===1&&beforeSession.length===1,`${label} magic link verifies once and confirms the session before navigation`);
  check(beforeVerify[0].method==='POST'&&beforeVerify[0].receivedResponse?.httpStatus===200&&beforeVerify[0].fixtureResponse?.ok===true,`${label} successful token verification was received before navigation`);
@@ -240,11 +242,11 @@ async function magicProductContinuation(width,theme){
  check(state.calls.slice(boundary.requestCount).every(call=>['GET','HEAD'].includes(call.method)),`${label} destination requests after navigation remain read-only`);
  check(starts(state).length===1,`${label} continuation preserves one explicit OTP send`);
  checkpoint(state,'destination-session-read-confirmed');
- check(new URL(p.url()).pathname+new URL(p.url()).search===productNext,`${label} successful session restores the exact product selection`);
+ check(new URL(p.url()).pathname+new URL(p.url()).search===selectedNext,`${label} successful session restores the exact product selection`);
  check(state.calls.filter(call=>!['GET','HEAD'].includes(call.method)).every(call=>['/api/consumer/auth/logout','/api/consumer/auth/start','/api/consumer/auth/verify'].includes(call.path)),`${label} product continuation performs no automatic save, claim or association`);
  check(await p.evaluate(()=>window.__geoCalls)===0,`${label} product continuation requests no location`);
- await assess(p,'[data-testid="consumer-product-library"]','email-product-return',width,theme);
- report.scenarios.push({name:'magic-email-product-continuation',width,theme,requests:state.calls,navigationBoundary:boundary,preNavigationAuthCounts:{verify:beforeVerify.length,session:beforeSession.length},wholePageSessionCount:sessionCalls.length,legacyWholePageSingleSessionCheckWouldPass:verifyCalls.length===1&&sessionCalls.length===1});await s.context.close();
+ await assess(p,'[data-testid="consumer-product-library"]','email-product-return'+suffix,width,theme);
+ report.scenarios.push({name:'magic-email-product-continuation',continuation:selectedNext,width,theme,requests:state.calls,navigationBoundary:boundary,preNavigationAuthCounts:{verify:beforeVerify.length,session:beforeSession.length},wholePageSessionCount:sessionCalls.length,legacyWholePageSingleSessionCheckWouldPass:verifyCalls.length===1&&sessionCalls.length===1});await s.context.close();
 }
 try{
  for(const width of [320,390,768,1440])for(const theme of ['light','dark']){
@@ -286,6 +288,7 @@ try{
  for(const httpStatus of [502,503])for(const theme of ['light','dark'])await nonJsonWhatsAppRecovery(httpStatus,theme);
  for(const width of [320,390,768,1440])for(const theme of ['light','dark'])await lateCodeRecovery(width,theme,width===390);
  for(const theme of ['light','dark'])await lateCodeSuccessfulReturn(theme);
+ for(const theme of ['light','dark'])await magicProductContinuation(390,theme,dottedProductNext);
  const continuationCases=[
   {name:'sensitive capability and device fields are removed',next:'/me/products?fromTap=1&eventId=900001&token=SYNTHETIC&tapAccess=SYNTHETIC&ctr=17&latitude=-34&unknown=1#private',expected:'/me/products?fromTap=1&eventId=900001'},
   {name:'safe keys receive stable canonical order',next:'/me/products?action=save&tenant=consumer-qa&bid=LOT.WINE-QA:1&focus=900001&eventId=9223372036854775807&fromTap=1',expected:'/me/products?fromTap=1&eventId=9223372036854775807&focus=900001&bid=LOT.WINE-QA%3A1&tenant=consumer-qa&action=save'},
