@@ -40,7 +40,8 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
   const pending = useRef(false);
   const controller = useRef<AbortController | null>(null);
   const attempted = useRef(new Set<string>());
-  const confirmButton = useRef<HTMLButtonElement | null>(null);
+  const confirmHeading = useRef<HTMLHeadingElement | null>(null);
+  const searchInput = useRef<HTMLInputElement | null>(null);
   const returnFocus = useRef<HTMLButtonElement | null>(null);
   const active = flow && sameSource(flow.source, identity) ? flow : null;
   const currentFilters = sameSource(filters.source, identity) ? filters : { source: identity, tenant: initialTenant, query: "", view: "all" as const };
@@ -55,15 +56,21 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
     setFlow(null); setCollection(null); setFilters({ source: owner.current, tenant: initialTenant, query: "", view: "all" });
     return () => { sequence.current += 1; controller.current?.abort(); controller.current = null; pending.current = false; };
   }, [items, initialTenant, selectedVoucher]);
-  useEffect(() => { if (active?.phase === "confirm") confirmButton.current?.focus(); }, [active?.phase, active?.quote.rewardId]);
+  useEffect(() => { if (active?.phase === "confirm") confirmHeading.current?.focus(); }, [active?.phase, active?.quote.rewardId]);
   const brands = [...new Map(displayedItems.map(item => [item.tenant, item.brand])).entries()];
   const catalogTenant = rewardTenant(tenant);
   const catalogHref = catalogTenant ? "/me/marketplace?tenant=" + encodeURIComponent(catalogTenant) : "/me/marketplace";
   const visible = displayedItems.filter(item => (!tenant || item.tenant === tenant) && (view === "all" || (view === "vouchers" ? item.hasClaim : !item.hasClaim))
     && (item.title + " " + item.brand + " " + (item.program || "")).toLocaleLowerCase("es-AR").includes(query.trim().toLocaleLowerCase("es-AR")));
   const filtered = Boolean(tenant || query || view !== "all");
-  function changeFilters(patch: Partial<Pick<typeof filters, "tenant" | "query" | "view">>) { setFilters({ ...currentFilters, ...patch, source: identity }); }
-  function reset() { changeFilters({ tenant: "", query: "", view: "all" }); }
+  function changeFilters(patch: Partial<Pick<typeof filters, "tenant" | "query" | "view">>) {
+    const changed = (patch.tenant !== undefined && patch.tenant !== currentFilters.tenant)
+      || (patch.query !== undefined && patch.query !== currentFilters.query)
+      || (patch.view !== undefined && patch.view !== currentFilters.view);
+    setFilters({ ...currentFilters, ...patch, source: identity });
+    if (changed && !pending.current) setFlow(current => current?.phase === "confirm" ? null : current);
+  }
+  function reset() { changeFilters({ tenant: "", query: "", view: "all" }); searchInput.current?.focus(); }
   function openReservation(item: ConsumerReward, button: HTMLButtonElement) {
     const quote = rewardReservationQuote(item);
     if (!quote || pending.current || attempted.current.has(quote.rewardId.toLowerCase())) return;
@@ -132,7 +139,7 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
     </div> : null}
     <div className={styles.filters}>
       <div className={styles.views} role="group" aria-label="Tipo de beneficio">{([['all','Todos'],['vouchers','Mis vouchers'],['catalog','Publicados']] as const).map(([value,label]) => <button key={value} type="button" aria-pressed={view === value} onClick={() => changeFilters({ view: value })}>{label}</button>)}</div>
-      <label className={styles.search}><Search aria-hidden="true" /><span className={styles.srOnly}>Buscar beneficio</span><input type="search" value={query} onChange={event => changeFilters({ query: event.target.value })} placeholder="Buscar un beneficio…" /></label>
+      <label className={styles.search}><Search aria-hidden="true" /><span className={styles.srOnly}>Buscar beneficio</span><input ref={searchInput} type="search" value={query} onChange={event => changeFilters({ query: event.target.value })} placeholder="Buscar un beneficio…" /></label>
       <label className={styles.brandFilter}><span className={styles.srOnly}>Filtrar por marca</span><select value={tenant} onChange={event => changeFilters({ tenant: event.target.value })}><option value="">Todas las marcas</option>{initialTenant && !brands.some(([slug]) => slug === initialTenant) ? <option value={initialTenant}>Marca del enlace</option> : null}{brands.map(([slug,name]) => <option key={slug} value={slug}>{name}</option>)}</select></label>
     </div>
     <div className={styles.resultLine}><p role="status">{visible.length} {visible.length === 1 ? "registro" : "registros"}{filtered ? " con estos filtros" : " en esta consulta"}</p>{filtered ? <button type="button" onClick={reset}>Limpiar filtros</button> : null}</div>
@@ -154,10 +161,11 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
         </div> : null}
         {quote ? <button type="button" className={styles.primaryLink} aria-expanded={confirming} disabled={busy || attempted.current.has(quote.rewardId.toLowerCase())}
           onClick={event => openReservation(item, event.currentTarget)}>Reservar beneficio</button> : null}
-        {confirming ? <div className={styles.notice} role="group" aria-label={"Confirmar reserva de " + item.title}>
+        {confirming ? <div className={styles.notice} role="group" aria-labelledby={"reservation-" + item.key}>
+          <h4 id={"reservation-" + item.key} ref={confirmHeading} tabIndex={-1} className={styles.confirmationHeading}>Revisá tu reserva</h4>
           <p><strong>{active.quote.title}</strong><br />{active.quote.brand} · {active.quote.program}</p>
           <p>Al confirmar, se descuentan <strong>{active.quote.pointsCost} puntos</strong> de este programa. Tu saldo informado es de {active.quote.programBalance} puntos.</p>
-          <button ref={confirmButton} type="button" className={styles.primaryLink} onClick={confirmReservation}>Confirmar reserva por {active.quote.pointsCost} puntos</button>{" "}
+          <button type="button" className={styles.primaryLink} onClick={confirmReservation}>Confirmar reserva por {active.quote.pointsCost} puntos</button>{" "}
           <button type="button" className={styles.copyButton} onClick={() => { if (!pending.current) { setFlow(null); returnFocus.current?.focus(); } }}>Todavía no</button>
         </div> : null}
         <details className={styles.details} open={selectedKey === item.key || undefined}><summary>{item.hasClaim ? "Ver detalle del voucher" : "Ver información"}<ChevronDown aria-hidden="true" /></summary><div className={styles.detailsBody}>
