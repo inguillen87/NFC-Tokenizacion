@@ -39,9 +39,13 @@ export function sommelierReservedCost(provider: ProviderName, body: string) {
   const price = PROVIDERS[provider];
   return Math.max(1, Math.ceil((Buffer.byteLength(body, "utf8") * price.inputMicroUsdPerMillion + SOMMELIER_OUTPUT_TOKENS * price.outputMicroUsdPerMillion) / 1_000_000));
 }
-function fallback(input: SommelierRequest, context: SommelierContext, reason: string) {
+type SommelierFallbackReason = "sommelier_disabled" | "sommelier_provider_not_configured" | "sommelier_context_too_large"
+  | "sommelier_provider_timeout" | "sommelier_provider_unavailable"
+  | "sommelier_rate_limited" | "sommelier_budget_exhausted" | "sommelier_quota_unavailable";
+function fallback(input: SommelierRequest, context: SommelierContext, reason: SommelierFallbackReason, delay?: unknown) {
   const agro = context.source === "syngenta_demo";
-  return { ok: true, version: agro ? SYNGENTA_GUIDE_VERSION : SOMMELIER_VERSION, answer: agro ? syngentaGuideFallback(input.locale) : sommelierFallback(input.locale), source: "fallback" as const, fallback: true, reason, contextSource: context.source, demo: context.demo, ...(agro ? { demoProfile: "syngenta" as const, ...syngentaGuideFallbackReferences(input.locale, context) } : { sources: [], suggestedQuestions: [] }) };
+  const retryAfter = typeof delay === "number" && Number.isSafeInteger(delay) && delay >= 1 && delay <= 86_400 ? delay : undefined;
+  return { ok: true, ...(retryAfter !== undefined ? { retryAfter } : {}), version: agro ? SYNGENTA_GUIDE_VERSION : SOMMELIER_VERSION, answer: agro ? syngentaGuideFallback(input.locale) : sommelierFallback(input.locale), source: "fallback" as const, fallback: true, reason, contextSource: context.source, demo: context.demo, ...(agro ? { demoProfile: "syngenta" as const, ...syngentaGuideFallbackReferences(input.locale, context) } : { sources: [], suggestedQuestions: [] }) };
 }
 async function boundedResponse(response: Response, signal: AbortSignal) {
   if (!response.body || !response.headers.get("content-type")?.toLowerCase().includes("application/json")) throw new Error("provider_receipt_invalid");
@@ -86,7 +90,7 @@ export async function requestLiveSommelier(input: SommelierRequest, context: Som
       if (Buffer.byteLength(body, "utf8") > 16_384) return fallback(input, context, "sommelier_context_too_large");
       const charge = sommelierReservedCost(candidate.name, body);
       const quota = await (dependencies.reserve || ((tenant, cost) => reserveSommelierBuckets(sommelierProviderBuckets(tenant, cost), env)))(context.tenantId, charge);
-      if (!quota.ok) return fallback(input, context, quota.reason);
+      if (!quota.ok) return fallback(input, context, quota.reason, quota.retryAfter);
       if (controller.signal.aborted) return fallback(input, context, "sommelier_provider_timeout");
       // Each actual fallback attempt is separately reserved before any fetch.
       const perAttempt = new AbortController();

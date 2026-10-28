@@ -224,3 +224,45 @@ test('HF rejection arriving after deadline cannot open a cooldown or start a lat
 test('cost reservation counts full UTF8 request bytes and all 1024 output tokens',()=>{
   for(const provider of ['huggingface','openai']){const body=JSON.stringify(sommelierProviderBody(provider,input,context));assert.ok(sommelierReservedCost(provider,body)>0);assert.ok(sommelierReservedCost(provider,body+'水')>=sommelierReservedCost(provider,body));}
 });
+
+for (const reason of ['sommelier_rate_limited', 'sommelier_budget_exhausted', 'sommelier_quota_unavailable']) {
+  for (const retryAfter of [1, 30, 86400]) test(`local admission ${reason} preserves bounded wait ${retryAfter} without provider fetch`, async () => {
+    let calls = 0, reservations = 0;
+    const result = await requestLiveSommelier(input, context, env, {
+      reserve: async () => { reservations++; return { ok: false, reason, retryAfter }; },
+      fetch: async () => { calls++; throw Error('Provider must not be called after local admission denial'); },
+    });
+    assert.equal(result.source, 'fallback'); assert.equal(result.fallback, true);
+    assert.equal(result.reason, reason); assert.equal(result.retryAfter, retryAfter);
+    assert.equal(reservations, 1); assert.equal(calls, 0);
+    for (const key of ['provider', 'model', 'usage']) assert.equal(Object.hasOwn(result, key), false);
+  });
+}
+for (const retryAfter of [0, -1, 1.5, null, '30', NaN, Infinity, 86401, Number.MAX_SAFE_INTEGER]) {
+  test(`invalid local retry delay ${String(retryAfter)} cannot become a customer wait`, async () => {
+    const result = await requestLiveSommelier(input, context, env, {
+      reserve: async () => ({ ok: false, reason: 'sommelier_budget_exhausted', retryAfter }),
+      fetch: async () => { throw Error('Must not fetch'); },
+    });
+    assert.equal(result.reason, 'sommelier_budget_exhausted'); assert.equal(result.retryAfter, undefined);
+  });
+}
+test('external HTTP429 is not reclassified as a local budget denial or supplied wait', async () => {
+  let calls = 0;
+  const result = await requestLiveSommelier(input, context, env, {
+    reserve: async () => ({ ok: true }), diagnostic: () => {},
+    fetch: async () => { calls++; return Response.json({ error: { code: 'insufficient_quota', message: 'private-provider-diagnostic' } }, { status: 429, headers: { 'retry-after': '600' } }); },
+  });
+  assert.equal(calls, 1); assert.equal(result.reason, 'sommelier_provider_unavailable');
+  assert.equal(result.retryAfter, undefined); assert.equal(result.source, 'fallback');
+  assert.doesNotMatch(JSON.stringify(result), /insufficient_quota|private-provider-diagnostic/);
+});
+test('denial before the second reserved candidate retains local wait without a second provider call', async () => {
+  let reservations = 0, calls = 0;
+  const result = await requestLiveSommelier(input, context, { ...env, HF_TOKEN: 'synthetic-hf-recovery-second-candidate-isolated', NEXID_SOMMELIER_OPENAI_FALLBACK_ENABLED: 'true' }, {
+    reserve: async () => ++reservations === 1 ? { ok: true } : { ok: false, reason: 'sommelier_budget_exhausted', retryAfter: 90 },
+    fetch: async () => { calls++; return new Response('', { status: 503 }); }, diagnostic: () => {},
+  });
+  assert.equal(reservations, 2); assert.equal(calls, 1);
+  assert.equal(result.reason, 'sommelier_budget_exhausted'); assert.equal(result.retryAfter, 90);
+});

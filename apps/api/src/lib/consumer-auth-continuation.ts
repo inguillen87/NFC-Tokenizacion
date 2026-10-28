@@ -9,9 +9,9 @@ const CONSUMER_RETURN_PATHS = new Set([
 ]);
 const RETURN_ACTIONS = new Set([
   "products", "save", "join", "claim", "rewards", "register", "wallet", "passport",
-  "marketplace", "experiences", "sommelier",
+  "portal", "marketplace", "experiences", "sommelier",
 ]);
-const RETURN_QUERY_KEYS = ["fromTap", "eventId", "focus", "bid", "tenant", "action"] as const;
+const RETURN_QUERY_KEYS = ["fromTap", "eventId", "focus", "bid", "tenant", "action", "tapAction"] as const;
 
 function isEventId(value: string) {
   return /^[1-9][0-9]{0,18}$/.test(value) && BigInt(value) <= MAX_EVENT_ID;
@@ -22,6 +22,7 @@ function isQueryValue(key: typeof RETURN_QUERY_KEYS[number], value: string) {
   if (key === "eventId" || key === "focus") return isEventId(value);
   if (key === "bid") return /^[A-Za-z0-9._:-]{1,200}$/.test(value);
   if (key === "tenant") return /^[A-Za-z0-9_-]{1,120}$/.test(value) || /^[a-z0-9][a-z0-9._-]{0,119}$/.test(value);
+  if (key === "tapAction") return ["save", "join", "claim", "rewards"].includes(value);
   return RETURN_ACTIONS.has(value);
 }
 
@@ -37,6 +38,7 @@ export function normalizeConsumerAuthReturnPath(value: unknown): string {
     if (values.length > 1 || (values.length === 1 && !isQueryValue(key, values[0]))) return "/me";
     if (values.length === 1) query.set(key, values[0]);
   }
+  if (query.has("tapAction") && (query.get("fromTap") !== "1" || !query.has("eventId"))) return "/me";
   // Drop unknown query parameters and fragments, including signed NFC values,
   // precise location, contact details and nested return destinations.
   return `${url.pathname}${query.size ? `?${query.toString()}` : ""}`;
