@@ -21,7 +21,7 @@ function isQueryValue(key: typeof RETURN_QUERY_KEYS[number], value: string) {
   if (key === "fromTap") return value === "1";
   if (key === "eventId" || key === "focus") return isEventId(value);
   if (key === "bid") return /^[A-Za-z0-9._:-]{1,200}$/.test(value);
-  if (key === "tenant") return /^[A-Za-z0-9_-]{1,120}$/.test(value);
+  if (key === "tenant") return /^[A-Za-z0-9_-]{1,120}$/.test(value) || /^[a-z0-9][a-z0-9._-]{0,119}$/.test(value);
   return RETURN_ACTIONS.has(value);
 }
 
