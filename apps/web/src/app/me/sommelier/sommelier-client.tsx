@@ -6,6 +6,7 @@ import { ArrowLeft, Bot, CalendarDays, CircleAlert, Coffee, GlassWater, Send, Th
 import { classifySommelierResponse, normalizeSommelierProductContext, safeSommelierGuidance, sommelierProvenanceLabel, type SommelierProvenance } from "../../../lib/sommelier-guidance";
 import { sommelierWelcome } from "../../../lib/sommelier-conversation";
 import { MANAGED_SOMMELIER_QUESTION_MAX_CHARS, type SommelierSource } from "../../../lib/managed-sommelier";
+import { useSommelierRecovery } from "../../../lib/use-sommelier-recovery";
 import { portalSommelierFailure, requestPortalSommelierAnswer } from "./portal-managed-sommelier";
 import styles from "./sommelier.module.css";
 
@@ -27,6 +28,7 @@ function responseTitle(provenance?: SommelierProvenance) {
 export default function SommelierClient({ productName, brandName }: { productName: string; brandName: string }) {
   const context = useMemo(() => normalizeSommelierProductContext({ productName, brandName }), [productName, brandName]);
   const welcome = useMemo((): ChatMessage => ({ id: "welcome", sender: "sommelier", text: sommelierWelcome(context), provenance: { mode: "context" } }), [context]);
+  const recovery = useSommelierRecovery("es-AR", "consumer:general");
   const [messages, setMessages] = useState<ChatMessage[]>([welcome]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -39,6 +41,7 @@ export default function SommelierClient({ productName, brandName }: { productNam
   const sequence = useRef(0);
   const inputId = useId();
   const hintId = useId();
+  const statusId = useId();
 
   useEffect(() => {
     setMessages([welcome]); setPending(false); setFeedback(""); setFailureKind("");
@@ -50,7 +53,7 @@ export default function SommelierClient({ productName, brandName }: { productNam
   }, [messages]);
 
   async function handleSendMessage(textToSend: string) {
-    if (!textToSend.trim() || requestRef.current) return;
+    if (!textToSend.trim() || requestRef.current || recovery.isWaiting()) return;
     if (textToSend.trim().length > MANAGED_SOMMELIER_QUESTION_MAX_CHARS) { setFeedback("La pregunta debe tener hasta 1500 caracteres. Podés editarla antes de enviarla."); return; }
     const controller = new AbortController();
     requestRef.current = controller;
@@ -61,12 +64,18 @@ export default function SommelierClient({ productName, brandName }: { productNam
     const result = await requestPortalSommelierAnswer(textToSend.trim(), messages, { signal: controller.signal });
     // Navigation/context changes cancel the request and must never restore old replies.
     if (controller.signal.aborted || requestRef.current !== controller) return;
+    recovery.remember(result);
     if (result.status === "received") {
       const data = result.data;
       const provenance = classifySommelierResponse(data);
       setMessages(previous => [...previous.map(msg => msg.id === questionId ? { ...msg, delivery: "received" as const } : msg), { id: `answer-${++sequence.current}`, sender: "sommelier", text: data.optimizedText, provenance, sources: data.sources, suggestedQuestions: data.suggestedQuestions }]);
-      setInput("");
-      setFeedback("Respuesta recibida. Podés hacer otra consulta.");
+      if (data.fallback) {
+        setInput(previous => previous || textToSend.trim());
+        setFeedback("Recibimos una guía general del servicio. Tu pregunta sigue visible; no confirma una respuesta de IA.");
+      } else {
+        setInput(previous => previous.trim() === textToSend.trim() ? "" : previous);
+        setFeedback("Respuesta recibida. Podés hacer otra consulta.");
+      }
     } else {
       const failure = portalSommelierFailure(result);
       setFailureKind(failure.kind);
@@ -100,9 +109,9 @@ export default function SommelierClient({ productName, brandName }: { productNam
         </div>
         <form className={styles.composer} onSubmit={onSubmit} aria-busy={pending}>
           <label htmlFor={inputId}>Tu pregunta sobre vinos</label>
-          <textarea ref={inputRef} id={inputId} value={input} onChange={event => setInput(event.target.value)} maxLength={MANAGED_SOMMELIER_QUESTION_MAX_CHARS} readOnly={pending} aria-describedby={hintId} rows={3} placeholder="Por ejemplo: ¿cómo elijo un vino para una cena?" />
-          <div className={styles.composerFooter}><p id={hintId}>Elegí una sugerencia o escribí tu pregunta. Vos decidís cuándo enviarla.</p><button type="submit" disabled={pending || !input.trim()}><Send size={18} aria-hidden="true" />{pending ? "Consultando…" : "Enviar consulta"}</button></div>
-          <p className={styles.feedback} role="status" aria-live="polite" aria-atomic="true">{pending ? "Consultando el servicio. Tu pregunta sigue visible." : feedback}</p>
+          <textarea ref={inputRef} id={inputId} value={input} onChange={event => setInput(event.target.value)} maxLength={MANAGED_SOMMELIER_QUESTION_MAX_CHARS} readOnly={pending} aria-describedby={`${hintId} ${statusId}`} rows={3} placeholder="Por ejemplo: ¿cómo elijo un vino para una cena?" />
+          <div className={styles.composerFooter}><p id={hintId}>Elegí una sugerencia o escribí tu pregunta. Vos decidís cuándo enviarla.</p><button type="submit" disabled={pending || recovery.waiting || !input.trim()}><Send size={18} aria-hidden="true" />{pending ? "Consultando…" : "Enviar consulta"}</button></div>
+          <p id={statusId} className={styles.feedback} role="status" aria-live="polite" aria-atomic="true">{pending ? "Consultando el servicio. Tu pregunta sigue visible." : recovery.notice || feedback}</p>
           {failureKind === "session" ? <Link className={styles.back} href="/login?consumer=1&next=%2Fme%2Fsommelier" prefetch={false}>Volver a ingresar</Link> : failureKind === "access" ? <Link className={styles.back} href="/me/products" prefetch={false}>Revisar mis productos</Link> : null}
         </form>
       </section>

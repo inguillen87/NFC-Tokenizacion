@@ -33,7 +33,7 @@ function compile(code, name, loader = require) {
 const copy = compile(copySource, "tap-association-copy.ts");
 function render(query) {
   const dependencies = request => {
-    if (request === "next/navigation") return { useSearchParams: () => new URLSearchParams(query), useRouter: () => ({ refresh() {} }) };
+    if (request === "next/navigation") return { useSearchParams: () => new URLSearchParams(query), usePathname: () => "/me", useRouter: () => ({ refresh() {} }) };
     if (request === "next/link") return { __esModule: true, default: ({ children, prefetch, ...props }) => React.createElement("a", props, children) };
     if (request === "./tap-association-model") return model;
     if (request === "./tap-association-copy") return copy;
@@ -61,7 +61,7 @@ test("context rejects ambiguous or invalid references and retains large event id
   assert.equal(context(`tenant=${"a".repeat(121)}`), null);
   assert.equal(model.tapAssociationContext(new URLSearchParams("fromTap=1&eventId=715&tenant=a%00b")), null);
   assert.notEqual(context().key, context("action=products", "716").key);
-  assert.notEqual(context().key, context("action=claim").key);
+  assert.equal(context().key, context("action=claim").key, "UI intent is not runner identity");
 });
 
 test("login preserves only clean reference and selected action, without session reset or capability forwarding", () => {
@@ -71,7 +71,7 @@ test("login preserves only clean reference and selected action, without session 
   assert.equal(href.searchParams.get("consumer"), "1");
   const next = new URL(href.searchParams.get("next"), href.origin);
   assert.equal(next.pathname, "/me");
-  assert.deepEqual(Object.fromEntries(next.searchParams), { fromTap: "1", eventId: "715", tenant: "demobodega", bid: "DEMO-2026-02", action: "claim" });
+  assert.deepEqual(Object.fromEntries(next.searchParams), { fromTap: "1", eventId: "715", bid: "DEMO-2026-02", tenant: "demobodega", tapAction: "claim" });
   assert.doesNotMatch(href.href, /secret|fresh|forceOtp|PRIVATE|untrusted/);
 });
 
@@ -575,5 +575,95 @@ test("an existing title cannot resend or refresh a denied claim and leaves anoth
     assert.equal(runner.state().results.claim.outcome, "ownership_conflict");
     assert.equal(await runner.run("claim"), null);
     runner.dispose();
+  }
+});
+
+// Source-bound behavior tests: these call existing exports, so the baseline
+// failure measures lost state rather than a missing proposed implementation.
+test("reauth return keeps destination navigation separate from all four explicit TAP choices", () => {
+  const destination = "/me/marketplace?fromTap=1&eventId=715&bid=DEMO-2026-02&tenant=demobodega&action=marketplace";
+  const base = model.tapAssociationContext(new URLSearchParams(destination.split("?")[1]));
+  assert.equal(base.preferred, null);
+  for (const action of model.TAP_ASSOCIATION_ACTIONS) {
+    const href = new URL(model.tapAssociationLoginHref({ ...base, preferred: action }, destination), "https://nexid.example");
+    assert.equal(href.pathname, "/login");
+    assert.equal(href.searchParams.get("consumer"), "1");
+    assert.equal(href.searchParams.get("next"), destination + `&tapAction=${action}`, action);
+    assert.equal(model.tapAssociationContext(new URL(href.searchParams.get("next"), href.origin).searchParams).preferred, action);
+    const request = model.tapAssociationRequest(base, action, "en");
+    assert.deepEqual(Object.keys(request.body).sort(), ["bid", ...(action === "rewards" ? ["locale"] : []), "tenantSlug"].sort(), "UI selection never expands the authoritative POST body");
+  }
+  const unselected = new URL(model.tapAssociationLoginHref(base, destination), "https://nexid.example");
+  assert.equal(unselected.searchParams.get("next"), destination);
+  assert.equal(new URL(model.tapAssociationLoginHref(base, destination + "&tapAction=claim"), "https://nexid.example").searchParams.get("next"), destination, "an explicitly empty local selection removes the former UI intent");
+  for (const fromTap of ["true", "yes", "TRUE", "YES"]) {
+    const legacy = `/me/products?fromTap=${fromTap}&eventId=715&bid=DEMO-2026-02&tenant=demobodega&action=products`;
+    const ctx = model.tapAssociationContext(new URLSearchParams(legacy.split("?")[1]));
+    const href = new URL(model.tapAssociationLoginHref(ctx, legacy), "https://nexid.example");
+    assert.equal(href.searchParams.get("next"), "/me/products?fromTap=1&eventId=715&bid=DEMO-2026-02&tenant=demobodega&action=products&tapAction=save", fromTap);
+  }
+});
+
+test("reauth return honors explicit canonical tapAction while legacy entry aliases remain readable", () => {
+  for (const fromTap of ["1", "true", "yes", "TRUE", "YES"]) {
+    const ctx = model.tapAssociationContext(new URLSearchParams(`fromTap=${fromTap}&eventId=715&action=products`));
+    assert.equal(ctx.preferred, "save", fromTap);
+  }
+  for (const nav of ["marketplace", "products", "rewards", "claim"]) {
+    for (const selected of model.TAP_ASSOCIATION_ACTIONS) {
+      const params = new URLSearchParams(`fromTap=1&eventId=715&tenant=demobodega&bid=DEMO-2026-02&action=${nav}&tapAction=${selected}`);
+      const ctx = model.tapAssociationContext(params);
+      assert.equal(ctx.preferred, selected, `${nav}/${selected}`);
+      assert.equal(ctx.key, context("action=products").key, "selection metadata never resets the runner for the same event/tenant/lot");
+    }
+  }
+  assert.equal(context("action=products").key, context("action=claim").key);
+  assert.notEqual(context("action=products").key, context("action=products", "716").key);
+  assert.notEqual(context("action=products").key, model.tapAssociationContext(new URLSearchParams("fromTap=1&eventId=715&tenant=another&bid=DEMO-2026-02&action=products")).key);
+});
+
+test("reauth selector rejects ambiguity, noncanonical values and invalid scope without silently choosing a legacy fallback", () => {
+  for (const query of [
+    "tapAction=save&tapAction=claim", "tapAction=save&tap%41ction=claim", "tapAction=save&tap%41ction=save",
+    "tapAction=", "tapAction=SAVE", "tapAction=save%20", "tapAction=%20save", "tapAction=marketplace", "tapAction=products",
+    "tapAction=s%2561ve", "tapAction=save%2520", "tapAction=sa%E2%80%AEve", "tapAction=%E2%81%A6save%E2%81%A9", "tapAction=save%00", "tapAction=save%0A",
+    `tapAction=${"x".repeat(129)}`,
+  ]) assert.equal(model.tapAssociationContext(new URLSearchParams(`fromTap=1&eventId=715&action=products&${query}`)), null, query);
+  for (const query of ["fromTap=1&tapAction=save", "fromTap=1&eventId=0&tapAction=save", "eventId=715&tapAction=save", "fromTap=true&eventId=715&tapAction=save", "fromTap=yes&eventId=715&tapAction=save"]) {
+    assert.equal(model.tapAssociationContext(new URLSearchParams(query)), null, "the new selector requires a canonical TAP scope; bare legacy aliases remain unchanged");
+  }
+  assert.equal(model.tapAssociationContext(new URLSearchParams("fromTap=1&eventId=715&action=marketplace&tapAction=s%61ve")).preferred, "save");
+});
+
+test("reauth helper never resurrects rejected destinations or carries PIN/capabilities into a return URL", () => {
+  const ctx = { ...context("action=claim"), preferred: "claim" };
+  for (const destination of [
+    "https://evil.example/me/marketplace?fromTap=1&eventId=715", "//evil.example/me/marketplace", "/me/invented?fromTap=1&eventId=715",
+    "/me/marketplace?fromTap=1&eventId=715&event%49d=716", "/me/marketplace?fromTap=1&eventId=715&action=marketplace&action=save",
+    "/me/marketplace?fromTap=1&eventId=715&tenant=bad%2Fscope", `/me/marketplace?fromTap=1&eventId=715&unknown=${"x".repeat(2048)}`,
+    "/me/marketplace?fromTap=1&eventId=716&tenant=demobodega&bid=DEMO-2026-02&action=marketplace",
+    "/me/marketplace?fromTap=1&eventId=715&tenant=another&bid=DEMO-2026-02&action=marketplace",
+    "/me/marketplace?fromTap=1&eventId=715&tenant=demobodega&bid=OTHER-LOT&action=marketplace",
+    "/me/marketplace?fromTap=yes&fromTap=1&eventId=715&action=marketplace", "/me/marketplace?fromTap=true&eventId=715&tapAction=claim&action=marketplace",
+    "/me/marketplace?fromTap=1&eventId=715&action=marketplace&tapAction=unknown", "/me/marketplace?fromTap=1&eventId=715&action=marketplace&tapAction=save&tap%41ction=claim",
+  ]) {
+    const href = new URL(model.tapAssociationLoginHref(ctx, destination), "https://nexid.example");
+    assert.equal(href.searchParams.get("next"), "/me", destination);
+  }
+  const sensitive = "/me/marketplace?fromTap=1&eventId=715&tenant=demobodega&bid=DEMO-2026-02&action=marketplace&tapAction=save&pin=SECRET_PIN&freshToken=SECRET_FRESH&uid=SECRET_UID&mac=SECRET_MAC&token=SECRET_TOKEN&lat=1&lng=2&contact=SECRET_CONTACT&code=SECRET_VOUCHER#SECRET_FRAGMENT";
+  const href = new URL(model.tapAssociationLoginHref(ctx, sensitive), "https://nexid.example");
+  assert.equal(href.searchParams.get("next"), "/me/marketplace?fromTap=1&eventId=715&bid=DEMO-2026-02&tenant=demobodega&action=marketplace&tapAction=claim");
+  assert.doesNotMatch(href.href, /SECRET_|pin=|freshToken|uid=|mac=|token=|lat=|lng=|contact=|code=/);
+  assert.equal(model.normalizeTapAssociationClaimPin("P".repeat(128)), "P".repeat(128));
+  assert.equal(model.normalizeTapAssociationClaimPin("P".repeat(129)), null);
+});
+
+test("SUN's canonical portal entry retains its reading and a separately selected action on reauthentication", () => {
+  const destination = "/me?fromTap=1&eventId=715&tenant=demobodega&action=portal";
+  const entry = model.tapAssociationContext(new URLSearchParams(destination.split("?")[1]));
+  assert.equal(entry.preferred, null, "opening the account never silently chooses a business action");
+  for (const selected of [null, ...model.TAP_ASSOCIATION_ACTIONS]) {
+    const href = new URL(model.tapAssociationLoginHref({ ...entry, preferred: selected }, destination), "https://nexid.example");
+    assert.equal(href.searchParams.get("next"), destination + (selected ? `&tapAction=${selected}` : ""));
   }
 });

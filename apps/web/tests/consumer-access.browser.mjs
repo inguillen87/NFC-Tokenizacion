@@ -24,7 +24,7 @@ async function sourceBinding(){
  const paths=(await Promise.all(['apps/web/src','packages/config/src','packages/ui/src','packages/api-client/src','packages/core/src'].map(sourceFiles))).flat();
  paths.push('package.json','package-lock.json','apps/web/package.json','apps/web/public/release.json');paths.sort();
  const sourceHashes=Object.fromEntries(await Promise.all(paths.map(async path=>[path,createHash('sha256').update(await readFile(join(repo,path))).digest('hex')])));
- const buildPaths=['BUILD_ID','build-manifest.json','routes-manifest.json','server/app-paths-manifest.json','server/app/login/page.js','server/app/me/products/page.js'];
+ const buildPaths=['BUILD_ID','build-manifest.json','routes-manifest.json','server/app-paths-manifest.json','server/app/login/page.js','server/app/me/products/page.js','server/app/me/marketplace/page.js'];
  const buildHashes=Object.fromEntries(await Promise.all(buildPaths.map(async path=>[path,createHash('sha256').update(await readFile(join(web,'.next',path))).digest('hex')])));
  return{qaSource:process.env.QA_SOURCE||null,buildId:(await readFile(join(web,'.next/BUILD_ID'),'utf8')).trim(),release:JSON.parse(await readFile(join(web,'public/release.json'),'utf8')),sourceHashes,buildHashes,sourceFingerprint:createHash('sha256').update(JSON.stringify(sourceHashes)).digest('hex')};
 }
@@ -248,6 +248,49 @@ async function magicProductContinuation(width,theme,selectedNext=productNext){
  await assess(p,'[data-testid="consumer-product-library"]','email-product-return'+suffix,width,theme);
  report.scenarios.push({name:'magic-email-product-continuation',continuation:selectedNext,width,theme,requests:state.calls,navigationBoundary:boundary,preNavigationAuthCounts:{verify:beforeVerify.length,session:beforeSession.length},wholePageSessionCount:sessionCalls.length,legacyWholePageSingleSessionCheckWouldPass:verifyCalls.length===1&&sessionCalls.length===1});await s.context.close();
 }
+async function postTapReauthContinuation(width,theme,channel,selected){
+ const s=await open(width,theme),p=s.page,state=s.state,label=`catalog-reauth/${width}/${theme}/${channel}/${selected}`;
+ state.identity.name=label;state.session={ok:false};state.sessionHttp=401;
+ await s.context.addCookies([{name:'consumer_qa',value:'local',url:origin,httpOnly:true,sameSite:'Lax'}]);
+ const catalog='/me/marketplace?fromTap=1&eventId=900001&bid=LOT-WINE-QA&tenant=consumer-qa&action=marketplace';
+ await p.goto(origin+catalog,{waitUntil:'networkidle'});await p.locator('[data-marketplace-catalog]').waitFor();
+ const banner=p.getByTestId('tap-association'),login=banner.getByTestId('tap-association-login');await login.waitFor();
+ const before=state.calls.filter(call=>call.path==='/api/consumer/session');
+ check(before.length===1&&before[0].method==='GET'&&before[0].receivedResponse?.httpStatus===401,`${label}: server-rendered private catalog independently observes client session expiry`);
+ const option=banner.getByTestId('tap-association-option-'+selected);if(!await option.isVisible())await banner.getByText('Otras opciones',{exact:true}).click();await option.check();
+ if(selected==='claim')await banner.getByTestId('tap-association-claim-pin').fill('P'.repeat(128));
+ const expected=catalog+'&tapAction='+selected,href=new URL(await login.getAttribute('href'),origin);
+ check(href.pathname==='/login'&&href.searchParams.get('consumer')==='1'&&href.searchParams.get('next')===expected,`${label}: banner retains catalog navigation and explicit selection`);
+ check(state.calls.every(call=>['GET','HEAD'].includes(call.method)),`${label}: choosing an action never starts authentication or a business write`);
+ await login.click();await p.waitForURL(url=>url.pathname==='/login');
+ check(new URL(p.url()).searchParams.get('next')===expected,`${label}: actual login receives the exact return URL`);
+ if(channel==='email')await email(p);else{await p.getByRole('button',{name:'WhatsApp',exact:true}).click();await p.getByRole('textbox',{name:'Número de teléfono sin código de país',exact:true}).fill('1155551234');}
+ state.start={ok:true,delivery:{channel:channel==='email'?'email':'whatsapp',status:'accepted'}};
+ await p.getByRole('button',{name:'Recibir código',exact:true}).click();await p.getByRole('textbox',{name:'Código de acceso',exact:true}).waitFor();
+ check(starts(state).length===1,`${label}: one explicit synthetic send`);
+ checkPayload(starts(state)[0].payload,channel==='email'?{email:'persona@example.test',next:expected}:{phone:'+5491155551234'},`${label}: existing channel-specific request contract is preserved`);
+ state.verify={ok:true};state.verifyHttp=200;state.session={ok:true,authenticated:true};state.sessionHttp=200;
+ const destinationSessionRequested=p.waitForRequest(request=>new URL(request.url()).pathname==='/api/consumer/session'&&requestDocumentPath(request)==='/me/marketplace');void destinationSessionRequested.catch(()=>{});
+ if(channel==='email'){
+  const link='/login?'+new URLSearchParams({consumer:'1',t:'synthetic-catalog-continuation',next:starts(state)[0].payload.next});await p.evaluate(link=>history.pushState(null,'',link),link);
+ }else{await p.getByRole('textbox',{name:'Código de acceso',exact:true}).fill('135791');await p.getByRole('button',{name:'Validar y continuar',exact:true}).click();}
+ await p.waitForURL(url=>url.pathname==='/me/marketplace'&&url.searchParams.get('tapAction')===selected);
+ const destinationRequest=await destinationSessionRequested,destinationResponse=await destinationRequest.response();await destinationResponse.finished();
+ check(destinationRequest.method()==='GET'&&destinationResponse.status()===200,`${label}: destination independently reconfirms its session`);
+ await p.locator('[data-marketplace-catalog]').waitFor();await p.getByTestId('tap-association-confirm').waitFor();
+ const returned=p.getByTestId('tap-association');
+ check(new URL(p.url()).pathname+new URL(p.url()).search===expected,`${label}: route/event/tenant/lot/navigation/selection survive authentication`);
+ check(await returned.getByTestId('tap-association-option-'+selected).isChecked(),`${label}: return selects the requested association without performing it`);
+ if(selected==='claim')check(await returned.getByTestId('tap-association-claim-pin').inputValue()==='',`${label}: PIN must be re-entered and never passes through next`);
+ const verifyCalls=state.calls.filter(call=>call.path.endsWith('/verify'));
+ check(verifyCalls.length===1,`${label}: one confirmation and no automatic verification retry`);
+ checkPayload(verifyCalls[0].payload,channel==='email'?{token:'synthetic-catalog-continuation'}:{phone:'+5491155551234',code:'135791'},`${label}: verification does not gain business or tenant fields`);
+ check(state.calls.filter(call=>!['GET','HEAD'].includes(call.method)).every(call=>['/api/consumer/auth/logout','/api/consumer/auth/start','/api/consumer/auth/verify'].includes(call.path)),`${label}: no automatic save, join, claim, enrollment or purchase`);
+ check(starts(state).length===1&&report.blockedBusinessWrites.length===0,`${label}: return never resends or attempts another business action`);
+ await assess(p,'[data-testid="tap-association"]',`catalog-return-${channel}-${selected}`,width,theme);
+ report.scenarios.push({name:'catalog-posttap-reauth-return',width,theme,channel,selected,continuation:expected,requests:state.calls,realDelivery:false,realAuthentication:false,businessWrites:0});await s.context.close();
+}
+
 try{
  for(const width of [320,390,768,1440])for(const theme of ['light','dark']){
   const s=await open(width,theme),p=s.page;await email(p);
@@ -289,6 +332,7 @@ try{
  for(const width of [320,390,768,1440])for(const theme of ['light','dark'])await lateCodeRecovery(width,theme,width===390);
  for(const theme of ['light','dark'])await lateCodeSuccessfulReturn(theme);
  for(const theme of ['light','dark'])await magicProductContinuation(390,theme,dottedProductNext);
+ for(const theme of ['light','dark'])for(const channel of ['email','phone'])for(const selected of ['save','join','claim','rewards'])await postTapReauthContinuation(390,theme,channel,selected);
  const continuationCases=[
   {name:'sensitive capability and device fields are removed',next:'/me/products?fromTap=1&eventId=900001&token=SYNTHETIC&tapAccess=SYNTHETIC&ctr=17&latitude=-34&unknown=1#private',expected:'/me/products?fromTap=1&eventId=900001'},
   {name:'safe keys receive stable canonical order',next:'/me/products?action=save&tenant=consumer-qa&bid=LOT.WINE-QA:1&focus=900001&eventId=9223372036854775807&fromTap=1',expected:'/me/products?fromTap=1&eventId=9223372036854775807&focus=900001&bid=LOT.WINE-QA%3A1&tenant=consumer-qa&action=save'},

@@ -124,3 +124,55 @@ test("email dot continuation: refuses duplicate aliases, unsafe encoding, noncan
     assert.deepEqual(consumerAuthStartPayload({ email: "persona@example.test" }, next), { email: "persona@example.test" });
   }
 });
+
+test("post-TAP recovery keeps navigation and an explicit four-value UI selection independent", () => {
+  for (const selected of ["save", "join", "claim", "rewards"]) {
+    const next = `/me/marketplace?tenant=brand.a&tapAction=${selected}&action=marketplace&bid=LOT-42&eventId=42&fromTap=1`;
+    const expected = `/me/marketplace?fromTap=1&eventId=42&bid=LOT-42&tenant=brand.a&action=marketplace&tapAction=${selected}`;
+    assert.equal(normalizeConsumerAuthReturnPath(next), expected);
+    assert.deepEqual(consumerAuthStartPayload({ email: "persona@example.test" }, next), { email: "persona@example.test", next: expected });
+    assert.deepEqual(consumerAuthStartPayload({ phone: "+5491155551234" }, next), { phone: "+5491155551234" }, "phone start carries only contact; the browser retains the same normalized destination");
+  }
+  assert.equal(normalizeConsumerAuthReturnPath("/me/rewards?fromTap=1&eventId=42&action=rewards&tapAction=save"), "/me/rewards?fromTap=1&eventId=42&action=rewards&tapAction=save");
+  assert.equal(normalizeConsumerAuthReturnPath("/me/products?fromTap=1&eventId=42&action=products"), "/me/products?fromTap=1&eventId=42&action=products");
+  assert.equal(normalizeConsumerAuthReturnPath("/me/marketplace?fromTap=1&eventId=42&tapAction=s%61ve&action=marketplace"), "/me/marketplace?fromTap=1&eventId=42&action=marketplace&tapAction=save");
+});
+
+test("post-TAP UI selector is singleton, canonical and bound to a valid TAP scope", () => {
+  for (const query of [
+    "fromTap=1&eventId=42&tapAction=save&tapAction=claim", "fromTap=1&eventId=42&tapAction=save&tap%41ction=save", "fromTap=1&eventId=42&tapAction=save&tap%41ction=claim",
+    "fromTap=1&eventId=42&tapAction=", "fromTap=1&eventId=42&tapAction=SAVE", "fromTap=1&eventId=42&tapAction=save%20", "fromTap=1&eventId=42&tapAction=%20save",
+    "fromTap=1&eventId=42&tapAction=marketplace", "fromTap=1&eventId=42&tapAction=products", "fromTap=1&eventId=42&tapAction=s%2561ve",
+    "fromTap=1&eventId=42&tapAction=sa%E2%80%AEve", "fromTap=1&eventId=42&tapAction=%E2%81%A6save%E2%81%A9", "fromTap=1&eventId=42&tapAction=save%00", "fromTap=1&eventId=42&tapAction=save%0A",
+    "fromTap=1&tapAction=save", "eventId=42&tapAction=save", "fromTap=true&eventId=42&tapAction=save", "fromTap=yes&eventId=42&tapAction=save",
+    "fromTap=1&eventId=0&tapAction=save", "fromTap=1&eventId=01&tapAction=save", "fromTap=1&eventId=9223372036854775808&tapAction=save",
+    `fromTap=1&eventId=42&tapAction=${"a".repeat(129)}`, `fromTap=1&eventId=42&tenant=${"a".repeat(121)}&tapAction=save`, `fromTap=1&eventId=42&bid=${"a".repeat(201)}&tapAction=save`,
+  ]) {
+    const next = `/me/marketplace?action=marketplace&${query}`;
+    assert.equal(normalizeConsumerAuthReturnPath(next), "/me", query);
+    assert.deepEqual(consumerAuthStartPayload({ email: "persona@example.test" }, next), { email: "persona@example.test" });
+  }
+  const bounded = `/me/marketplace?fromTap=1&eventId=9223372036854775807&bid=${"b".repeat(200)}&tenant=${"t".repeat(120)}&action=marketplace&tapAction=claim`;
+  assert.equal(normalizeConsumerAuthReturnPath(bounded), bounded);
+});
+
+test("post-TAP recovery removes sensitive fields and never rescues a rejected destination", () => {
+  const next = "/me/marketplace?fromTap=1&eventId=42&tenant=brand.a&action=marketplace&tapAction=claim&uid=SECRET_UID&mac=SECRET_MAC&ctr=17&freshToken=SECRET_FRESH&tapAccess=SECRET_ACCESS&token=SECRET_TOKEN&pin=SECRET_PIN&code=SECRET_VOUCHER&lat=-32&lng=-68&contact=SECRET_CONTACT&next=https%3A%2F%2Fevil.example&unknown=one&unknown=two#SECRET_FRAGMENT";
+  const expected = "/me/marketplace?fromTap=1&eventId=42&tenant=brand.a&action=marketplace&tapAction=claim";
+  assert.equal(normalizeConsumerAuthReturnPath(next), expected);
+  for (const value of ["https://evil.example" + expected, "//evil.example" + expected, "/me/invented?fromTap=1&eventId=42&tapAction=save", `/me/marketplace?fromTap=1&eventId=42&tapAction=save&unknown=${"x".repeat(2048)}`, "/me/marketplace?fromTap=1&eventId=42&tapAction=save&tenant=bad%252Fa"]) {
+    assert.equal(normalizeConsumerAuthReturnPath(value), "/me", value);
+  }
+});
+
+test("SUN's canonical portal navigation survives authentication without accepting malformed aliases", () => {
+  for (const selected of [null, "save", "join", "claim", "rewards"]) {
+    const next = "/me?fromTap=1&eventId=42&tenant=brand.a&action=portal" + (selected ? `&tapAction=${selected}` : "");
+    assert.equal(normalizeConsumerAuthReturnPath(next), next);
+    assert.deepEqual(consumerAuthStartPayload({ email: "persona@example.test" }, next), { email: "persona@example.test", next });
+    assert.deepEqual(consumerAuthStartPayload({ phone: "+5491155551234" }, next), { phone: "+5491155551234" });
+  }
+  for (const query of ["action=Portal", "action=portal%20", "action=portal&action=save", "action=trivia", "action=portal&tenant=BRAND.a", "action=portal&bid=bad%2Fscope"]) {
+    assert.equal(normalizeConsumerAuthReturnPath(`/me?fromTap=1&eventId=42&${query}`), "/me", query);
+  }
+});

@@ -11,6 +11,7 @@ import * as policy from "../src/app/sun/post-tap-policy.ts";
 import * as sommelier from "../src/lib/sommelier-guidance.ts";
 import * as sommelierConversation from "../src/lib/sommelier-conversation.ts";
 import * as managedSommelier from "../src/lib/managed-sommelier.ts";
+import * as sommelierRecovery from "../src/lib/use-sommelier-recovery.ts";
 import * as demoSommelier from "../src/app/sun/sun-demo-sommelier.ts";
 import * as demoWineQuiz from "../src/app/sun/sun-demo-wine-quiz.ts";
 import * as availability from "../src/app/sun/tenant-action-availability.ts";
@@ -22,6 +23,7 @@ const overrides = {
   "./sun-trivia-model": trivia, "./post-tap-policy": policy, "./tenant-action-availability": availability, "../../lib/sommelier-guidance": sommelier,
   "../../lib/sommelier-conversation": sommelierConversation, "./sun-demo-sommelier": demoSommelier, "./sun-demo-wine-quiz": demoWineQuiz,
   "../../lib/managed-sommelier": managedSommelier,
+  "../../lib/use-sommelier-recovery": sommelierRecovery,
   "./sun-locale-provider": { useSunLocale: () => ({ locale: "es-AR" }) },
   "./qr-engagement-suite.module.css": { __esModule: true, default: new Proxy({}, { get: (_, key) => key }) },
   "next/link": { __esModule: true, default: ({ children, ...props }) => React.createElement("a", props, children) },

@@ -376,3 +376,65 @@ test("cancelling a delayed HTTP denial never restores a session or permission re
   release({ ok: false, reason: "sommelier_consumer_session_required" });
   await new Promise(resolve => setImmediate(resolve));
 });
+
+const recoveryFallback = overrides => ({ ...live, demo: false, source: 'fallback', fallback: true, provider: undefined, model: undefined,
+  sources: [], suggestedQuestions: [], ...overrides });
+for (const reason of ['sommelier_rate_limited', 'sommelier_budget_exhausted', 'sommelier_quota_unavailable']) {
+  test(`received fallback preserves safe ${reason} and its known API delay`, async () => {
+    let calls = 0;
+    const result = await requestManagedSommelierAnswer('Pregunta conservada', { locale: 'es-AR', eventId: '715',
+      fetchImpl: async () => { calls++; return Response.json(recoveryFallback({ reason, retryAfter: 30 })); } });
+    assert.equal(calls, 1); assert.equal(result.status, 'received'); assert.equal(result.data.fallback, true);
+    assert.deepEqual(result.data.recovery, { reason, retryAfter: 30 });
+    assert.equal(result.data.provider, undefined); assert.equal(result.data.model, undefined);
+  });
+}
+for (const retryAfter of [1, 86400]) test(`fallback retry delay accepts boundary ${retryAfter}`, async () => {
+  const result = await requestManagedSommelierAnswer('QA', { locale: 'en', fetchImpl: async () => Response.json(recoveryFallback({ reason: 'sommelier_rate_limited', retryAfter })) });
+  assert.equal(result.data.recovery.retryAfter, retryAfter);
+});
+for (const retryAfter of [0, -1, 1.5, null, '30', 86401, Number.MAX_SAFE_INTEGER]) test(`malformed fallback wait ${String(retryAfter)} is not coerced`, async () => {
+  const result = await requestManagedSommelierAnswer('QA', { locale: 'en', fetchImpl: async () => Response.json(recoveryFallback({ reason: 'sommelier_rate_limited', retryAfter })) });
+  assert.equal(result.status, 'received'); assert.equal(result.data.recovery?.reason, 'sommelier_rate_limited');
+  assert.equal(result.data.recovery?.retryAfter, undefined);
+});
+for (const stage of ['grant', 'chat']) for (const [status, reason] of [[429, 'sommelier_rate_limited'], [503, 'sommelier_quota_unavailable']]) {
+  test(`${stage} HTTP${status} preserves safe API recovery and Retry-After`, async () => {
+    const calls = [];
+    const result = await requestManagedSommelierAnswer('Pregunta de espera', { locale: 'pt-BR', demoProfile: 'valle-secreto',
+      fetchImpl: async url => { calls.push(url); if (stage === 'chat' && url.endsWith('/session')) return Response.json({ ok: true, profile: 'valle-secreto' });
+        return Response.json({ ok: false, reason }, { status, headers: { 'retry-after': '17' } }); } });
+    assert.equal(result.status, 'unavailable'); assert.equal(result.httpStatus, status);
+    assert.deepEqual(result.recovery, { reason, retryAfter: 17 }); assert.equal(calls.length, stage === 'grant' ? 1 : 2);
+  });
+}
+test('unknown HTTP429 reason may retain a bounded header wait but never provider text or a credit claim', async () => {
+  const result = await requestManagedSommelierAnswer('QA', { locale: 'es-AR', fetchImpl: async () => Response.json({ ok: false, reason: 'private-provider-insufficient_quota' }, { status: 429, headers: { 'retry-after': '31' } }) });
+  assert.equal(result.status, 'unavailable'); assert.deepEqual(result.recovery, { retryAfter: 31 });
+  assert.doesNotMatch(JSON.stringify(result), /private-provider|insufficient_quota/);
+});
+for (const retry of ['0', '-1', '1.5', 'NaN', '86401', '99999999999999999', 'Wed, 21 Oct 2026 07:28:00 GMT', '30; private']) {
+  test(`HTTP retry header ${retry} is not a known bounded wait`, async () => {
+    const result = await requestManagedSommelierAnswer('QA', { locale: 'en', fetchImpl: async () => Response.json({ ok: false, reason: 'sommelier_rate_limited' }, { status: 429, headers: { 'retry-after': retry } }) });
+    assert.equal(result.recovery?.reason, 'sommelier_rate_limited'); assert.equal(result.recovery?.retryAfter, undefined);
+  });
+}
+test('legacy fallback remains compatible; unknown fallback fields and live recovery cannot manufacture a wait', async () => {
+  for (const extra of [{}, { reason: 'private-provider-message', retryAfter: 30 }]) {
+    const result = await requestManagedSommelierAnswer('QA', { locale: 'en', fetchImpl: async () => Response.json(recoveryFallback(extra)) });
+    assert.equal(result.status, 'received'); assert.equal(result.data.fallback, true); assert.equal(result.data.recovery, undefined);
+    assert.doesNotMatch(JSON.stringify(result), /private-provider-message/);
+  }
+  const result = await requestManagedSommelierAnswer('QA', { locale: 'en', fetchImpl: async () => Response.json({ ...live, demo: false, reason: 'sommelier_budget_exhausted', retryAfter: 30 }) });
+  assert.equal(result.data.fallback, false); assert.equal(result.data.recovery, undefined);
+});
+test('cancelled response body cannot deliver late recovery or launch another request', async () => {
+  const controller = new AbortController(); let release, bodyStarted, calls = 0;
+  const held = new Promise(resolve => { release = resolve; });
+  const started = new Promise(resolve => { bodyStarted = resolve; });
+  const pending = requestManagedSommelierAnswer('Pregunta cancelada', { locale: 'en', signal: controller.signal,
+    fetchImpl: async () => { calls++; const response = Response.json(recoveryFallback({ reason: 'sommelier_budget_exhausted', retryAfter: 60 })); response.json = () => { bodyStarted(); return held; }; return response; } });
+  await started; controller.abort();
+  release(recoveryFallback({ reason: 'sommelier_budget_exhausted', retryAfter: 60 }));
+  assert.deepEqual(await pending, { status: 'unavailable', reason: 'cancelled' }); assert.equal(calls, 1);
+});

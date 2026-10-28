@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { ArrowUpRight, Bot, Send, RotateCcw } from "lucide-react";
 import { MANAGED_SOMMELIER_QUESTION_MAX_CHARS, requestManagedSommelierAnswer, sommelierHistory, type SommelierSource } from "../../lib/managed-sommelier";
+import { useSommelierRecovery } from "../../lib/use-sommelier-recovery";
 import type { SunLocale } from "./sun-locale";
 import styles from "./syngenta-product-assistant.module.css";
 
@@ -28,6 +29,8 @@ type Message = { id: number; sender: "user" | "sommelier"; text: string; fallbac
 
 export function SyngentaProductAssistant({ locale }: { locale: SunLocale }) {
   const copy = COPY[locale];
+  const recovery = useSommelierRecovery(locale, "demo:syngenta");
+  const statusId = useId();
   const inputId = useId();
   const headingId = useId();
   const [question, setQuestion] = useState("");
@@ -38,10 +41,13 @@ export function SyngentaProductAssistant({ locale }: { locale: SunLocale }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const answerRef = useRef<HTMLLIElement>(null);
 
-  useEffect(() => () => {
-    control.current.sequence++;
-    control.current.controller?.abort();
-    control.current.pending = false;
+  useEffect(() => {
+    setPending(false);
+    return () => {
+      control.current.sequence++;
+      control.current.controller?.abort();
+      control.current.pending = false;
+    };
   }, [locale]);
 
   const reset = () => {
@@ -53,7 +59,7 @@ export function SyngentaProductAssistant({ locale }: { locale: SunLocale }) {
   };
   const ask = async (value: string) => {
     const text = value.trim().slice(0, MANAGED_SOMMELIER_QUESTION_MAX_CHARS);
-    if (!text || control.current.pending) return;
+    if (!text || control.current.pending || recovery.isWaiting()) return;
     const sequence = ++control.current.sequence;
     const controller = new AbortController();
     control.current.controller = controller;
@@ -67,11 +73,12 @@ export function SyngentaProductAssistant({ locale }: { locale: SunLocale }) {
     }
     const result = await requestManagedSommelierAnswer(text, { locale, demoProfile: "syngenta", history, signal: controller.signal });
     if (sequence !== control.current.sequence || controller.signal.aborted) return;
+    recovery.remember(result);
     control.current.pending = false; setPending(false);
     if (result.status === "unavailable") { setFailedQuestion(text); return; }
     const answerMessage: Message = { id: ++control.current.nextId, sender: "sommelier", text: result.data.optimizedText, fallback: result.data.fallback, sources: result.data.sources, suggestions: result.data.suggestedQuestions };
     setMessages(current => [...current, answerMessage].slice(-14));
-    if (!result.data.fallback) setQuestion("");
+    if (!result.data.fallback) setQuestion(previous => previous.trim() === text ? "" : previous);
     requestAnimationFrame(() => { if (sequence === control.current.sequence) answerRef.current?.scrollIntoView({ block: "nearest", behavior: "instant" }); });
   };
   const submit = (event: FormEvent) => { event.preventDefault(); void ask(question); };
@@ -90,13 +97,13 @@ export function SyngentaProductAssistant({ locale }: { locale: SunLocale }) {
         {message.sources?.length ? <ul className={styles.sources} aria-label={copy.sources}>{message.sources.filter(source => source.url).map(source => <li key={source.id}><a href={source.url!} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">{source.label}<ArrowUpRight size={15} aria-hidden="true" /></a></li>)}</ul> : null}
       </li>)}
     </ol> : null}
-    <p className={styles.status} role="status" aria-live="polite">{pending ? copy.pending : failedQuestion ? copy.error : ""}</p>
-    {failedQuestion ? <button type="button" className={styles.retry} onClick={() => void ask(failedQuestion)} disabled={pending}><RotateCcw size={16} aria-hidden="true" />{copy.retry}</button> : null}
-    {suggestions.length ? <div className={styles.suggestions} role="group" aria-label={copy.followUp}>{suggestions.map(value => <button type="button" key={value} onClick={() => void ask(value)} disabled={pending} data-testid="syngenta-assistant-suggestion">{value}</button>)}</div> : null}
+    <p id={statusId} className={styles.status} role="status" aria-live="polite">{pending ? copy.pending : recovery.notice || (failedQuestion ? copy.error : "")}</p>
+    {failedQuestion ? <button type="button" className={styles.retry} onClick={() => void ask(failedQuestion)} disabled={pending || recovery.waiting}><RotateCcw size={16} aria-hidden="true" />{copy.retry}</button> : null}
+    {suggestions.length ? <div className={styles.suggestions} role="group" aria-label={copy.followUp}>{suggestions.map(value => <button type="button" key={value} onClick={() => void ask(value)} disabled={pending || recovery.waiting} data-testid="syngenta-assistant-suggestion">{value}</button>)}</div> : null}
     <form onSubmit={submit} className={styles.form}>
       <label htmlFor={inputId}>{copy.label}</label>
-      <textarea id={inputId} ref={inputRef} value={question} onChange={event => setQuestion(event.target.value)} rows={2} maxLength={MANAGED_SOMMELIER_QUESTION_MAX_CHARS} placeholder={copy.placeholder} disabled={pending} data-testid="syngenta-assistant-input" />
-      <button type="submit" className={styles.submit} disabled={pending || !question.trim()} aria-busy={pending} data-testid="syngenta-assistant-send"><Send size={18} aria-hidden="true" />{pending ? copy.pending : copy.send}</button>
+      <textarea id={inputId} ref={inputRef} value={question} onChange={event => setQuestion(event.target.value)} rows={2} aria-describedby={statusId} maxLength={MANAGED_SOMMELIER_QUESTION_MAX_CHARS} placeholder={copy.placeholder} disabled={pending} data-testid="syngenta-assistant-input" />
+      <button type="submit" className={styles.submit} disabled={pending || recovery.waiting || !question.trim()} aria-busy={pending} data-testid="syngenta-assistant-send"><Send size={18} aria-hidden="true" />{pending ? copy.pending : copy.send}</button>
     </form>
     <footer className={styles.footer}><p>{copy.note}</p>{messages.length || pending ? <button type="button" onClick={reset} className={styles.reset}>{copy.clear}</button> : null}</footer>
   </section>;

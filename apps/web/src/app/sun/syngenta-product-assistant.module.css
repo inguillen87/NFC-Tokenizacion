@@ -23,7 +23,7 @@
 .form textarea { width: 100%; resize: vertical; min-height: 88px; max-height: 240px; border: 1px solid var(--passport-line,#d6e1de); border-radius: 12px; padding: 13px; color: var(--passport-ink,#17313b); background: var(--passport-surface,#fff); font-size: 16px; line-height: 1.5; }
 .form textarea::placeholder { color: var(--passport-muted,#536972); opacity: 1; }
 .submit { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 12px; border: 0; border-radius: 12px; background: var(--passport-accent,#086f62); color: var(--passport-surface,#fff); font-size: 14px; font-weight: 700; line-height: 1.5; cursor: pointer; }
-.submit:disabled,.suggestions button:disabled,.retry:disabled { opacity: .6; cursor: default; }
+.submit:disabled,.suggestions button:disabled,.retry:disabled { opacity: 1; color: var(--passport-muted,#536972); background: var(--passport-media,#eef4f1); cursor: not-allowed; }
 .footer { display: grid; gap: 10px; margin-top: 16px; }
 .footer p { font-size: 12px; }
 .reset { min-height: 44px; justify-self: start; padding: 8px 0; border: 0; color: var(--passport-accent,#086f62); background: none; font-size: 12px; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }

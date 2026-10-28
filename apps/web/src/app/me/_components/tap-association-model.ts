@@ -1,3 +1,6 @@
+import { normalizeSafeReturnPath } from "@product/config/safe-return-path";
+import { normalizeConsumerAuthReturnPath } from "../../login/consumer-login-continuation";
+
 export const TAP_ASSOCIATION_ACTIONS = ["save", "join", "claim", "rewards"] as const;
 export type TapAssociationAction = typeof TAP_ASSOCIATION_ACTIONS[number];
 export type TapAssociationContext = { eventId: string; tenant: string; bid: string; preferred: TapAssociationAction | null; key: string };
@@ -11,21 +14,45 @@ const ENDPOINTS: Record<TapAssociationAction, string> = { save: "consumer/save-p
 
 export function tapAssociationContext(params: URLSearchParams): TapAssociationContext | null {
   if (!["1", "true", "yes"].includes((params.get("fromTap") || "").toLowerCase())) return null;
-  for (const key of ["fromTap", "eventId", "tenant", "bid", "action"]) if (params.getAll(key).length > 1) return null;
+  for (const key of ["fromTap", "eventId", "tenant", "bid", "action", "tapAction"]) if (params.getAll(key).length > 1) return null;
+  // The optional new selector is canonical; legacy entry aliases remain valid
+  // only when this field is absent.
+  if (params.has("tapAction") && params.get("fromTap") !== "1") return null;
   const eventId = params.get("eventId") || "";
   if (!/^[1-9]\d{0,18}$/.test(eventId) || BigInt(eventId) > 9223372036854775807n) return null;
   const tenant = (params.get("tenant") || "").trim(), bid = (params.get("bid") || "").trim();
   if (tenant.length > 120 || bid.length > 200 || /[\u0000-\u001f\u007f]/.test(tenant + bid)) return null;
   const action = (params.get("action") || "").trim().toLowerCase();
-  const preferred = action === "products" ? "save" : TAP_ASSOCIATION_ACTIONS.find(value => value === action) || null;
-  return { eventId, tenant, bid, preferred, key: JSON.stringify([eventId, tenant, bid, preferred]) };
+  const tapAction = params.get("tapAction");
+  const selected = TAP_ASSOCIATION_ACTIONS.find(value => value === tapAction) || null;
+  if (tapAction !== null && !selected) return null;
+  const preferred = selected || (action === "products" ? "save" : TAP_ASSOCIATION_ACTIONS.find(value => value === action) || null);
+  return { eventId, tenant, bid, preferred, key: JSON.stringify([eventId, tenant, bid]) };
 }
-export function tapAssociationLoginHref(context: TapAssociationContext) {
-  const query = new URLSearchParams({ fromTap: "1", eventId: context.eventId });
-  if (context.tenant) query.set("tenant", context.tenant);
-  if (context.bid) query.set("bid", context.bid);
-  if (context.preferred) query.set("action", context.preferred);
-  return "/login?consumer=1&next=" + encodeURIComponent("/me?" + query.toString());
+export function tapAssociationLoginHref(context: TapAssociationContext, destination = "/me") {
+  const login = (next: string) => "/login?consumer=1&next=" + encodeURIComponent(next);
+  if (destination === "/me") {
+    const query = new URLSearchParams({ fromTap: "1", eventId: context.eventId });
+    if (context.tenant) query.set("tenant", context.tenant);
+    if (context.bid) query.set("bid", context.bid);
+    if (context.preferred) query.set("tapAction", context.preferred);
+    return login(normalizeConsumerAuthReturnPath("/me?" + query.toString()));
+  }
+  // Validate the original destination before replacing the UI selector. In
+  // particular, a rejected URL must not be reconstructed from the context.
+  const safe = normalizeSafeReturnPath(destination, "/me");
+  if (safe === "/me") return login("/me");
+  const url = new URL(safe, "https://return.nexid.invalid");
+  const supplied = tapAssociationContext(new URLSearchParams(url.searchParams));
+  if (!supplied || supplied.eventId !== context.eventId || supplied.tenant !== context.tenant || supplied.bid !== context.bid) return login("/me");
+  // Only a valid singleton legacy TAP context may be canonicalized to `1`.
+  url.searchParams.set("fromTap", "1");
+  const normalized = normalizeConsumerAuthReturnPath(url.pathname + url.search + url.hash);
+  if (normalized === "/me") return login("/me");
+  const target = new URL(normalized, "https://return.nexid.invalid");
+  if (context.preferred) target.searchParams.set("tapAction", context.preferred);
+  else target.searchParams.delete("tapAction");
+  return login(normalizeConsumerAuthReturnPath(target.pathname + target.search));
 }
 /** This transient secret is sent only in an explicit ownership request. Keep the
  * input bounds aligned with the API's readOwnershipClaimPinInput contract. */

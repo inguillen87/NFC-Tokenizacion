@@ -79,3 +79,23 @@ test("source keeps cancellation, explicit send, truthful errors and prepare-only
   assert.ok(client.includes("Volver a ingresar"));
   assert.ok(client.includes("Revisar mis productos"));
 });
+
+test('portal adapter retains received-fallback recovery for the real consumer UI', async () => {
+  let calls = 0;
+  const result = await requestPortalSommelierAnswer('Conservar esta pregunta', [], { fetchImpl: async () => {
+    calls++; return reply(received({ source: 'fallback', fallback: true, provider: undefined, model: undefined,
+      reason: 'sommelier_budget_exhausted', retryAfter: 60 }));
+  } });
+  assert.equal(calls, 1); assert.equal(result.status, 'received'); assert.equal(result.data.fallback, true);
+  assert.deepEqual(result.data.recovery, { reason: 'sommelier_budget_exhausted', retryAfter: 60 });
+  assert.equal(Object.hasOwn(result.data, 'provider'), false);
+});
+test('portal HTTP429 keeps an API wait without inferring missing balance or retrying', async () => {
+  let calls = 0;
+  const result = await requestPortalSommelierAnswer('Conservar esta consulta', [], { fetchImpl: async () => {
+    calls++; return Response.json({ ok: false, reason: 'private-provider-insufficient_quota' }, { status: 429, headers: { 'retry-after': '24' } });
+  } });
+  assert.equal(calls, 1); assert.equal(result.status, 'unavailable'); assert.deepEqual(result.recovery, { retryAfter: 24 });
+  const failure = portalSommelierFailure(result); assert.equal(failure.kind, 'limit');
+  assert.doesNotMatch(failure.feedback + JSON.stringify(result), /private-provider|insufficient_quota|sin cr[eé]dito|saldo insuficiente/i);
+});

@@ -95,6 +95,7 @@ jobs:
           QA_SOURCE="$(git rev-parse HEAD)" QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-portal" node apps/web/tests/consumer-portal-experience.browser.mjs # includes consumer-marketplace.browser.mjs scenarios
           CHROME_PATH="$(find "$HOME/.cache/ms-playwright" -path '*/chrome-linux/chrome' -o -path '*/chrome-linux64/chrome' | head -n 1)" QA_SOURCE="$(git rev-parse HEAD)" QA_OUTPUT="$RUNNER_TEMP/sun-evidence/marketplace-age-policy-component" node apps/web/tests/consumer-marketplace-age-policy.browser.mjs
           CHROME_PATH="$(find "$HOME/.cache/ms-playwright" -path '*/chrome-linux/chrome' -o -path '*/chrome-linux64/chrome' | head -n 1)" QA_REWARD_FOCUS_MODE=guarded QA_SOURCE="$(git rev-parse HEAD)" QA_OUTPUT="$RUNNER_TEMP/sun-evidence/reward-confirmation-component" node apps/web/tests/consumer-reward-confirmation-focus.browser.mjs
+          CHROME_PATH="$(find "$HOME/.cache/ms-playwright" -path '*/chrome-linux/chrome' -o -path '*/chrome-linux64/chrome' | head -n 1)" QA_TAP_REAUTH_MODE=guarded QA_SOURCE="$(git rev-parse HEAD)" QA_OUTPUT="$RUNNER_TEMP/sun-evidence/tap-association-reauth-component" node apps/web/tests/tap-association-reauth.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-save-refresh" node apps/web/tests/consumer-save-refresh.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-portal-loading" node apps/web/tests/consumer-portal-loading.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/sun-evidence/client-destination-recovery" node apps/web/tests/consumer-destination-recovery.browser.mjs
