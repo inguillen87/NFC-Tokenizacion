@@ -88,3 +88,39 @@ test("browser-normalized and nested encoded unsafe forms never become email dest
     assert.equal(normalizeConsumerAuthReturnPath(next), "/me", next);
   }
 });
+
+test("email dot continuation: preserves canonical dotted selection and existing legacy values without changing phone payloads", () => {
+  for (const [supplied, tenant] of [
+    ["brand.a", "brand.a"], ["bodega.andes_1", "bodega.andes_1"],
+    ["brand%2Ea", "brand.a"], ["a" + ".".repeat(118) + "b", "a" + ".".repeat(118) + "b"],
+    ["Balmec-AR", "Balmec-AR"], ["_legacy", "_legacy"],
+  ]) {
+    const next = `/me/rewards?tenant=${supplied}&action=rewards&bid=LOT-42&eventId=42&fromTap=1`;
+    const expected = `/me/rewards?fromTap=1&eventId=42&bid=LOT-42&tenant=${tenant}&action=rewards`;
+    assert.equal(normalizeConsumerAuthReturnPath(next), expected);
+    assert.deepEqual(consumerAuthStartPayload({ email: "persona@example.test" }, next), { email: "persona@example.test", next: expected });
+    assert.deepEqual(consumerAuthStartPayload({ phone: "+5491155551234" }, next), { phone: "+5491155551234" });
+  }
+});
+
+test("email dot continuation: strips capabilities, device data, nested returns and fragments while keeping dotted selection", () => {
+  const next = "/me/products?tenant=brand.a&eventId=42&fromTap=1&action=save&uid=FIXTURE_UID&mac=FIXTURE_MAC&ctr=17&picc_data=FIXTURE_PICC&freshToken=FIXTURE_FRESH&tapAccess=FIXTURE_ACCESS&token=FIXTURE_TOKEN&lat=-32.123456&lng=-68.987654&contact=persona%40example.test&next=https%3A%2F%2Fevil.example&unknown=first&unknown=second#FIXTURE_FRAGMENT";
+  const expected = "/me/products?fromTap=1&eventId=42&tenant=brand.a&action=save";
+  assert.equal(normalizeConsumerAuthReturnPath(next), expected);
+  assert.deepEqual(consumerAuthStartPayload({ email: "persona@example.test" }, next), { email: "persona@example.test", next: expected });
+});
+
+test("email dot continuation: refuses duplicate aliases, unsafe encoding, noncanonical new dots and existing bounds", () => {
+  for (const next of [
+    "/me/rewards?tenant=brand.a&tenant=brand.a", "/me/rewards?tenant=brand.a&ten%61nt=other.a",
+    "/me/rewards?tenant=brand.a&eventId=42&event%49d=43", "/me/rewards?tenant=brand.a&action=save&action=claim",
+    "/me/rewards?tenant=.brand", "/me/rewards?tenant=BRAND.a", "/me/rewards?tenant=.", "/me/rewards?tenant=..",
+    "/me/rewards?tenant=brand%252Ea", "/me/rewards?tenant=%252525252562rand.a",
+    "/me/rewards?tenant=brand%2Fa", "/me/rewards?tenant=brand%5Ca", "/me/rewards?tenant=brand%00a", "/me/rewards?tenant=%E0%A4%A",
+    "/me/rewards?tenant=brand.a&eventId=9223372036854775808", `/me/rewards?tenant=a.${"b".repeat(119)}`,
+    `/me/rewards?tenant=brand.a&unknown=${"x".repeat(2048)}`, "//evil.example/me?tenant=brand.a", "https://evil.example/me?tenant=brand.a",
+  ]) {
+    assert.equal(normalizeConsumerAuthReturnPath(next), "/me", next);
+    assert.deepEqual(consumerAuthStartPayload({ email: "persona@example.test" }, next), { email: "persona@example.test" });
+  }
+});

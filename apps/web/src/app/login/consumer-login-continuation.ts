@@ -28,7 +28,7 @@ export function normalizeConsumerAuthReturnPath(value: unknown): string {
     const valid = key === "fromTap" ? item === "1"
       : key === "eventId" || key === "focus" ? readingId(item)
       : key === "bid" ? /^[A-Za-z0-9._:-]{1,200}$/.test(item)
-      : key === "tenant" ? /^[A-Za-z0-9_-]{1,120}$/.test(item)
+      : key === "tenant" ? (/^[A-Za-z0-9_-]{1,120}$/.test(item) || /^[a-z0-9][a-z0-9._-]{0,119}$/.test(item))
       : ACTIONS.has(item);
     if (!valid) return "/me";
     query.set(key, item);
