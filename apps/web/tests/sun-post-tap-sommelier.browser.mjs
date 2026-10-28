@@ -19,7 +19,7 @@ const paths = ["src/lib/use-sommelier-recovery.ts", "src/app/sun/syngenta-produc
 const hashes = async () => Object.fromEntries(await Promise.all(paths.map(async path => [path, createHash("sha256").update(await readFile(join(web, path))).digest("hex")])));
 const sourceHashes = await hashes();
 const fixture = `import React,{useState}from'react';import{createRoot}from'react-dom/client';import{SunLocaleProvider,useSunLocale}from'./src/app/sun/sun-locale-provider';import{QREngagementSuite}from'./src/app/sun/qr-engagement-suite';import{VALLE_SECRETO_DEMO}from'./src/app/sun/valle-secreto-demo';import{SyngentaProductAssistant}from'./src/app/sun/syngenta-product-assistant';import SommelierClient from'./src/app/me/sommelier/sommelier-client';import portalShell from'./src/app/me/_components/portal-shell.module.css';
-const params=new URLSearchParams(location.search),initialLocale=['es-AR','en','pt-BR'].includes(params.get('locale'))?params.get('locale'):'es-AR';const recoverySurface=params.get('recoverySurface')||'sun';function App(){const[product,setProduct]=useState('Vino QA'),[eventId,setEventId]=useState(params.has('eventless')?null:'715'),[visible,setVisible]=useState(true),[enabled,setEnabled]=useState(true),[tenant,setTenant]=useState('qa-synthetic');const{locale,setLocale}=useSunLocale();const configuration={version:'nexid.tenant-actions.v1',status:'published',allowedActions:enabled?['sommelier']:[],catalogAvailable:false,program:null,trivia:null};return <main className='sun-tap-experience' style={{maxWidth:recoverySurface==='portal'?1200:430,margin:'0 auto',padding:12}}><h1>SUN · ensayo sintético</h1><p data-testid='product'>{product}</p><button data-testid='tenant-change' onClick={()=>{setTenant('qa-other');setProduct('Vino QB');setEventId('716')}}>Cambiar marca</button><button data-testid='tenant-return' onClick={()=>{setTenant('qa-synthetic');setProduct('Vino QA');setEventId('715')}}>Volver a la marca</button><button data-testid='product-change' onClick={()=>{setProduct('Vino QB');setEventId('716')}}>Cambiar producto</button><button data-testid='label-change' onClick={()=>setProduct('Vino QA etiqueta actualizada')}>Cambiar sólo etiqueta</button><button data-testid='locale-change' onClick={()=>void setLocale('en')}>Cambiar idioma</button><button data-testid='permission-change' onClick={()=>setEnabled(false)}>Quitar permiso</button><button data-testid='close-chat' onClick={()=>setVisible(false)}>Cerrar chat</button>{visible?(recoverySurface==='syngenta'?<SyngentaProductAssistant locale={locale}/>:recoverySurface==='portal'?<section className={portalShell.portal}><SommelierClient productName={product} brandName='Marca QA'/></section>:<QREngagementSuite productName={product} wineryName='Marca QA' tenantSlug={tenant} eventId={eventId} configuration={configuration} isDemoPreview={params.has('valleDemo')} demoWineProfile={params.has('valleDemo')?VALLE_SECRETO_DEMO:null} initialTab='sommelier'/>):<p data-testid='closed'>Chat cerrado</p>}</main>};createRoot(document.getElementById('app')).render(<SunLocaleProvider initialLocale={initialLocale}><App/></SunLocaleProvider>);`;
+const params=new URLSearchParams(location.search),initialLocale=['es-AR','en','pt-BR'].includes(params.get('locale'))?params.get('locale'):'es-AR';const recoverySurface=params.get('recoverySurface')||'sun';function App(){const[product,setProduct]=useState('Vino QA'),[eventId,setEventId]=useState(params.has('eventless')?null:'715'),[visible,setVisible]=useState(true),[enabled,setEnabled]=useState(true),[tenant,setTenant]=useState('qa-synthetic');const{locale,setLocale}=useSunLocale();const configuration={version:'nexid.tenant-actions.v1',status:'published',allowedActions:enabled?['sommelier']:[],catalogAvailable:false,program:null,trivia:null};window.__qaPendingDraftTenantOnly=()=>setTenant('qa-other');return <main className='sun-tap-experience' style={{maxWidth:recoverySurface==='portal'?1200:430,margin:'0 auto',padding:12}}><h1>SUN · ensayo sintético</h1><p data-testid='product' data-tenant={tenant}>{product}</p><button data-testid='tenant-change' onClick={()=>{setTenant('qa-other');setProduct('Vino QB');setEventId('716')}}>Cambiar marca</button><button data-testid='tenant-return' onClick={()=>{setTenant('qa-synthetic');setProduct('Vino QA');setEventId('715')}}>Volver a la marca</button><button data-testid='product-change' onClick={()=>{setProduct('Vino QB');setEventId('716')}}>Cambiar producto</button><button data-testid='label-change' onClick={()=>setProduct('Vino QA etiqueta actualizada')}>Cambiar sólo etiqueta</button><button data-testid='locale-change' onClick={()=>void setLocale('en')}>Cambiar idioma</button><button data-testid='permission-change' onClick={()=>setEnabled(false)}>Quitar permiso</button><button data-testid='close-chat' onClick={()=>setVisible(false)}>Cerrar chat</button>{visible?(recoverySurface==='syngenta'?<SyngentaProductAssistant locale={locale}/>:recoverySurface==='portal'?<section className={portalShell.portal}><SommelierClient productName={product} brandName='Marca QA'/></section>:<QREngagementSuite productName={product} wineryName='Marca QA' tenantSlug={tenant} eventId={eventId} configuration={configuration} isDemoPreview={params.has('valleDemo')} demoWineProfile={params.has('valleDemo')?VALLE_SECRETO_DEMO:null} initialTab='sommelier'/>):<p data-testid='closed'>Chat cerrado</p>}</main>};createRoot(document.getElementById('app')).render(<SunLocaleProvider initialLocale={initialLocale}><App/></SunLocaleProvider>);`;
 const bundled = await build({ stdin: { contents: fixture, resolveDir: web, loader: "tsx" }, bundle: true, write: false, outfile: "fixture.js", format: "esm", platform: "browser", jsx: "automatic", define: { "process.env.NODE_ENV": '"production"' }, plugins: [{ name: "inert-next", setup(b) {
   b.onResolve({ filter: /^next\/link$/ }, () => ({ path: "link", namespace: "nav" }));
   b.onLoad({ filter: /.*/, namespace: "nav" }, () => ({ contents: "import React from'react';export default function Link({prefetch,...props}){return <a {...props}/>}", loader: "tsx", resolveDir: web }));
@@ -454,6 +454,172 @@ async function runRecoveryCases() {
       finally { await t.close(); }
     }
 
+    // Cancellation must retain a usable question, never a late answer or a
+    // previous event/tenant draft. These cases hold an already parsed body.
+    report.pendingDraftCases = [];
+    const pendingCases = [
+      ...['sun-consumer', 'sun-demo'].flatMap(surface => ['locale-change', 'label-change'].map(change => ({ surface, change }))),
+      { surface: 'sun-consumer', change: 'locale-change', newerDraft: true },
+      { surface: 'sun-demo', change: 'label-change', newerDraft: true },
+      { surface: 'sun-consumer', change: 'product-change', journeyChange: true },
+      { surface: 'sun-demo', change: 'tenant-only', journeyChange: true },
+      { surface: 'syngenta', change: 'locale-change' },
+      { surface: 'portal', change: 'label-change' },
+    ];
+    for (const item of pendingCases) {
+      const { surface, change, newerDraft = false, journeyChange = false } = item;
+      const name = `pending-draft/${surface}/${change}/${newerDraft ? 'newer' : 'submitted'}`;
+      const staleAnswer = `QA stale response must never be restored: ${name}`;
+      const latePayload = recoveryPayload(surface, true, 'sommelier_budget_exhausted', 60);
+      latePayload.payload.answer = staleAnswer;
+      const t = await open({ width: 390, theme: surface === 'sun-demo' || surface === 'syngenta' ? 'dark' : 'light',
+        surface: ['syngenta', 'portal'].includes(surface) ? surface : 'sun', valleDemo: surface === 'sun-demo', controlledClock: true,
+        answer: () => latePayload });
+      const observation = { name, surface, change, newerDraft, journeyChange, status: 'running', synthetic: true };
+      report.pendingDraftCases.push(observation);
+      try {
+        await t.page.evaluate(() => {
+          const transport = window.fetch.bind(window); window.__pendingDraftHold = true; window.__pendingDraftBodyWaiting = 0;
+          window.fetch = async (url, init) => {
+            const response = await transport(url, init);
+            if (String(url) === '/api/sommelier/chat' && window.__pendingDraftHold) {
+              window.__pendingDraftHold = false; const parse = response.json.bind(response);
+              response.json = async () => { const body = await parse(); window.__pendingDraftBodyWaiting++;
+                await new Promise(resolve => { window.__pendingDraftRelease = resolve; }); window.__pendingDraftBodyWaiting--; return body; };
+            }
+            return response;
+          };
+        });
+        const root = recoveryRoot(t, surface), input = root.getByRole('textbox'), form = root.locator('form'), submit = form.locator('button[type="submit"]');
+        const sent = `QA última pregunta enviada ${name}`;
+        const newer = `QA borrador nuevo editado durante la consulta ${name}`;
+        await input.fill(sent); await form.evaluate(element => element.requestSubmit());
+        await t.page.waitForFunction(() => window.__pendingDraftBodyWaiting === 1);
+        check(t.calls.filter(call => call.path === '/api/sommelier/chat').length === 1, `${name}: one explicit request reached the held parsed-body boundary`);
+        if (newerDraft) { check(await input.isEditable(), `${name}: QR allows editing a newer draft while pending`); await input.fill(newer); }
+        const before = assistantCalls(t);
+        if (change === 'tenant-only') {
+          // The fixture changes only the tenant prop; eventId/product stay put.
+          await t.page.evaluate(() => window.__qaPendingDraftTenantOnly());
+          await t.page.waitForFunction(() => document.querySelector('[data-testid="product"]')?.getAttribute('data-tenant') === 'qa-other');
+        } else {
+          await t.page.getByTestId(change).click();
+          if (change === 'locale-change') await t.page.waitForFunction(() => document.documentElement.lang === 'en');
+          else await t.page.waitForFunction(expected => document.querySelector('[data-testid="product"]')?.textContent === expected,
+            change === 'label-change' ? 'Vino QA etiqueta actualizada' : 'Vino QB');
+        }
+        await recoverySettled(t, surface);
+        const expected = journeyChange ? '' : newerDraft ? newer : sent;
+        Object.assign(observation, { expectedAfterChange: expected, actualAfterChange: await input.inputValue(), assistantRequestsBeforeChange: before, assistantRequestsAfterChange: assistantCalls(t) });
+        check(observation.actualAfterChange === expected, `${name}: cancellation preserves the submitted/newer question only within the same journey, before any refill`);
+        check(await input.isEditable(), `${name}: cancellation releases the composer for deliberate editing`);
+        check(assistantCalls(t) === before, `${name}: locale/label/context change never retries or sends automatically`);
+        let expectedAfterLateBody = expected;
+        if (journeyChange) { expectedAfterLateBody = `QA new journey draft after explicit context change ${name}`; await input.fill(expectedAfterLateBody); }
+        await t.page.evaluate(() => { if (!window.__pendingDraftRelease) throw Error('Missing owned pending body'); window.__pendingDraftRelease(); window.__pendingDraftRelease = null; });
+        await t.page.waitForFunction(() => window.__pendingDraftBodyWaiting === 0); await recoverySettled(t, surface);
+        check(!(await root.innerText()).includes(staleAnswer), `${name}: the cancelled old response is never restored`);
+        check(await input.inputValue() === expectedAfterLateBody, `${name}: the old body never overwrites the retained or new-journey draft`);
+        check(await submit.isEnabled(), `${name}: a discarded old quota response installs no pause in the current owner`);
+        check(assistantCalls(t) === before, `${name}: releasing the old response causes no rePOST`);
+        await t.page.clock.fastForward(61_000);
+        check(assistantCalls(t) === before && await input.inputValue() === expectedAfterLateBody, `${name}: time alone neither sends nor replaces the draft`);
+        observation.status = 'passed';
+        report.scopeCases.push({ name, status: 'passed', synthetic: true, realAuthentication: false, realTenantSynchronization: false });
+      } catch (error) {
+        observation.status = 'failed'; observation.error = String(error?.stack || error);
+        report.recoveryFailures.push({ surface, phase: name, error: observation.error });
+      } finally { await t.page.evaluate(() => window.__pendingDraftRelease?.()).catch(() => {}); await t.close(); }
+    }
+
+    // Confirmed replies may clear their own question, never a newer editable
+    // draft. An immediate prompt must also remain visible while it is pending.
+    report.pendingSuccessDraftCases = [];
+    for (const surface of ['sun-consumer', 'sun-demo']) for (const scenario of ['live-newer-draft', 'empty-prompt']) {
+      const name = `pending-success/${surface}/${scenario}`, answer = `QA first confirmed live answer ${name}`;
+      const response = recoveryPayload(surface, false); response.payload.answer = answer;
+      const t = await open({ width: 390, theme: surface === 'sun-demo' ? 'dark' : 'light', controlledClock: true,
+        valleDemo: surface === 'sun-demo', answer: () => response });
+      const observation = { name, surface, scenario, status: 'running', synthetic: true };
+      report.pendingSuccessDraftCases.push(observation);
+      try {
+        await t.page.evaluate(() => {
+          const transport = window.fetch.bind(window); window.__pendingLiveHold = true; window.__pendingLiveBodyWaiting = 0;
+          window.fetch = async (url, init) => {
+            const response = await transport(url, init);
+            if (String(url) === '/api/sommelier/chat' && window.__pendingLiveHold) {
+              window.__pendingLiveHold = false; const parse = response.json.bind(response);
+              response.json = async () => { const body = await parse(); window.__pendingLiveBodyWaiting++;
+                await new Promise(resolve => { window.__pendingLiveRelease = resolve; }); window.__pendingLiveBodyWaiting--; return body; };
+            }
+            return response;
+          };
+        });
+        const root = recoveryRoot(t, surface), input = root.getByRole('textbox'), form = root.locator('form');
+        let sent;
+        if (scenario === 'empty-prompt') {
+          check(await input.inputValue() === '', `${name}: prompt starts with an empty composer`);
+          const prompt = root.getByTestId('sun-sommelier-prompts').getByRole('button').first(); sent = (await prompt.innerText()).trim();
+          await prompt.click();
+        } else {
+          sent = `QA initial live question ${surface}`; await input.fill(sent); await form.evaluate(element => element.requestSubmit());
+        }
+        await t.page.waitForFunction(() => window.__pendingLiveBodyWaiting === 1);
+        const calls = t.calls.filter(call => call.path === '/api/sommelier/chat');
+        check(calls.length === 1 && calls[0].body.question === sent, `${name}: only the deliberately submitted question is requested`);
+        let expected;
+        if (scenario === 'empty-prompt') {
+          Object.assign(observation, { expectedWhilePending: sent, actualWhilePending: await input.inputValue() });
+          check(observation.actualWhilePending === sent, `${name}: the chosen prompt is visible as an editable pending question before any refill`);
+          check(await input.isEditable(), `${name}: a pending prompt remains editable`); expected = '';
+        } else {
+          expected = `QA newer unsent draft, añada y regalo ${surface}`;
+          check(await input.isEditable(), `${name}: the user may prepare a newer draft while the first reply is pending`);
+          await input.fill(expected);
+        }
+        const before = assistantCalls(t);
+        await t.page.evaluate(() => { if (!window.__pendingLiveRelease) throw Error('Missing owned live body'); window.__pendingLiveRelease(); window.__pendingLiveRelease = null; });
+        await t.page.waitForFunction(() => window.__pendingLiveBodyWaiting === 0); await recoverySettled(t, surface);
+        // Record enough evidence even when no answer anchor is produced. The
+        // body is a direct Text node beside provenance metadata, not an element
+        // whose complete text can equal `answer` for getByText({exact:true}).
+        Object.assign(observation, { beforeReplyContract: {
+          input: await input.inputValue(), log: (await root.getByRole('log').innerText()).slice(0, 12_000),
+          alerts: await root.getByRole('alert').allTextContents(),
+          recovery: await root.getByTestId('sun-sommelier-recovery-notice').allTextContents(),
+          latestAnswerCount: await root.getByTestId('sun-sommelier-latest-answer').count(),
+          transportPayload: response.payload,
+          browser: await t.page.evaluate(() => ({ language: document.documentElement.lang, aborts: window.__aborts, heldBodies: window.__pendingLiveBodyWaiting })),
+        } });
+        const latest = root.getByTestId('sun-sommelier-latest-answer'); await latest.waitFor();
+        const replyDom = await latest.evaluate(anchor => {
+          const bubble = anchor.firstElementChild;
+          const textNodes = [...(bubble?.childNodes || [])].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent || '');
+          return { anchorId: anchor.id, insideLog: Boolean(anchor.closest('[role="log"]')),
+            bubbleTag: bubble?.tagName || null, textNodes, bodyText: textNodes.join('').trim(),
+            textContent: bubble?.textContent || '', innerText: bubble?.innerText || '',
+            provenanceTexts: [...(bubble?.querySelectorAll('details p') || [])].map(node => (node.textContent || '').trim()) };
+        });
+        observation.replyDom = replyDom;
+        check(replyDom.insideLog && replyDom.bodyText === answer, `${name}: the latest assistant reply contains exactly the confirmed response body in its Text node`);
+        check(replyDom.provenanceTexts.length === 1 && replyDom.provenanceTexts[0] === 'Proveedor confirmado · fixture-provider / fixture-model · no es ficha técnica', `${name}: the same latest reply has the exact confirmed live provenance`);
+        Object.assign(observation, { expectedAfterLive: expected, actualAfterLive: await input.inputValue() });
+        check(observation.actualAfterLive === expected, `${name}: a first confirmed reply clears only its own untouched question and preserves a newer draft`);
+        check(assistantCalls(t) === before, `${name}: receiving a confirmed reply never sends the next draft`);
+        await t.page.clock.fastForward(61_000);
+        check(assistantCalls(t) === before && await input.inputValue() === expected, `${name}: time alone cannot send or replace the next draft`);
+        observation.status = 'passed';
+        report.scopeCases.push({ name, status: 'passed', synthetic: true, realProviderReply: false });
+      } catch (error) {
+        observation.status = 'failed'; observation.error = String(error?.stack || error);
+        report.recoveryFailures.push({ surface, phase: name, error: observation.error });
+      } finally {
+        await t.page.evaluate(() => window.__pendingLiveRelease?.()).catch(() => {});
+        await t.page.waitForFunction(() => window.__pendingLiveBodyWaiting === 0);
+        await t.close();
+      }
+    }
+
   }
 
   check(report.recoveryFailures.length === 0, `all four actual UI surfaces honor recovery; failures=${report.recoveryFailures.length}`);
@@ -736,7 +902,7 @@ try {
       await t.page.getByRole("textbox").fill(question);
       await t.page.getByRole("textbox").locator("..").evaluate(form => { form.requestSubmit(); form.requestSubmit(); });
       await waitCalls(t, 1);
-      check(await t.page.getByRole("log").getAttribute("aria-busy") === "true" && await t.page.getByRole("textbox").inputValue() === "", `${label}: question waits once with an empty draft`);
+      check(await t.page.getByRole("log").getAttribute("aria-busy") === "true" && await t.page.getByRole("textbox").inputValue() === question, `${label}: question waits once with its exact submitted draft preserved`);
       release(degraded());
       await t.page.getByTestId("sun-sommelier-recovery-notice").filter({ hasText: notice }).waitFor();
       check(await t.page.getByRole("textbox").inputValue() === question && await t.page.getByRole("status").filter({ hasText: notice }).innerText() === notice && await t.page.getByRole("alert").count() === 0, `${label}: handled fallback restores the question and announces a truthful non-blocking status`);
