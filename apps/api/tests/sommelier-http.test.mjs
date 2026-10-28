@@ -63,3 +63,27 @@ test('malformed/oversize bodies and query identities are rejected before auth/pr
   const malformed=new Request('https://api.nexid.lat/sommelier/chat',{method:'POST',headers,body:'{'});
   assert.equal((await handleSommelierChat(malformed,deps)).status,400);
 });
+
+test('chat admission HTTP429 and store503 retain an API wait without invoking a provider', async () => {
+  const cookie = await issue(); let providers = 0;
+  for (const [query, status, reason, wait] of [
+    [async () => [{ hits: '1000000', retry_after: 23 }], 429, 'sommelier_rate_limited', 23],
+    [async () => { throw Error('synthetic unavailable store'); }, 503, 'sommelier_quota_unavailable', 30],
+  ]) {
+    const response = await handleSommelierChat(req('/sommelier/chat', chatBody, { cookie }), { env, query,
+      provider: async () => { providers++; throw Error('Admission must deny before provider'); } });
+    assert.equal(response.status, status); assert.equal(response.headers.get('retry-after'), String(wait));
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.deepEqual(await response.json(), { ok: false, reason });
+  }
+  assert.equal(providers, 0);
+});
+test('HTTP200 server guidance retains a local budget reason and wait without a live provider claim', async () => {
+  const cookie = await issue(); let providers = 0;
+  const response = await handleSommelierChat(req('/sommelier/chat', chatBody, { cookie }), { env, query: rows,
+    provider: async () => { providers++; return { ok: true, answer: 'Synthetic general guide', source: 'fallback', fallback: true,
+      reason: 'sommelier_budget_exhausted', retryAfter: 60, demo: true, contextSource: 'valle_secreto_demo', sources: [], suggestedQuestions: [] }; } });
+  assert.equal(response.status, 200); assert.equal(providers, 1); assert.equal(response.headers.get('cache-control'), 'no-store');
+  const body = await response.json(); assert.equal(body.reason, 'sommelier_budget_exhausted'); assert.equal(body.retryAfter, 60);
+  assert.equal(body.fallback, true); assert.equal(Object.hasOwn(body, 'provider'), false); assert.equal(Object.hasOwn(body, 'model'), false);
+});

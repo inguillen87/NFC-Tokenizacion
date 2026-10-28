@@ -1044,3 +1044,82 @@ test("email dot continuation: real auth and provider normalizers preserve dotted
     assertSanitizedLogs(h, [next, expected]);
   }
 });
+
+test("post-TAP recovery preserves catalog navigation and the independent four-value selection through the actual API normalizer", () => {
+  const normalize = harness().continuation.normalizeConsumerAuthReturnPath;
+  for (const selected of ["save", "join", "claim", "rewards"]) {
+    const input = `/me/marketplace?tenant=brand.a&tapAction=${selected}&action=marketplace&bid=LOT-42&eventId=42&fromTap=1`;
+    assert.equal(normalize(input), `/me/marketplace?fromTap=1&eventId=42&bid=LOT-42&tenant=brand.a&action=marketplace&tapAction=${selected}`);
+  }
+  assert.equal(normalize("/me/rewards?fromTap=1&eventId=42&action=rewards&tapAction=save"), "/me/rewards?fromTap=1&eventId=42&action=rewards&tapAction=save");
+  assert.equal(normalize("/me/marketplace?fromTap=1&eventId=42&tapAction=s%61ve&action=marketplace"), "/me/marketplace?fromTap=1&eventId=42&action=marketplace&tapAction=save");
+});
+
+test("post-TAP API return rejects ambiguous or malformed selection and scope without partial recovery", () => {
+  const normalize = harness().continuation.normalizeConsumerAuthReturnPath;
+  for (const query of [
+    "fromTap=1&eventId=42&tapAction=save&tapAction=claim", "fromTap=1&eventId=42&tapAction=save&tap%41ction=save", "fromTap=1&eventId=42&tapAction=save&tap%41ction=claim",
+    "fromTap=1&eventId=42&tapAction=", "fromTap=1&eventId=42&tapAction=SAVE", "fromTap=1&eventId=42&tapAction=save%20", "fromTap=1&eventId=42&tapAction=%20save",
+    "fromTap=1&eventId=42&tapAction=marketplace", "fromTap=1&eventId=42&tapAction=products", "fromTap=1&eventId=42&tapAction=s%2561ve",
+    "fromTap=1&eventId=42&tapAction=sa%E2%80%AEve", "fromTap=1&eventId=42&tapAction=%E2%81%A6save%E2%81%A9", "fromTap=1&eventId=42&tapAction=save%00", "fromTap=1&eventId=42&tapAction=save%0A",
+    "fromTap=1&tapAction=save", "eventId=42&tapAction=save", "fromTap=true&eventId=42&tapAction=save", "fromTap=yes&eventId=42&tapAction=save",
+    "fromTap=1&eventId=0&tapAction=save", "fromTap=1&eventId=01&tapAction=save", "fromTap=1&eventId=9223372036854775808&tapAction=save",
+    `fromTap=1&eventId=42&tapAction=${"a".repeat(129)}`, `fromTap=1&eventId=42&tenant=${"a".repeat(121)}&tapAction=save`, `fromTap=1&eventId=42&bid=${"a".repeat(201)}&tapAction=save`,
+  ]) assert.equal(normalize(`/me/marketplace?action=marketplace&${query}`), "/me", query);
+  const bounded = `/me/marketplace?fromTap=1&eventId=9223372036854775807&bid=${"b".repeat(200)}&tenant=${"t".repeat(120)}&action=marketplace&tapAction=claim`;
+  assert.equal(normalize(bounded), bounded);
+  for (const input of [`https://evil.example${bounded}`, `//evil.example${bounded}`, `/me/marketplace?fromTap=1&eventId=42&tapAction=save&unknown=${"x".repeat(2048)}`]) assert.equal(normalize(input), "/me");
+});
+
+test("post-TAP email authentication and both synthetic email transports preserve selection without leaking capability, PIN or destination into audit storage", async () => {
+  for (const selected of ["save", "join", "claim", "rewards"]) for (const configured of ["smtp", "resend"]) {
+    const next = `/me/marketplace?fromTap=1&eventId=42&tenant=brand.a&action=marketplace&tapAction=${selected}&pin=SECRET_PIN&freshToken=SECRET_FRESH&uid=SECRET_UID&code=SECRET_VOUCHER#SECRET_FRAGMENT`;
+    const expected = `/me/marketplace?fromTap=1&eventId=42&tenant=brand.a&action=marketplace&tapAction=${selected}`;
+    const h = harness({ env: { ...SMTP_ENV, ...RESEND_ENV, CONSUMER_AUTH_MODE: "smart", CONSUMER_AUTH_EMAIL_PROVIDER: configured }, fetch: async () => response({ id: UUID }) });
+    const result = await h.post(EMAIL, next);
+    assert.equal(result.status, 200);
+    const body = await result.json(); assertPublicPayload(body); assert.equal(Object.hasOwn(body, "next"), false);
+    const message = configured === "smtp" ? h.mail[0] : JSON.parse(h.requests[0].init.body);
+    const links = [new URL(message.text.match(/https:\/\/\S+$/)[0]), new URL(message.html.match(/<a href="([^"]+)"/)[1])];
+    for (const link of links) {
+      assert.equal(link.origin, "https://nexid.lat"); assert.equal(link.pathname, "/login");
+      assert.equal(link.searchParams.get("t"), MAGIC); assert.equal(link.searchParams.get("next"), expected);
+      assert.deepEqual([...link.searchParams.keys()], ["t", "next"]);
+    }
+    assert.equal(h.queries.filter(q => q.text.startsWith("INSERT INTO consumer_auth_challenges")).length, 1);
+    assert.equal(h.queries.some(q => q.values.includes(next) || q.values.includes(expected)), false);
+    assert.doesNotMatch(JSON.stringify(message), /SECRET_/);
+    assertSanitizedLogs(h, [next, expected, "SECRET_PIN", "SECRET_FRESH", "SECRET_UID", "SECRET_VOUCHER", "SECRET_FRAGMENT"]);
+  }
+});
+
+test("SUN's canonical portal navigation retains the reading through the API return normalizer", () => {
+  const normalize = harness().continuation.normalizeConsumerAuthReturnPath;
+  for (const selected of [null, "save", "join", "claim", "rewards"]) {
+    const next = "/me?fromTap=1&eventId=42&tenant=brand.a&action=portal" + (selected ? `&tapAction=${selected}` : "");
+    assert.equal(normalize(next), next);
+  }
+  for (const query of ["action=Portal", "action=portal%20", "action=portal&action=save", "action=trivia", "action=portal&tenant=BRAND.a", "action=portal&bid=bad%2Fscope"]) {
+    assert.equal(normalize(`/me?fromTap=1&eventId=42&${query}`), "/me", query);
+  }
+});
+
+test("SUN portal email links preserve neutral navigation and selection without sensitive TAP fields", async () => {
+  for (const selected of [null, "claim"]) for (const configured of ["smtp", "resend"]) {
+    const expected = "/me?fromTap=1&eventId=42&tenant=brand.a&action=portal" + (selected ? `&tapAction=${selected}` : "");
+    const next = expected + "&pin=SECRET_PIN&freshToken=SECRET_FRESH&uid=SECRET_UID#SECRET_FRAGMENT";
+    const h = harness({ env: { ...SMTP_ENV, ...RESEND_ENV, CONSUMER_AUTH_MODE: "smart", CONSUMER_AUTH_EMAIL_PROVIDER: configured }, fetch: async () => response({ id: UUID }) });
+    const responseValue = await h.post(EMAIL, next);
+    assert.equal(responseValue.status, 200); assertPublicPayload(await responseValue.json());
+    const message = configured === "smtp" ? h.mail[0] : JSON.parse(h.requests[0].init.body);
+    const links = [new URL(message.text.match(/https:\/\/\S+$/)[0]), new URL(message.html.match(/<a href="([^"]+)"/)[1])];
+    for (const link of links) {
+      assert.equal(link.origin, "https://nexid.lat"); assert.equal(link.pathname, "/login");
+      assert.equal(link.searchParams.get("t"), MAGIC); assert.equal(link.searchParams.get("next"), expected);
+      assert.deepEqual([...link.searchParams.keys()], ["t", "next"]);
+    }
+    assert.doesNotMatch(JSON.stringify(message), /SECRET_/);
+    assert.equal(h.queries.some(q => q.values.includes(next) || q.values.includes(expected)), false);
+    assertSanitizedLogs(h, [next, expected, "SECRET_PIN", "SECRET_FRESH", "SECRET_UID", "SECRET_FRAGMENT"]);
+  }
+});
