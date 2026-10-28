@@ -537,7 +537,7 @@ export function QREngagementSuite({
     };
 
     setMessages((prev) => [...prev, userMsg]);
-    setChatInput("");
+    setChatInput(previous => (isDemoPreview ? activeDemoWineProfile?.key === "valle-secreto" : Boolean(eventId)) ? previous || question : "");
     setIsTyping(true);
     setChatError(null);
     setChatRecoveryNotice(null);
@@ -552,6 +552,7 @@ export function QREngagementSuite({
           chatRecovery.remember(result);
           if (result.status === "received" && !result.data.fallback) {
             const data = result.data;
+            setChatInput(previous => previous.trim() === question ? "" : previous);
             demoChatContext.current = answer.topic ? { topic: answer.topic } : {};
             setMessages(prev => [...prev, { id: `chat-${++chatSequence.current}`, sender: "sommelier", text: data.optimizedText,
               provenance: classifySommelierResponse(data), sample: true, sources: data.sources,
@@ -598,6 +599,8 @@ export function QREngagementSuite({
       if (data.fallback) {
         setChatError(consumerChatCopy.fallback);
         setChatInput(previous => previous || question);
+      } else {
+        setChatInput(previous => previous.trim() === question ? "" : previous);
       }
     } catch {
       if (currentChatScope.current !== capturedScope || controller.signal.aborted || !currentAvailability.current.sommelier) return;
