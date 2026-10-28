@@ -187,7 +187,7 @@ test("email continuation fails closed for external or administrative routes, dup
     "/me/unknown", "/me/products/42", "/me/taps/0", "/me/taps/01", "/me/taps/9223372036854775808",
     "/me/taps/42/", "/me/taps/%34%32", "/me/products?fromTap=true", "/me/products?fromTap=0",
     "/me/products?eventId=01", "/me/products?eventId=-1", "/me/products?eventId=9223372036854775808",
-    "/me/products?focus=1e2", "/me/products?eventId=", "/me/products?bid=", "/me/products?tenant=demo.brand",
+    "/me/products?focus=1e2", "/me/products?eventId=", "/me/products?bid=", "/me/products?tenant=.demo.brand",
     "/me/products?action=delete", "/me/products?bid=first&bid=second", "/me/products?eventId=42&eventId=43",
     "/me/products?action=save&action=save", `/me/products?bid=${"a".repeat(201)}`, `/me/products?tenant=${"a".repeat(121)}`,
   ]) assert.equal(normalize(next), "/me", String(next));
@@ -984,3 +984,63 @@ for (const [label, options] of [
     assertSanitizedLogs(h);
   });
 }
+
+test("email dot continuation: preserves canonical dotted selection and existing legacy values through the actual API normalizer", () => {
+  const normalize = harness().continuation.normalizeConsumerAuthReturnPath;
+  for (const [supplied, tenant] of [
+    ["brand.a", "brand.a"], ["bodega.andes_1", "bodega.andes_1"],
+    ["brand%2Ea", "brand.a"], ["a" + ".".repeat(118) + "b", "a" + ".".repeat(118) + "b"],
+    ["Balmec-AR", "Balmec-AR"], ["_legacy", "_legacy"],
+  ]) {
+    const next = `/me/rewards?tenant=${supplied}&action=rewards&bid=LOT-42&eventId=42&fromTap=1`;
+    assert.equal(normalize(next), `/me/rewards?fromTap=1&eventId=42&bid=LOT-42&tenant=${tenant}&action=rewards`);
+  }
+});
+
+test("email dot continuation: strips capabilities, device data, nested returns and fragments while keeping dotted selection", () => {
+  const normalize = harness().continuation.normalizeConsumerAuthReturnPath;
+  const next = "/me/products?tenant=brand.a&eventId=42&fromTap=1&action=save&uid=FIXTURE_UID&mac=FIXTURE_MAC&ctr=17&picc_data=FIXTURE_PICC&freshToken=FIXTURE_FRESH&tapAccess=FIXTURE_ACCESS&token=FIXTURE_TOKEN&lat=-32.123456&lng=-68.987654&contact=persona%40example.test&next=https%3A%2F%2Fevil.example&unknown=first&unknown=second#FIXTURE_FRAGMENT";
+  assert.equal(normalize(next), "/me/products?fromTap=1&eventId=42&tenant=brand.a&action=save");
+});
+
+test("email dot continuation: refuses duplicate aliases, unsafe encoding, noncanonical new dots and existing bounds", () => {
+  const normalize = harness().continuation.normalizeConsumerAuthReturnPath;
+  for (const next of [
+    "/me/rewards?tenant=brand.a&tenant=brand.a", "/me/rewards?tenant=brand.a&ten%61nt=other.a",
+    "/me/rewards?tenant=brand.a&eventId=42&event%49d=43", "/me/rewards?tenant=brand.a&action=save&action=claim",
+    "/me/rewards?tenant=.brand", "/me/rewards?tenant=BRAND.a", "/me/rewards?tenant=.", "/me/rewards?tenant=..",
+    "/me/rewards?tenant=brand%252Ea", "/me/rewards?tenant=%252525252562rand.a",
+    "/me/rewards?tenant=brand%2Fa", "/me/rewards?tenant=brand%5Ca", "/me/rewards?tenant=brand%00a", "/me/rewards?tenant=%E0%A4%A",
+    "/me/rewards?tenant=brand.a&eventId=9223372036854775808", `/me/rewards?tenant=a.${"b".repeat(119)}`,
+    `/me/rewards?tenant=brand.a&unknown=${"x".repeat(2048)}`, "//evil.example/me?tenant=brand.a", "https://evil.example/me?tenant=brand.a",
+  ]) assert.equal(normalize(next), "/me", next);
+});
+
+test("email dot continuation: real auth and provider normalizers preserve dotted selection in synthetic SMTP and Resend links", async () => {
+  const next = "/me/rewards?tenant=brand.a&action=rewards&eventId=42&fromTap=1&uid=FIXTURE_UID&freshToken=FIXTURE_FRESH#FIXTURE_FRAGMENT";
+  const expected = "/me/rewards?fromTap=1&eventId=42&tenant=brand.a&action=rewards";
+  for (const configured of ["smtp", "resend"]) {
+    const h = harness({ env: { ...SMTP_ENV, ...RESEND_ENV, CONSUMER_AUTH_MODE: "smart", CONSUMER_AUTH_EMAIL_PROVIDER: configured }, fetch: async () => response({ id: UUID }) });
+    const result = await h.post(EMAIL, next);
+    assert.equal(result.status, 200);
+    const body = await result.json();
+    assertPublicPayload(body);
+    assert.equal(Object.hasOwn(body, "next"), false);
+    const message = configured === "smtp" ? h.mail[0] : JSON.parse(h.requests[0].init.body);
+    const links = [new URL(message.text.match(/https:\/\/\S+$/)[0]), new URL(message.html.match(/<a href="([^"]+)"/)[1])];
+    for (const link of links) {
+      assert.equal(link.origin, "https://nexid.lat");
+      assert.equal(link.pathname, "/login");
+      assert.equal(link.searchParams.get("t"), MAGIC);
+      assert.equal(link.searchParams.get("next"), expected);
+      assert.deepEqual([...link.searchParams.keys()], ["t", "next"]);
+    }
+    assert.equal(h.queries.filter(q => q.text.startsWith("INSERT INTO consumer_auth_challenges")).length, 1);
+    assert.equal(h.queries.some(q => q.values.includes(next) || q.values.includes(expected)), false);
+    for (const forbidden of ["FIXTURE_UID", "FIXTURE_FRESH", "FIXTURE_FRAGMENT"]) {
+      assert.equal(JSON.stringify(message).includes(forbidden), false);
+      assertSanitizedLogs(h, [forbidden]);
+    }
+    assertSanitizedLogs(h, [next, expected]);
+  }
+});
