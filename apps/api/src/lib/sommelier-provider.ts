@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readSommelierProviderHttpDiagnostic, type SommelierProviderHttpDiagnostic } from "./sommelier-provider-diagnostic";
 import { validateSommelierAnswer, sommelierFallback, sommelierMessages, SOMMELIER_OUTPUT_SCHEMA, SOMMELIER_VERSION, type SommelierAnswerRejection, type SommelierContext, type SommelierRequest } from "./sommelier-contract";
 import { reserveSommelierBuckets, sommelierProviderBuckets, type SommelierQuotaResult } from "./sommelier-quota";
 import type { SommelierEnv } from "./sommelier-access";
@@ -21,7 +22,7 @@ function hfKeyFingerprint(key: string) {
 type ProviderName = keyof typeof PROVIDERS;
 type ProviderFailureStage = "fetch" | "http" | "body" | "receipt_model" | "receipt_choice" | "receipt_usage" | "answer_parse";
 type ProviderFailureCategory = "http_rejected" | "fetch_failed" | "body_invalid" | "receipt_model_mismatch" | "receipt_choice_invalid" | "receipt_usage_invalid" | "answer_json_invalid" | "attempt_timeout" | SommelierAnswerRejection;
-export type SommelierProviderDiagnostic = { provider: ProviderName; stage: ProviderFailureStage; category: ProviderFailureCategory; httpStatus: number | null };
+export type SommelierProviderDiagnostic = { provider: ProviderName; stage: ProviderFailureStage; category: ProviderFailureCategory; httpStatus: number | null } & Partial<SommelierProviderHttpDiagnostic>;
 type Dependencies = { fetch?: typeof fetch; reserve?: (tenant: string, charge: number) => Promise<SommelierQuotaResult>; signal?: AbortSignal; deadlineMs?: number; nowMs?: () => number; diagnostic?: (event: SommelierProviderDiagnostic) => void };
 const DIAGNOSTIC_HTTP_STATUSES = new Set([200, 400, 401, 402, 403, 404, 408, 409, 413, 422, 429, 500, 502, 503, 504]);
 function providerDiagnostic(event: SommelierProviderDiagnostic, logger?: Dependencies["diagnostic"]) {
@@ -99,14 +100,25 @@ export async function requestLiveSommelier(input: SommelierRequest, context: Som
       const attemptTimer = setTimeout(() => perAttempt.abort(), candidate.name === "huggingface" && candidates.length > 1 ? 5500 : deadlineMs);
       let stage: ProviderFailureStage = "fetch";
       let httpStatus: number | null = null;
-      const reject = (category: ProviderFailureCategory) => providerDiagnostic({ provider: candidate.name, stage, category, httpStatus }, dependencies.diagnostic);
+      const reject = (category: ProviderFailureCategory, detail?: SommelierProviderHttpDiagnostic) => providerDiagnostic({
+        provider: candidate.name, stage, category, httpStatus,
+        ...(detail ? { providerReason: detail.providerReason, reasonEvidence: detail.reasonEvidence, diagnosticRead: detail.diagnosticRead } : {}),
+      }, dependencies.diagnostic);
       try {
         const response = await (dependencies.fetch || fetch)(PROVIDERS[candidate.name].url, { method: "POST", headers: { "authorization": `Bearer ${candidate.key}`, "content-type": "application/json" }, body, signal: perAttempt.signal, cache: "no-store", redirect: "error" });
         stage = "http";
         httpStatus = DIAGNOSTIC_HTTP_STATUSES.has(response.status) ? response.status : null;
         if (!response.ok) {
           if (!controller.signal.aborted && !perAttempt.signal.aborted && candidate.name === "huggingface" && openAiFallbackReady && hfFingerprint && [401, 402, 403].includes(response.status)) hfRejectionCooldown = { fingerprint: hfFingerprint, until: now() + HF_REJECTION_COOLDOWN_MS };
-          reject("http_rejected"); void response.body?.cancel().catch(() => undefined); continue;
+          let detail: SommelierProviderHttpDiagnostic | undefined;
+          if (candidate.name === "openai" && candidate === candidates[candidates.length - 1] && [429, 503].includes(response.status)) {
+            try {
+              detail = await readSommelierProviderHttpDiagnostic(response, { provider: candidate.name, isLastCandidate: true, signal: perAttempt.signal });
+            } catch {
+              detail = { providerReason: "unknown", reasonEvidence: "none", diagnosticRead: "read_failed" };
+            }
+          }
+          reject("http_rejected", detail); void response.body?.cancel().catch(() => undefined); continue;
         }
         stage = "body";
         const receipt = await boundedResponse(response, perAttempt.signal);

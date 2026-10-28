@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { handleSommelierDemoSession,handleSommelierChat } from '../src/lib/sommelier-http.ts';
+import { requestLiveSommelier } from '../src/lib/sommelier-provider.ts';
 const env={NODE_ENV:'production',RATE_LIMIT_KEY_PEPPER:'sommelier-http-synthetic-pepper-0123456789abcdef',NEXID_SOMMELIER_ENABLED:'true',NEXID_SOMMELIER_DEMO_ENABLED:'true'};
 const headers={origin:'https://nexid.lat','user-agent':'Synthetic browser','x-vercel-forwarded-for':'203.0.113.8','content-type':'application/json'};
 const req=(path,body,extra={})=>new Request('https://api.nexid.lat'+path,{method:'POST',headers:{...headers,...extra},body:JSON.stringify(body)});
@@ -86,4 +87,30 @@ test('HTTP200 server guidance retains a local budget reason and wait without a l
   assert.equal(response.status, 200); assert.equal(providers, 1); assert.equal(response.headers.get('cache-control'), 'no-store');
   const body = await response.json(); assert.equal(body.reason, 'sommelier_budget_exhausted'); assert.equal(body.retryAfter, 60);
   assert.equal(body.fallback, true); assert.equal(Object.hasOwn(body, 'provider'), false); assert.equal(Object.hasOwn(body, 'model'), false);
+});
+
+test('private provider error projection never enters the HTTP200 fallback or provider wait', async () => {
+  const cookie = await issue(); const events = []; let fetches = 0, reservations = 0;
+  const providerEnv = { ...env, HF_TOKEN: '', HUGGINGFACE_API_KEY: '',
+    NEXID_SOMMELIER_OPENAI_FALLBACK_ENABLED: 'true', OPENAI_API_KEY: 'synthetic-http-private-openai-key' };
+  const provider = (input, context, _environment, options) => requestLiveSommelier(input, context, providerEnv, {
+    ...options,
+    reserve: async () => { reservations++; return { ok: true }; },
+    fetch: async () => { fetches++; return Response.json({ error: {
+      code: 'credit_balance_exhausted', type: 'insufficient_quota',
+      message: 'SYNTHETIC-HTTP-PRIVATE-PROVIDER-BODY', param: 'SYNTHETIC-HTTP-PRIVATE-PARAM',
+    } }, { status: 429, headers: { 'retry-after': '600' } }); },
+    diagnostic: event => events.push(event),
+  });
+  const response = await handleSommelierChat(req('/sommelier/chat', chatBody, { cookie }), { env, query: rows, provider });
+  const body = await response.json();
+  assert.equal(response.status, 200); assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.equal(response.headers.get('retry-after'), null);
+  assert.equal(fetches, 1); assert.equal(reservations, 1); assert.equal(events.length, 1);
+  assert.equal(events[0].providerReason, 'provider_credit_balance_declared');
+  assert.equal(body.reason, 'sommelier_provider_unavailable'); assert.equal(body.source, 'fallback');
+  for (const key of ['provider', 'model', 'usage', 'providerReason', 'reasonEvidence', 'diagnosticRead', 'retryAfter']) {
+    assert.equal(Object.hasOwn(body, key), false);
+  }
+  assert.doesNotMatch(JSON.stringify(body), /SYNTHETIC-HTTP|credit_balance|600/);
 });
