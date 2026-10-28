@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { productUrls } from "@product/config";
 import { blankCatalogFields, buildCatalogCommand, CATALOG_PROTOCOL, catalogErrorCopy, catalogFieldsOf, catalogManaged, catalogReconciliation, catalogState, catalogVisible, isCatalogResource, parseTenantCatalog, type CatalogAction, type CatalogBrand, type CatalogCommand, type CatalogFields, type CatalogKind, type CatalogProduct, type CatalogResource, type TenantCatalog } from "../lib/tenant-marketplace";
 import styles from "./tenant-marketplace-workspace.module.css";
@@ -28,11 +28,17 @@ export default function TenantMarketplaceWorkspace({ tenant, canWrite, canSelect
   const [editorNavigation, setEditorNavigation] = useState(0);
   const lock = useRef(false), notice = useRef<HTMLDivElement>(null), editor = useRef<HTMLElement>(null);
   const editorIntent = useRef<"heading" | "field" | null>(null), focusNotice = useRef(true);
+  const confirmationId = useId(), confirmationHeading = useRef<HTMLHeadingElement>(null), confirmationTrigger = useRef<HTMLButtonElement | null>(null);
   const endpoint = `/api/tenant-marketplace?${new URLSearchParams({ tenant })}`;
   const active = resource?.status === "active", restricted = resource ? !catalogManaged(resource) : false;
   const editable = canWrite && !isDemo && Boolean(data && resource) && !active && !restricted && !busy && !uncertain && !conflict;
   const publishable = Boolean(resource?.updatedAt && !active && !restricted && !dirty && !busy && !uncertain && !conflict
     && (kind === "brand" ? "display_name" in resource && resource.display_name.trim() : "title" in resource && resource.title.trim() && catalogVisible(data?.brand || null) && (resource.request_to_buy_enabled || resource.external_checkout_url)));
+  useEffect(() => {
+    if (!confirmAction || !confirmationHeading.current) return;
+    confirmationHeading.current.focus({ preventScroll: true });
+    confirmationHeading.current.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }, [confirmAction]);
   useEffect(() => { if (message && error && focusNotice.current) notice.current?.focus(); }, [message, error]);
   useEffect(() => {
     const intent = editorIntent.current;
@@ -50,6 +56,18 @@ export default function TenantMarketplaceWorkspace({ tenant, canWrite, canSelect
     const prevent = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
     window.addEventListener("beforeunload", prevent); return () => window.removeEventListener("beforeunload", prevent);
   }, [dirty, uncertain]);
+  function openConfirmation(action: CatalogAction, trigger: HTMLButtonElement) {
+    if (lock.current || busy || uncertain || conflict) return;
+    confirmationTrigger.current = trigger;
+    setConfirmAction(action);
+  }
+  function cancelConfirmation() {
+    if (lock.current || busy) return;
+    const trigger = confirmationTrigger.current;
+    confirmationTrigger.current = null;
+    setConfirmAction(null);
+    if (trigger?.isConnected) trigger.focus();
+  }
   function inform(text: string, isError = false, shouldFocus = true) { focusNotice.current = shouldFocus; setMessage(text); setError(isError); }
   function adopt(next: CatalogResource | null, nextKind = kind) {
     editorIntent.current = null;
@@ -147,9 +165,9 @@ export default function TenantMarketplaceWorkspace({ tenant, canWrite, canSelect
               <label>¿Permitir consultas a la marca?<select value={fields.requestEnabled} onChange={e => change("requestEnabled", e.target.value as CatalogFields["requestEnabled"])}><option value="">Elegí una opción</option><option value="true">Sí, permitir solicitudes de contacto</option><option value="false">No permitir solicitudes de contacto</option></select></label><label>Enlace de compra externo (opcional)<input value={fields.externalCheckoutUrl} maxLength={2048} onChange={e => change("externalCheckoutUrl", e.target.value)} /><span className={styles.note}>URL pública HTTPS. La operación ocurre en ese sitio; NexID no la confirma ni reserva stock.</span></label><label>¿Exigir confirmación de mayoría de edad?<select value={fields.ageGateRequired} onChange={e => change("ageGateRequired", e.target.value as CatalogFields["ageGateRequired"])}><option value="">Elegí una opción</option><option value="true">Sí, exigir confirmación</option><option value="false">No exigir confirmación</option></select></label>
             </>}
           </fieldset>
-          {canWrite && !restricted && <div className={styles.actions}>{active ? <button type="button" disabled={busy || uncertain || conflict} onClick={() => setConfirmAction("withdraw")}>Retirar publicación</button> : <><button type="button" disabled={!editable || !dirty} onClick={() => void send("save_draft")}>Guardar borrador</button><button type="button" className={styles.primary} disabled={!publishable} onClick={() => setConfirmAction("publish")}>Publicar versión guardada</button></>}{dirty && <p className={styles.note}>Tu formulario tiene cambios sin guardar. Publicar utiliza una versión guardada.</p>}{dirty && !uncertain && !conflict && <button type="button" disabled={busy} onClick={() => { const saved = kind === "brand" ? data.brand : data.items.find(item => item.id === resource.id) || null; adopt(saved); inform("Cambios del formulario descartados. La versión guardada se conserva."); }}>Descartar cambios del formulario</button>}</div>}
+          {canWrite && !restricted && <div className={styles.actions}>{active ? <button type="button" disabled={busy || uncertain || conflict} onClick={event => openConfirmation("withdraw", event.currentTarget)}>Retirar publicación</button> : <><button type="button" disabled={!editable || !dirty} onClick={() => void send("save_draft")}>Guardar borrador</button><button type="button" className={styles.primary} disabled={!publishable} onClick={event => openConfirmation("publish", event.currentTarget)}>Publicar versión guardada</button></>}{dirty && <p className={styles.note}>Tu formulario tiene cambios sin guardar. Publicar utiliza una versión guardada.</p>}{dirty && !uncertain && !conflict && <button type="button" disabled={busy} onClick={() => { const saved = kind === "brand" ? data.brand : data.items.find(item => item.id === resource.id) || null; adopt(saved); inform("Cambios del formulario descartados. La versión guardada se conserva."); }}>Descartar cambios del formulario</button>}</div>}
           {kind === "product" && !catalogVisible(data.brand) && <p className={styles.notice}>Para publicar este producto, guardá y publicá primero el perfil de la marca con visibilidad en la red.</p>}
-          {confirmAction && <section className={styles.confirm} role="group" aria-label="Confirmar publicación del catálogo"><h3>{confirmAction === "withdraw" ? "Retirar esta publicación" : kind === "brand" ? "Publicar la marca en la red" : "Publicar este producto"}</h3><p>{confirmAction === "withdraw" ? kind === "brand" ? "La marca dejará de estar visible y sus productos se ocultarán del catálogo público. Las solicitudes anteriores conservan su historial." : "Este producto dejará de aparecer en el catálogo público. Las solicitudes anteriores conservan su historial." : kind === "brand" ? "Publicará la versión guardada y habilitará explícitamente su visibilidad en la red. Los productos requieren su propia publicación." : "La versión guardada aparecerá en el catálogo de esta marca. Aplican sus opciones de consulta, sitio externo y mayoría de edad; no crea una compra, saldo ni recompensa."}</p><div className={styles.actions}><button type="button" className={styles.primary} disabled={busy} onClick={() => void send(confirmAction)}>{confirmAction === "withdraw" ? "Confirmar retiro" : "Confirmar publicación"}</button><button type="button" disabled={busy} onClick={() => setConfirmAction(null)}>Cancelar</button></div></section>}
+          {confirmAction && <section className={styles.confirm} role="group" aria-labelledby={confirmationId}><h3 id={confirmationId} ref={confirmationHeading} tabIndex={-1} className={styles.confirmationHeading}>{confirmAction === "withdraw" ? "Retirar esta publicación" : kind === "brand" ? "Publicar la marca en la red" : "Publicar este producto"}</h3><p>{confirmAction === "withdraw" ? kind === "brand" ? "La marca dejará de estar visible y sus productos se ocultarán del catálogo público. Las solicitudes anteriores conservan su historial." : "Este producto dejará de aparecer en el catálogo público. Las solicitudes anteriores conservan su historial." : kind === "brand" ? "Publicará la versión guardada y habilitará explícitamente su visibilidad en la red. Los productos requieren su propia publicación." : "La versión guardada aparecerá en el catálogo de esta marca. Aplican sus opciones de consulta, sitio externo y mayoría de edad; no crea una compra, saldo ni recompensa."}</p><div className={styles.actions}><button type="button" className={styles.primary} disabled={busy} onClick={() => void send(confirmAction)}>{confirmAction === "withdraw" ? "Confirmar retiro" : "Confirmar publicación"}</button><button type="button" disabled={busy} onClick={cancelConfirmation}>Cancelar</button></div></section>}
         </section>}
         {resource && <section className={styles.preview} data-testid="tenant-catalog-preview"><span className={styles.badge}>Vista previa del formulario · sin publicar</span><h2>{kind === "brand" ? fields.displayName || "Marca sin nombre" : fields.title || "Producto sin título"}</h2><p className={styles.note}>Permite revisar el contenido escrito. El catálogo abierto del cliente muestra la versión publicada y aplica sus reglas de acceso.</p><FieldSummary kind={kind} fields={fields} /></section>}
         {didRead && <section className={styles.compare} data-testid="tenant-catalog-comparison"><h2>Comparar antes de continuar</h2><div className={styles.columns}><div><h3>Tu formulario</h3><FieldSummary kind={kind} fields={fields} /></div><div><h3>Versión guardada</h3>{reviewed ? <><p>{catalogState(reviewed, data.brand)}</p><FieldSummary kind={kind} fields={catalogFieldsOf(reviewed, kind)} /></> : <p>No se encontró este identificador en el catálogo de la empresa.</p>}</div></div><div className={styles.actions}>{retryAllowed && <button type="button" disabled={busy} onClick={() => pending && void send(pending.command.action, true)}>Reintentar el mismo cambio</button>}{reviewed && catalogManaged(reviewed) && <button type="button" disabled={busy} onClick={rebase}>Mantener mi formulario sobre esta versión</button>}<button type="button" disabled={busy} onClick={() => { adopt(reviewed); inform("Se usa la versión consultada; los cambios del formulario se descartaron."); }}>Usar versión guardada y descartar mi formulario</button></div></section>}

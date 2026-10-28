@@ -1,5 +1,6 @@
 import {CUSTOMER_FEEDBACK_ADDED,customerFeedbackPriorHash,customerFeedbackPriorInventory,assertCustomerFeedbackAdded} from './helpers/customer-feedback-reviewed-sources.mjs';
 import {crmFilterContextPriorHash} from './helpers/crm-filter-context-reviewed-sources.mjs';
+import {catalogConfirmationPriorHash} from './helpers/catalog-confirmation-reviewed-sources.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFile,readdir} from 'node:fs/promises';
@@ -56,7 +57,7 @@ test('the diagnostic UI preserves all operational sources outside the exact revi
  assert.equal(baseline.paths.length,483);
  for(const p of baseline.paths){
   const content=(await readFile(new URL('../'+p.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');
-  const actual=customerFeedbackPriorHash(p,crmFilterContextPriorHash(p,createHash('sha256').update(content).digest('hex')));
+  const actual=customerFeedbackPriorHash(p,crmFilterContextPriorHash(p,catalogConfirmationPriorHash(p,createHash('sha256').update(content).digest('hex'))));
   digest.update(p+'\0'+tenantSyncHistoricalSourceHash(p,governancePublishedSourceHash(p,marketplacePublishedSourceHash(p,rewardProgramContextPublishedSourceHash(p,crmOrderRequestPublishedSourceHash(p,physicalTapPublishedSourceHash(p,ticketStatusSyncPublishedSourceHash(p,actual,origins.expected[p]),origins.expected[p]),origins.expected[p])))),origins.expected[p])+'\n');
  }
  assert.equal(digest.digest('hex'),baseline.digest);
@@ -64,7 +65,7 @@ test('the diagnostic UI preserves all operational sources outside the exact revi
  async function walk(dir,prefix='apps/dashboard/src'){for(const e of await readdir(dir,{withFileTypes:true})){if(e.isDirectory())await walk(new URL(e.name+'/',dir),prefix+'/'+e.name);else if(e.isFile())actual.push(prefix+'/'+e.name);}}
  await walk(root);rewardNoticePriorInventory(crmOrderRequestPriorInventory(ticketStatusSyncPriorInventory(customerFeedbackPriorInventory(actual),origins.expected),origins.expected),origins.expected);
  for(const path of Object.keys(ENGAGEMENT_GOVERNANCE_ADDED))assertGovernanceAddedSource(path,rewardProgramContextPublishedSourceHash(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8'))));
- for(const path of Object.keys(TENANT_MARKETPLACE_ADDED))assertMarketplaceAddedSource(path,customerFeedbackPriorHash(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8'))));
+ for(const path of Object.keys(TENANT_MARKETPLACE_ADDED))assertMarketplaceAddedSource(path,customerFeedbackPriorHash(path,catalogConfirmationPriorHash(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')))));
  for(const name of Object.keys(CUSTOMER_FEEDBACK_ADDED))assertCustomerFeedbackAdded(name,governanceSourceHash(await readFile(new URL('../'+name.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
  for(const path of Object.keys(REWARD_NOTICE_ADDED))assertRewardNoticeAddedSource(path,rewardProgramContextPublishedSourceHash(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8'))));
  for(const path of Object.keys(CRM_ORDER_REQUEST_ADDED))assertCrmOrderRequestAddedSource(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));

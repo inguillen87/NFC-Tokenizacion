@@ -6,3 +6,5 @@
 @media(min-width:680px){.grid,.columns{grid-template-columns:repeat(2,minmax(0,1fr))}.products{grid-template-columns:repeat(2,minmax(0,1fr))}.card{padding:25px}.tabs>button{flex-grow:0}}
 @media(min-width:1100px){.products{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .editorHeading:focus-visible{outline:3px solid var(--catalog-accent);outline-offset:4px;border-radius:4px}
+
+.confirmationHeading:focus-visible{outline:3px solid var(--catalog-accent);outline-offset:4px;border-radius:4px}
