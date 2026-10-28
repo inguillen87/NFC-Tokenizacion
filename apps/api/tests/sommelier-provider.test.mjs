@@ -120,7 +120,7 @@ test('each rejected candidate is logged once and fallback still reserves separat
   const config={...env,NEXID_SOMMELIER_OPENAI_FALLBACK_ENABLED:'true'};
   const result=await requestLiveSommelier(input,context,config,{reserve:async()=>{reservations++;return{ok:true}},fetch:async()=>{calls++;return new Response('synthetic-private-body',{status:503})},diagnostic:e=>events.push(e)});
   assert.equal(result.source,'fallback');assert.equal(reservations,2);assert.equal(calls,2);
-  assert.deepEqual(events,[{provider:'huggingface',stage:'http',category:'http_rejected',httpStatus:503},{provider:'openai',stage:'http',category:'http_rejected',httpStatus:503}]);
+  assert.deepEqual(events,[{provider:'huggingface',stage:'http',category:'http_rejected',httpStatus:503},{provider:'openai',stage:'http',category:'http_rejected',httpStatus:503,providerReason:'unknown',reasonEvidence:'none',diagnosticRead:'non_json'}]);
 });
 test('valid provider receipt gives honest live provenance with pinned model/facts/history/locale',async()=>{
   const calls=[];let reserved=0;
