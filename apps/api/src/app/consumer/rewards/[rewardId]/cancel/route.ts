@@ -20,9 +20,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ rewardI
     const tooLarge = error instanceof RequestBodyTooLargeError;
     return json({ ok: false, error: tooLarge ? "request_body_too_large" : "invalid_json" }, tooLarge ? 413 : 400);
   }
-  await ensureConsumerPortalSchema();
+  if (!body || typeof body !== "object" || Array.isArray(body)) return json({ ok: false, error: "invalid_body" }, 400);
   const redemptionId = String(body.redemptionId || "").trim();
   if (!redemptionId) return json({ ok: false, error: "redemptionId_required" }, 400);
+  await ensureConsumerPortalSchema();
 
   const result = await cancelConsumerRewardClaim({ consumerId: consumer.id, claimId: redemptionId, rewardId });
   if (!result.ok) return json({ ok: false, error: result.error }, 404);

@@ -233,3 +233,119 @@ test("existing APIclient and consumer BFF carry both legacy and advertised inten
 test("existing transport does not retry a rejected new-intent mutation", async () => {
   await assert.rejects(throughExistingTransport({ claimIntent: "portal-first-reservation.v1", expectedPointsCost: 40 }, { writerError: true }), /reward_claim_unavailable/);
 });
+
+
+// Actual imported redeem/cancel handlers and bounded JSON reader; auth/rate/DB are
+// synthetic boundaries. These tests do not certify a live session or a SQL writer.
+function mutationBodyHarness(action, options = {}) {
+  assert.ok(["redeem", "cancel"].includes(action));
+  const calls = { auth: 0, rate: 0, body: 0, schema: 0, queries: [], cancellations: [] };
+  const deps = {
+    "consumer-auth": { getConsumerFromRequest: async () => { calls.auth++; return options.unauthorized ? null : { id: OWNER }; } },
+    http: { json },
+    db: { sql: async (strings, ...values) => { calls.queries.push({ statement: strings.join("?"), values }); return []; } },
+    "commercial-runtime-schema": { ensureConsumerPortalSchema: async () => { calls.schema++; } },
+    "critical-rate-limit": { enforceCriticalRateLimit: async () => { calls.rate++; return options.limited ? json({ ok: false, error: "rate_limited" }, 429) : null; } },
+    "bounded-request-body": { ...bounded, readBoundedJsonBody: async (req, limit) => { calls.body++; assert.equal(limit, 8192); return bounded.readBoundedJsonBody(req, limit); } },
+    "consumer-rewards-read-model": { consumerRewardClaimExpiresAt: () => { throw Error("An absent synthetic claim must not enter expiry evaluation"); } },
+    "consumer-reward-service": { cancelConsumerRewardClaim: async input => { calls.cancellations.push(input); return { ok: false, error: "claim_not_found_or_invalid_state" }; } },
+  };
+  const handler = load(source("app/consumer/rewards/[rewardId]/" + action + "/route.ts"), deps).POST;
+  const post = (body = { redemptionId: CLAIM }, request = {}, rewardId = REWARD) => handler(new Request("https://nexid.lat/api/consumer/rewards/" + rewardId + "/" + action, {
+    method: "POST", body: request.raw ? body : JSON.stringify(body),
+    headers: { origin: "https://nexid.lat", "sec-fetch-site": "same-origin", "content-type": "application/json", ...request.headers },
+  }), { params: Promise.resolve({ rewardId }) });
+  return { calls, post };
+}
+
+function noMutationPersistence(calls) {
+  assert.equal(calls.schema, 0, "Input refusal must precede the portal initializer");
+  assert.equal(calls.queries.length, 0);
+  assert.equal(calls.cancellations.length, 0);
+}
+
+for (const action of ["redeem", "cancel"]) {
+  test("consumer mutation body: " + action + " rejects null, arrays and scalar JSON before initialization", async () => {
+    for (const body of [null, [], [{}], false, true, 0, 1, "not-an-object"]) {
+      const h = mutationBodyHarness(action), response = await h.post(body);
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), { ok: false, error: "invalid_body" });
+      assert.equal(h.calls.auth, 1); assert.equal(h.calls.rate, 1); assert.equal(h.calls.body, 1);
+      noMutationPersistence(h.calls);
+    }
+  });
+
+  test("consumer mutation body: " + action + " preserves missing-ID 400 without initializing", async () => {
+    const bodies = [{}, { redemptionId: null }, { redemptionId: false }, { redemptionId: 0 }, { redemptionId: "" }];
+    if (action === "cancel") bodies.push({ redemptionId: "   " });
+    for (const body of bodies) {
+      const h = mutationBodyHarness(action), response = await h.post(body);
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), { ok: false, error: "redemptionId_required" });
+      noMutationPersistence(h.calls);
+    }
+    for (const raw of ["", " \n\t"]) {
+      const h = mutationBodyHarness(action), response = await h.post(raw, { raw: true });
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), { ok: false, error: "redemptionId_required" });
+      noMutationPersistence(h.calls);
+    }
+  });
+
+  test("consumer mutation body: " + action + " preserves malformed-JSON 400 before initialization", async () => {
+    for (const raw of ["{broken", "[", "null trailing", "\"unterminated"]) {
+      const h = mutationBodyHarness(action), response = await h.post(raw, { raw: true });
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), { ok: false, error: "invalid_json" });
+      noMutationPersistence(h.calls);
+    }
+  });
+
+  test("consumer mutation body: " + action + " retains the actual streamed and declared 8KiB cap", async () => {
+    for (const [body, request] of [
+      [{ payload: "x".repeat(8193) }, {}],
+      [{ redemptionId: CLAIM }, { headers: { "content-length": "8193" } }],
+    ]) {
+      const h = mutationBodyHarness(action), response = await h.post(body, request);
+      assert.equal(response.status, 413);
+      assert.deepEqual(await response.json(), { ok: false, error: "request_body_too_large" });
+      noMutationPersistence(h.calls);
+    }
+  });
+
+  test("consumer mutation body: " + action + " retains authentication and rate refusal before parsing", async () => {
+    for (const options of [{ unauthorized: true }, { limited: true }]) {
+      const h = mutationBodyHarness(action, options), response = await h.post(null);
+      assert.equal(response.status, options.unauthorized ? 401 : 429);
+      assert.deepEqual(await response.json(), { ok: false, error: options.unauthorized ? "unauthorized" : "rate_limited" });
+      assert.equal(h.calls.auth, 1);
+      assert.equal(h.calls.rate, options.unauthorized ? 0 : 1);
+      assert.equal(h.calls.body, 0);
+      noMutationPersistence(h.calls);
+    }
+  });
+
+  test("consumer mutation body: " + action + " keeps a valid object on its existing owner-scoped downstream path", async () => {
+    const h = mutationBodyHarness(action), response = await h.post({ redemptionId: CLAIM, consumerId: OTHER, rewardId: OTHER });
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), { ok: false, error: "claim_not_found_or_invalid_state" });
+    assert.equal(h.calls.schema, 1);
+    if (action === "redeem") {
+      assert.equal(h.calls.queries.length, 1); assert.equal(h.calls.cancellations.length, 0);
+      assert.deepEqual(h.calls.queries[0].values, [CLAIM, REWARD, OWNER]);
+    } else {
+      assert.equal(h.calls.queries.length, 0); assert.equal(h.calls.cancellations.length, 1);
+      assert.deepEqual(h.calls.cancellations[0], { consumerId: OWNER, claimId: CLAIM, rewardId: REWARD });
+    }
+  });
+
+  test("consumer mutation body: " + action + " leaves legacy identifier text handling unchanged", async () => {
+    const supplied = " " + CLAIM.toUpperCase() + " ", h = mutationBodyHarness(action);
+    await h.post({ redemptionId: supplied }, {}, REWARD.toUpperCase());
+    if (action === "redeem") assert.deepEqual(h.calls.queries[0].values, [supplied, REWARD.toUpperCase(), OWNER]);
+    else assert.deepEqual(h.calls.cancellations[0], { consumerId: OWNER, claimId: CLAIM.toUpperCase(), rewardId: REWARD.toUpperCase() });
+    assert.equal(h.calls.schema, 1);
+    // The synthetic downstream result does not establish real PostgreSQL UUID
+    // cast policy; no new ID validator, normalization or error mapping is added.
+  });
+}
