@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { associationCopy, associationLocale, type AssociationLocale } from "./tap-association-copy";
 import { createTapAssociationRunner, normalizeTapAssociationClaimPin, TAP_ASSOCIATION_ACTIONS, tapAssociationContext, tapAssociationLoginHref, tapAssociationSession,
   type TapAssociationAction, type TapAssociationContext, type TapAssociationState, type TapAssociationSession } from "./tap-association-model";
@@ -14,7 +14,7 @@ async function actionTransport(path: string, body: Record<string, unknown>, sign
   return { status: response.status, payload: await response.json().catch(() => null) };
 }
 
-function AssociationCard({ context }: { context: TapAssociationContext }) {
+function AssociationCard({ context, destination }: { context: TapAssociationContext; destination: string }) {
   const router = useRouter();
   const refreshPortal = useRef(router.refresh);
   refreshPortal.current = router.refresh;
@@ -55,9 +55,21 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
       if (feedbackFocus.current?.owner === current) { feedbackFocus.current.release(); feedbackFocus.current = null; }
       if (runner.current === current) runner.current = null;
     };
-    // The parent keys this card by the complete context, so unrelated renders
-    // cannot reset completed actions and allow them to be submitted twice.
+    // Only event/tenant/lot identify this card and runner; navigation and UI
+    // intent changes cannot reset completed actions or enable duplicate writes.
   }, [context.key]);
+
+  const previousIntent = useRef(context.preferred);
+  useEffect(() => {
+    if (previousIntent.current === context.preferred) return;
+    previousIntent.current = context.preferred;
+    // Observe an actual URL intent change once. Pending requests keep their
+    // initiating choice; completion does not reapply an older URL preference.
+    if (runner.current?.state().pending) return;
+    setSelected(context.preferred);
+    setClaimPin("");
+    setPinInputInvalid(false);
+  }, [context.preferred]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -129,7 +141,7 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
   const selectedResult = selected ? state.results[selected] : null;
   const hasResults = Object.keys(state.results).length > 0;
   const enrollmentConfirmed = state.results.rewards?.outcome === "enrolled";
-  const loginHref = tapAssociationLoginHref({ ...context, preferred: selected });
+  const loginHref = tapAssociationLoginHref({ ...context, preferred: selected }, destination);
   const renderChoice = (action: TapAssociationAction) => <label key={action} className={styles.choice} data-selected={selected === action} data-primary={action === primaryChoice}>
     <input type="radio" name="tap-association-action" data-testid={`tap-association-option-${action}`} value={action} checked={selected === action} onChange={() => { setSelected(action); setClaimPin(""); setPinInputInvalid(false); }} />
     <span><strong>{copy.actions[action].label}</strong><small>{copy.actions[action].detail}</small></span>
@@ -181,9 +193,12 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
 }
 
 export function TapAssociationBanner() {
+  const pathname = usePathname();
   const params = useSearchParams();
-  const context = tapAssociationContext(new URLSearchParams(params.toString()));
-  // Changing context unmounts the old runner and clears results before paint.
+  const query = params.toString();
+  const context = tapAssociationContext(new URLSearchParams(query));
+  const destination = pathname + (query ? `?${query}` : "");
+  // Changing event/tenant/lot unmounts the old runner and clears its results.
   // Query parameters select UI; they never grant authenticity or permissions.
-  return context ? <AssociationCard key={context.key} context={context} /> : null;
+  return context ? <AssociationCard key={context.key} context={context} destination={destination} /> : null;
 }

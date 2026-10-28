@@ -39,17 +39,70 @@ export function sommelierSources(value: unknown, demo = false, profile?: "valle-
   return sources;
 }
 
+
+const SOMMELIER_RECOVERY_REASONS = [
+  "sommelier_rate_limited", "sommelier_budget_exhausted", "sommelier_quota_unavailable", "sommelier_disabled",
+  "sommelier_provider_not_configured", "sommelier_context_too_large", "sommelier_provider_timeout", "sommelier_provider_unavailable",
+] as const;
+export type SommelierRecoveryReason = typeof SOMMELIER_RECOVERY_REASONS[number];
+export type SommelierRecovery = { reason?: SommelierRecoveryReason; retryAfter?: number };
+const recoveryReasons = new Set<string>(SOMMELIER_RECOVERY_REASONS);
+const quotaRecoveryReasons = new Set<string>(["sommelier_rate_limited", "sommelier_budget_exhausted", "sommelier_quota_unavailable"]);
+function boundedRecoveryDelay(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 1 && value <= 86_400 ? value : undefined;
+}
+function parsedRecovery(reason: unknown, delay: unknown, httpWait = false): SommelierRecovery | undefined {
+  const safeReason = typeof reason === "string" && recoveryReasons.has(reason) ? reason as SommelierRecoveryReason : undefined;
+  const retryAfter = httpWait || safeReason && quotaRecoveryReasons.has(safeReason) ? boundedRecoveryDelay(delay) : undefined;
+  return safeReason || retryAfter !== undefined ? { ...(safeReason ? { reason: safeReason } : {}), ...(retryAfter !== undefined ? { retryAfter } : {}) } : undefined;
+}
+function headerRecoveryDelay(value: unknown) {
+  return typeof value === "string" && /^[1-9]\d{0,4}$/.test(value) ? boundedRecoveryDelay(Number(value)) : undefined;
+}
+export function managedSommelierRecovery(result: ManagedSommelierResult) {
+  return result.status === "received" ? result.data.fallback ? result.data.recovery : undefined : result.recovery;
+}
+
+/** Closed local copy only. A transport status or unknown provider text never describes account credit. */
+export function sommelierRecoveryNotice(recovery: SommelierRecovery | undefined, locale: "es-AR" | "en" | "pt-BR", waiting: boolean): string | null {
+  if (!recovery) return null;
+  const copy = {
+    "es-AR": {
+      wait: (seconds: number) => `El asistente indicó una pausa de ${seconds} s. Podés seguir editando tu pregunta; el envío se habilitará al terminar.`,
+      ready: "La pausa terminó. Tu pregunta sigue disponible y vos decidís cuándo enviarla.",
+      unavailable: "El asistente no está disponible en este momento. Tu pregunta sigue disponible; podés consultar la ficha del producto.",
+      unconfirmed: "El servicio no confirmó una respuesta de IA. Tu pregunta sigue disponible.",
+    },
+    en: {
+      wait: (seconds: number) => `The assistant requested a ${seconds} s pause. You can keep editing your question; sending will be available when the pause ends.`,
+      ready: "The pause has ended. Your question is still available; you decide when to send it.",
+      unavailable: "The assistant is currently unavailable. Your question is still available; you can consult the product sheet.",
+      unconfirmed: "The service did not confirm an AI answer. Your question is still available.",
+    },
+    "pt-BR": {
+      wait: (seconds: number) => `O assistente indicou uma pausa de ${seconds} s. Você pode continuar editando sua pergunta; o envio será habilitado ao terminar.`,
+      ready: "A pausa terminou. Sua pergunta continua disponível e você decide quando enviá-la.",
+      unavailable: "O assistente está indisponível no momento. Sua pergunta continua disponível; você pode consultar a ficha do produto.",
+      unconfirmed: "O serviço não confirmou uma resposta de IA. Sua pergunta continua disponível.",
+    },
+  }[locale];
+  if (recovery.retryAfter !== undefined) return waiting ? copy.wait(recovery.retryAfter) : copy.ready;
+  return recovery.reason === "sommelier_disabled" || recovery.reason === "sommelier_provider_not_configured" || recovery.reason === "sommelier_context_too_large"
+    || recovery.reason && quotaRecoveryReasons.has(recovery.reason) ? copy.unavailable : copy.unconfirmed;
+}
+
 type SommelierAccessReason = "sommelier_consumer_session_required" | "sommelier_event_not_authorized" | "sommelier_origin_rejected";
 export type ManagedSommelierResult =
-  | { status: "received"; data: { optimizedText: string; fallback: boolean; provider?: string; model?: string; sources: SommelierSource[]; suggestedQuestions: string[]; demo: boolean } }
-  | { status: "unavailable"; reason: "timeout" | "cancelled" | "connection" | "http-error" | "invalid-response"; httpStatus?: number; serviceReason?: SommelierAccessReason };
+  | { status: "received"; data: { optimizedText: string; fallback: boolean; provider?: string; model?: string; sources: SommelierSource[]; suggestedQuestions: string[]; demo: boolean; recovery?: SommelierRecovery } }
+  | { status: "unavailable"; reason: "timeout" | "cancelled" | "connection" | "http-error" | "invalid-response"; httpStatus?: number; serviceReason?: SommelierAccessReason; recovery?: SommelierRecovery };
 
 /** Known API access reasons only; provider text must never become customer copy. */
-function httpFailure(status: number, payload: unknown): ManagedSommelierResult {
+function httpFailure(status: number, payload: unknown, retryHeader?: unknown): ManagedSommelierResult {
   const record = payload && typeof payload === "object" && !Array.isArray(payload) ? payload as Record<string, unknown> : null;
   const reason = record?.ok === false ? record.reason : null;
   const serviceReason = reason === "sommelier_consumer_session_required" || reason === "sommelier_event_not_authorized" || reason === "sommelier_origin_rejected" ? reason : undefined;
-  return { status: "unavailable", reason: "http-error", ...(Number.isInteger(status) && status >= 400 && status <= 599 ? { httpStatus: status } : {}), ...(serviceReason ? { serviceReason } : {}) };
+  const recovery = status === 429 || status === 503 ? parsedRecovery(reason, headerRecoveryDelay(retryHeader), true) : undefined;
+  return { status: "unavailable", reason: "http-error", ...(recovery ? { recovery } : {}), ...(Number.isInteger(status) && status >= 400 && status <= 599 ? { httpStatus: status } : {}), ...(serviceReason ? { serviceReason } : {}) };
 }
 
 export function consumerSommelierFailureKind(result: Extract<ManagedSommelierResult, { status: "unavailable" }>): "session" | "access" | "service" | "other" {
@@ -92,7 +145,7 @@ export async function requestManagedSommelierAnswer(question: string, options: {
       if (controller.signal.aborted) return null;
       const payload: unknown = await response.json().catch(() => null);
       if (controller.signal.aborted) return null;
-      return { ok: response.ok, httpStatus: response.status, payload };
+      return { ok: response.ok, httpStatus: response.status, payload, retryAfter: response.headers.get("retry-after") };
     };
     try {
       const text = question.trim().slice(0, MANAGED_SOMMELIER_QUESTION_MAX_CHARS);
@@ -101,7 +154,7 @@ export async function requestManagedSommelierAnswer(question: string, options: {
       if (options.demoProfile) {
         const session = await post("/api/sommelier/demo/session", { profile: options.demoProfile, locale: options.locale });
         if (!session) return interrupted;
-        if (!session.ok || !session.payload || typeof session.payload !== "object" || (session.payload as { ok?: unknown }).ok !== true) return httpFailure(session.httpStatus, session.payload);
+        if (!session.ok || !session.payload || typeof session.payload !== "object" || (session.payload as { ok?: unknown }).ok !== true) return httpFailure(session.httpStatus, session.payload, session.retryAfter);
         if (options.demoProfile === "syngenta" && (session.payload as { profile?: unknown }).profile !== "syngenta") return { status: "unavailable", reason: "invalid-response" };
         if (options.demoProfile === "valle-secreto" && (session.payload as { profile?: unknown }).profile !== undefined && (session.payload as { profile?: unknown }).profile !== "valle-secreto") return { status: "unavailable", reason: "invalid-response" };
       }
@@ -111,7 +164,7 @@ export async function requestManagedSommelierAnswer(question: string, options: {
         ...(!options.demoProfile && Object.hasOwn(options, "eventId") ? { eventId: options.eventId } : {}),
       });
       if (!result) return interrupted;
-      if (!result.ok) return httpFailure(result.httpStatus, result.payload);
+      if (!result.ok) return httpFailure(result.httpStatus, result.payload, result.retryAfter);
       if (!result.payload || typeof result.payload !== "object" || Array.isArray(result.payload)) return { status: "unavailable", reason: "invalid-response" };
       const data = result.payload as Record<string, unknown>;
       if (data.ok !== true || typeof data.answer !== "string" || !data.answer.trim() || data.answer.length > 5_000
@@ -122,7 +175,9 @@ export async function requestManagedSommelierAnswer(question: string, options: {
         || (!data.fallback && (typeof data.provider !== "string" || !data.provider || typeof data.model !== "string" || !data.model))) return { status: "unavailable", reason: "invalid-response" };
       const sources = sommelierSources(data.sources, Boolean(options.demoProfile), options.demoProfile);
       if (options.demoProfile === "syngenta" && !sources.some(source => source.url !== null)) return { status: "unavailable", reason: "invalid-response" };
+      const recovery = data.fallback ? parsedRecovery(data.reason, data.retryAfter) : undefined;
       return { status: "received", data: {
+        ...(recovery ? { recovery } : {}),
         optimizedText: data.answer.trim(), fallback: data.fallback, demo: Boolean(data.demo),
         ...(!data.fallback ? { provider: data.provider as string, model: data.model as string } : {}),
         sources,

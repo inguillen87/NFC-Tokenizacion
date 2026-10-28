@@ -13,6 +13,7 @@ import {
 import { useSunLocale } from "./sun-locale-provider";
 import { SOMMELIER_QUESTION_MAX_CHARS } from "../../lib/sommelier-conversation";
 import { consumerSommelierFailureKind, requestManagedSommelierAnswer, sommelierHistory, MANAGED_SOMMELIER_QUESTION_MAX_CHARS, type SommelierSource } from "../../lib/managed-sommelier";
+import { useSommelierRecovery } from "../../lib/use-sommelier-recovery";
 import { demoSommelierAnswer, demoSommelierCopy, demoSommelierPrompts, type DemoSommelierContext, type DemoSommelierFollowUp } from "./sun-demo-sommelier";
 import { demoWineTrivia } from "./sun-demo-wine-quiz";
 import type { DemoWineProfile } from "./valle-secreto-demo";
@@ -178,8 +179,14 @@ export function QREngagementSuite({
   const latestChatReplyRef = useRef<HTMLDivElement | null>(null);
   const demoChatContext = useRef<DemoSommelierContext>({});
   const chatScope = JSON.stringify([productName, wineryName, locale, eventId, tenantSlug, isDemoPreview, activeDemoWineProfile?.key]);
+  const chatDraftJourney = JSON.stringify([eventId, tenantSlug, isDemoPreview, activeDemoWineProfile?.key]);
+  const previousChatDraftJourney = useRef(chatDraftJourney);
   const currentChatScope = useRef(chatScope);
   currentChatScope.current = chatScope;
+  const chatRecovery = useSommelierRecovery(locale, isDemoPreview ? `demo:${activeDemoWineProfile?.key || "local"}` : `tenant:${String(tenantSlug || "unknown").trim().toLowerCase()}`);
+  const chatRecoveryId = useId();
+  const visibleChatRecovery = isTyping ? null : chatRecovery.notice || chatRecoveryNotice;
+  const visibleChatError = chatRecovery.notice ? null : chatError;
   const [configurationOverride, setConfigurationOverride] = useState<{ base: unknown; value: unknown } | null>(null);
   const effectiveConfiguration = configurationOverride && configurationOverride.base === configuration ? configurationOverride.value : configuration;
   const availability = resolveTenantActionAvailability({ configuration: effectiveConfiguration,
@@ -357,13 +364,17 @@ export function QREngagementSuite({
   };
 
   useEffect(() => {
+    const journeyChanged = previousChatDraftJourney.current !== chatDraftJourney;
+    previousChatDraftJourney.current = chatDraftJourney;
     chatRequest.current?.abort();
     chatRequest.current = null;
     chatSendLock.current = false;
     setIsTyping(false);
     setChatError(null);
     setChatRecoveryNotice(null);
-    setChatInput("");
+    // Locale and published labels may reset welcome copy without erasing an
+    // editable draft. A different event, tenant or demo journey starts clean.
+    if (journeyChanged) setChatInput("");
     demoChatContext.current = {};
     setMessages([
       {
@@ -379,7 +390,7 @@ export function QREngagementSuite({
       chatRequest.current = null;
       chatSendLock.current = false;
     };
-  }, [chatScope, chatCopy.welcome, isDemoPreview]);
+  }, [chatScope, chatDraftJourney, chatCopy.welcome, isDemoPreview]);
 
   useEffect(() => {
     if (!availability.sommelier) {
@@ -514,7 +525,7 @@ export function QREngagementSuite({
 
   const handleSendChat = async (textToSend: string) => {
     const question = textToSend.trim().slice(0, chatQuestionMaxChars);
-    if (!currentAvailability.current.sommelier || chatSendLock.current || !question) return;
+    if (!currentAvailability.current.sommelier || chatSendLock.current || chatRecovery.isWaiting() || !question) return;
     chatSendLock.current = true;
     const controller = new AbortController();
     chatRequest.current = controller;
@@ -538,6 +549,7 @@ export function QREngagementSuite({
         if (activeDemoWineProfile?.key === "valle-secreto") {
           const result = await requestManagedSommelierAnswer(question, { locale, history: sommelierHistory(messages), demoProfile: "valle-secreto", signal: controller.signal });
           if (currentChatScope.current !== capturedScope || controller.signal.aborted || !currentAvailability.current.sommelier) return;
+          chatRecovery.remember(result);
           if (result.status === "received" && !result.data.fallback) {
             const data = result.data;
             demoChatContext.current = answer.topic ? { topic: answer.topic } : {};
@@ -564,6 +576,7 @@ export function QREngagementSuite({
       }
       const result = await requestManagedSommelierAnswer(question, { locale, history: sommelierHistory(messages), eventId, signal: controller.signal });
       if (currentChatScope.current !== capturedScope || controller.signal.aborted || !currentAvailability.current.sommelier) return;
+      chatRecovery.remember(result);
       if (result.status !== "received") {
         const failure = consumerSommelierFailureKind(result);
         appendLocalGuide();
@@ -715,7 +728,7 @@ export function QREngagementSuite({
             {isDemoPreview ? <p data-testid="sun-sommelier-demo-notice" className="text-xs leading-relaxed text-slate-300">{activeDemoWineProfile?.key === "valle-secreto" ? chatCopy.managedDemo : chatCopy.demo}</p> : null}
 
             <div className="flex flex-wrap gap-2" data-testid="sun-sommelier-prompts">
-              {chatPrompts.map(prompt => <button key={prompt} type="button" disabled={isTyping} onClick={() => { void handleSendChat(prompt); }} className={`${styles.chatPrompt} min-h-11 rounded-xl border px-3 py-2 text-sm leading-snug`}>{prompt}</button>)}
+              {chatPrompts.map(prompt => <button key={prompt} type="button" disabled={isTyping || chatRecovery.waiting} onClick={() => { void handleSendChat(prompt); }} className={`${styles.chatPrompt} min-h-11 rounded-xl border px-3 py-2 text-sm leading-snug`}>{prompt}</button>)}
             </div>
 
             {latestChatReply ? <a href={`#${latestChatReplyId}`} aria-controls={latestChatReplyId} onClick={showLatestChatReply} data-testid="sun-sommelier-latest-answer-link" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-cyan-300/25 px-3 py-2 text-sm font-semibold text-cyan-200 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400">{consumerChatCopy.latestAnswer}<ArrowRight className="h-4 w-4" aria-hidden="true" /></a> : null}
@@ -750,7 +763,7 @@ export function QREngagementSuite({
 
             {chatFollowUps.length ? <div data-testid="sun-sommelier-follow-ups" className="space-y-2">
               <p className="text-xs font-semibold text-slate-300">{chatCopy.continue}</p>
-              <div className="flex flex-wrap gap-2">{chatFollowUps.map(prompt => <button key={prompt.question} type="button" disabled={isTyping} onClick={() => { void handleSendChat(prompt.question); }} className={`${styles.chatPrompt} min-h-11 rounded-xl border px-3 py-2 text-sm leading-snug`}>{prompt.label}</button>)}</div>
+              <div className="flex flex-wrap gap-2">{chatFollowUps.map(prompt => <button key={prompt.question} type="button" disabled={isTyping || chatRecovery.waiting} onClick={() => { void handleSendChat(prompt.question); }} className={`${styles.chatPrompt} min-h-11 rounded-xl border px-3 py-2 text-sm leading-snug`}>{prompt.label}</button>)}</div>
             </div> : null}
 
             <form onSubmit={onChatSubmit} className="flex gap-2">
@@ -760,6 +773,7 @@ export function QREngagementSuite({
                 aria-label={chatCopy.placeholder}
                 placeholder={chatCopy.placeholder}
                 maxLength={chatQuestionMaxChars}
+                aria-describedby={visibleChatRecovery ? chatRecoveryId : undefined}
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 className={`${styles.chatInput} min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-950 px-3.5 py-2.5 text-slate-100 placeholder:text-slate-500 transition focus:border-amber-500 focus:outline-hidden`}
@@ -768,15 +782,15 @@ export function QREngagementSuite({
                 type="submit"
                 title={chatCopy.send}
                 aria-label={chatCopy.send}
-                disabled={!chatInput.trim() || isTyping}
+                disabled={!chatInput.trim() || isTyping || chatRecovery.waiting}
                 className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-amber-500 text-slate-950 transition hover:bg-amber-400 disabled:opacity-50"
               >
                 <Send className="h-4 w-4" aria-hidden="true" />
               </button>
             </form>
-            {chatRecoveryNotice ? <p role="status" data-testid="sun-sommelier-recovery-notice" className="text-xs leading-relaxed text-slate-300">{chatRecoveryNotice}</p> : null}
-            {chatError ? <p role="alert" className="text-xs leading-relaxed text-rose-300">{chatError}</p> : null}
-            {!isDemoPreview && chatError ? <Link href="/me/products" prefetch={false} className="flex min-h-11 items-center text-xs font-semibold text-cyan-300 underline">{consumerChatCopy.account}</Link> : null}
+            {visibleChatRecovery ? <p id={chatRecoveryId} role="status" data-testid="sun-sommelier-recovery-notice" className="text-xs leading-relaxed text-slate-300">{visibleChatRecovery}</p> : null}
+            {visibleChatError ? <p role="alert" className="text-xs leading-relaxed text-rose-300">{visibleChatError}</p> : null}
+            {!isDemoPreview && visibleChatError ? <Link href="/me/products" prefetch={false} className="flex min-h-11 items-center text-xs font-semibold text-cyan-300 underline">{consumerChatCopy.account}</Link> : null}
           </div>
         )}
 

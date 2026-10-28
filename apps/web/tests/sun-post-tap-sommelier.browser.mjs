@@ -5,7 +5,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
-import { build } from "esbuild";
+import { build, stop } from "esbuild";
 import postcss from "postcss";
 import tailwind from "@tailwindcss/postcss";
 
@@ -15,11 +15,11 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(
 // Same external AXE source input as the existing sun-managed-sommelier browser suite.
 // Missing AXE is a failed prerequisite, never a reason to skip accessibility or contrast.
 const axeSource = await readFile(process.env.AXE_MODULE_PATH, "utf8");
-const paths = ["tests/sun-post-tap-sommelier.browser.mjs", "src/app/sun/qr-engagement-suite.tsx", "src/app/sun/qr-engagement-suite.module.css", "src/lib/managed-sommelier.ts", "src/lib/sommelier-guidance.ts", "src/lib/sommelier-conversation.ts", "src/app/sun/sun-demo-sommelier.ts", "src/app/sun/valle-secreto-demo.ts", "src/app/sun/sun-locale-provider.tsx", "src/app/globals.css", "src/app/layout.tsx", "../../packages/ui/src/theme-toggle.tsx"];
+const paths = ["src/lib/use-sommelier-recovery.ts", "src/app/sun/syngenta-product-assistant.tsx", "src/app/sun/syngenta-product-assistant.module.css", "src/app/me/sommelier/sommelier-client.tsx", "src/app/me/sommelier/portal-managed-sommelier.ts", "src/app/me/sommelier/sommelier.module.css", "src/app/me/_components/portal-shell.module.css", "tests/sun-post-tap-sommelier.browser.mjs", "src/app/sun/qr-engagement-suite.tsx", "src/app/sun/qr-engagement-suite.module.css", "src/lib/managed-sommelier.ts", "src/lib/sommelier-guidance.ts", "src/lib/sommelier-conversation.ts", "src/app/sun/sun-demo-sommelier.ts", "src/app/sun/valle-secreto-demo.ts", "src/app/sun/sun-locale-provider.tsx", "src/app/globals.css", "src/app/layout.tsx", "../../packages/ui/src/theme-toggle.tsx"];
 const hashes = async () => Object.fromEntries(await Promise.all(paths.map(async path => [path, createHash("sha256").update(await readFile(join(web, path))).digest("hex")])));
 const sourceHashes = await hashes();
-const fixture = `import React,{useState}from'react';import{createRoot}from'react-dom/client';import{SunLocaleProvider,useSunLocale}from'./src/app/sun/sun-locale-provider';import{QREngagementSuite}from'./src/app/sun/qr-engagement-suite';import{VALLE_SECRETO_DEMO}from'./src/app/sun/valle-secreto-demo';
-const params=new URLSearchParams(location.search),initialLocale=['es-AR','en','pt-BR'].includes(params.get('locale'))?params.get('locale'):'es-AR';function App(){const[product,setProduct]=useState('Vino QA'),[eventId,setEventId]=useState(params.has('eventless')?null:'715'),[visible,setVisible]=useState(true),[enabled,setEnabled]=useState(true);const{setLocale}=useSunLocale();const configuration={version:'nexid.tenant-actions.v1',status:'published',allowedActions:enabled?['sommelier']:[],catalogAvailable:false,program:null,trivia:null};return <main className='sun-tap-experience' style={{maxWidth:430,margin:'0 auto',padding:12}}><h1>SUN · ensayo sintético</h1><p data-testid='product'>{product}</p><button data-testid='product-change' onClick={()=>{setProduct('Vino QB');setEventId('716')}}>Cambiar producto</button><button data-testid='locale-change' onClick={()=>void setLocale('en')}>Cambiar idioma</button><button data-testid='permission-change' onClick={()=>setEnabled(false)}>Quitar permiso</button><button data-testid='close-chat' onClick={()=>setVisible(false)}>Cerrar chat</button>{visible?<QREngagementSuite productName={product} wineryName='Marca QA' tenantSlug='qa-synthetic' eventId={eventId} configuration={configuration} isDemoPreview={params.has('valleDemo')} demoWineProfile={params.has('valleDemo')?VALLE_SECRETO_DEMO:null} initialTab='sommelier'/>:<p data-testid='closed'>Chat cerrado</p>}</main>};createRoot(document.getElementById('app')).render(<SunLocaleProvider initialLocale={initialLocale}><App/></SunLocaleProvider>);`;
+const fixture = `import React,{useState}from'react';import{createRoot}from'react-dom/client';import{SunLocaleProvider,useSunLocale}from'./src/app/sun/sun-locale-provider';import{QREngagementSuite}from'./src/app/sun/qr-engagement-suite';import{VALLE_SECRETO_DEMO}from'./src/app/sun/valle-secreto-demo';import{SyngentaProductAssistant}from'./src/app/sun/syngenta-product-assistant';import SommelierClient from'./src/app/me/sommelier/sommelier-client';import portalShell from'./src/app/me/_components/portal-shell.module.css';
+const params=new URLSearchParams(location.search),initialLocale=['es-AR','en','pt-BR'].includes(params.get('locale'))?params.get('locale'):'es-AR';const recoverySurface=params.get('recoverySurface')||'sun';function App(){const[product,setProduct]=useState('Vino QA'),[eventId,setEventId]=useState(params.has('eventless')?null:'715'),[visible,setVisible]=useState(true),[enabled,setEnabled]=useState(true),[tenant,setTenant]=useState('qa-synthetic');const{locale,setLocale}=useSunLocale();const configuration={version:'nexid.tenant-actions.v1',status:'published',allowedActions:enabled?['sommelier']:[],catalogAvailable:false,program:null,trivia:null};return <main className='sun-tap-experience' style={{maxWidth:recoverySurface==='portal'?1200:430,margin:'0 auto',padding:12}}><h1>SUN · ensayo sintético</h1><p data-testid='product'>{product}</p><button data-testid='tenant-change' onClick={()=>{setTenant('qa-other');setProduct('Vino QB');setEventId('716')}}>Cambiar marca</button><button data-testid='tenant-return' onClick={()=>{setTenant('qa-synthetic');setProduct('Vino QA');setEventId('715')}}>Volver a la marca</button><button data-testid='product-change' onClick={()=>{setProduct('Vino QB');setEventId('716')}}>Cambiar producto</button><button data-testid='label-change' onClick={()=>setProduct('Vino QA etiqueta actualizada')}>Cambiar sólo etiqueta</button><button data-testid='locale-change' onClick={()=>void setLocale('en')}>Cambiar idioma</button><button data-testid='permission-change' onClick={()=>setEnabled(false)}>Quitar permiso</button><button data-testid='close-chat' onClick={()=>setVisible(false)}>Cerrar chat</button>{visible?(recoverySurface==='syngenta'?<SyngentaProductAssistant locale={locale}/>:recoverySurface==='portal'?<section className={portalShell.portal}><SommelierClient productName={product} brandName='Marca QA'/></section>:<QREngagementSuite productName={product} wineryName='Marca QA' tenantSlug={tenant} eventId={eventId} configuration={configuration} isDemoPreview={params.has('valleDemo')} demoWineProfile={params.has('valleDemo')?VALLE_SECRETO_DEMO:null} initialTab='sommelier'/>):<p data-testid='closed'>Chat cerrado</p>}</main>};createRoot(document.getElementById('app')).render(<SunLocaleProvider initialLocale={initialLocale}><App/></SunLocaleProvider>);`;
 const bundled = await build({ stdin: { contents: fixture, resolveDir: web, loader: "tsx" }, bundle: true, write: false, outfile: "fixture.js", format: "esm", platform: "browser", jsx: "automatic", define: { "process.env.NODE_ENV": '"production"' }, plugins: [{ name: "inert-next", setup(b) {
   b.onResolve({ filter: /^next\/link$/ }, () => ({ path: "link", namespace: "nav" }));
   b.onLoad({ filter: /.*/, namespace: "nav" }, () => ({ contents: "import React from'react';export default function Link({prefetch,...props}){return <a {...props}/>}", loader: "tsx", resolveDir: web }));
@@ -45,12 +45,13 @@ await mkdir(output, { recursive: true });
 await new Promise(r => server.listen(0, "127.0.0.1", r));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ headless: true, ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}) });
-const report = { localOnly: true, syntheticResponses: true, actualApplicationChatAndCss: true, actualNextServer: false, realTenantSessionAcceptance: false, publicAcceptance: false, realProviderRequests: 0, realBusinessWrites: 0, geolocationCalls: 0, unexpectedRequests: [], errors: [], checks: [], views: [], accessibility: [], conversationGeometry: [], pageAnchors: [], deadlineCases: [], sourceHashes, axeSourceSha256: createHash("sha256").update(axeSource).digest("hex"), configuredManagedDeadlineMs: 12_000, fixtureThemePolicy: "canonical layout lightclass/data-theme; explicit-dark-class separately labelled" };
+const report = { localOnly: true, syntheticResponses: true, actualApplicationChatAndCss: true, actualNextServer: false, realTenantSessionAcceptance: false, publicAcceptance: false, realProviderRequests: 0, realBusinessWrites: 0, geolocationCalls: 0, unexpectedRequests: [], errors: [], checks: [], views: [], accessibility: [], recoveryAccessibility: [], conversationGeometry: [], pageAnchors: [], deadlineCases: [], sourceHashes, axeSourceSha256: createHash("sha256").update(axeSource).digest("hex"), configuredManagedDeadlineMs: 12_000, fixtureThemePolicy: "canonical layout lightclass/data-theme; explicit-dark-class separately labelled" };
 const check = (value, name) => { report.checks.push({ name, passed: Boolean(value) }); assert.ok(value, name); };
 const reply = (text, fallback = false, options = {}) => ({ status: 200, payload: { ok: true, answer: text, source: fallback ? "fallback" : "live", fallback, demo: options.demo ?? false, ...(!fallback ? { provider: "fixture-provider", model: "fixture-model" } : {}), sources: options.sources ?? [{ id: "product", label: "Dato publicado sintético", url: null }], suggestedQuestions: options.suggestedQuestions ?? [] } });
-async function open({ width = 390, theme = "dark", themeClasses = "layout", locale = "es-AR", eventless = false, valleDemo = false, reducedMotion = "reduce", answer = () => reply("Guía sintética") } = {}) {
+async function open({ width = 390, theme = "dark", themeClasses = "layout", locale = "es-AR", eventless = false, valleDemo = false, surface = "sun", controlledClock = false, reducedMotion = "reduce", answer = () => reply("Guía sintética") } = {}) {
   const context = await browser.newContext({ viewport: { width, height: 844 }, reducedMotion, serviceWorkers: "block" });
   const page = await context.newPage(), calls = [];
+  if (controlledClock) await page.clock.install({ time: new Date("2026-10-28T12:00:00.000Z") });
   page.setDefaultTimeout(10_000);
   page.on("pageerror", error => report.errors.push(error.message));
   await page.addInitScript(({ theme, themeClasses, locale }) => {
@@ -74,21 +75,22 @@ async function open({ width = 390, theme = "dark", themeClasses = "layout", loca
     const request = route.request(), url = new URL(request.url());
     if (url.origin !== origin) { report.realProviderRequests++; return route.abort(); }
     if (url.pathname.startsWith("/api/")) {
-      if (!["/api/sommelier/chat", "/api/sun/locale", ...(valleDemo ? ["/api/sommelier/demo/session"] : [])].includes(url.pathname) || request.method() !== "POST") { report.unexpectedRequests.push({ path: url.pathname, method: request.method() }); return route.abort(); }
+      if (!["/api/sommelier/chat", "/api/sun/locale", ...((valleDemo || surface === "syngenta") ? ["/api/sommelier/demo/session"] : [])].includes(url.pathname) || request.method() !== "POST") { report.unexpectedRequests.push({ path: url.pathname, method: request.method() }); return route.abort(); }
       calls.push({ path: url.pathname, method: request.method(), body: request.postDataJSON() });
-      const result = url.pathname === "/api/sun/locale" ? { status: 200, payload: { ok: true } } : url.pathname === "/api/sommelier/demo/session" ? { status: 200, payload: { ok: true, profile: "valle-secreto" } } : await answer(request);
-      return route.fulfill({ status: result.status, contentType: "application/json", body: JSON.stringify(result.payload) }).catch(() => {});
+      const result = url.pathname === "/api/sun/locale" ? { status: 200, payload: { ok: true } } : url.pathname === "/api/sommelier/demo/session" ? { status: 200, payload: { ok: true, profile: surface === "syngenta" ? "syngenta" : "valle-secreto" } } : await answer(request);
+      return route.fulfill({ status: result.status, headers: result.headers || {}, contentType: "application/json", body: JSON.stringify(result.payload) }).catch(() => {});
     }
     return route.continue();
   });
   const fixtureUrl = new URL(origin);
   fixtureUrl.searchParams.set("locale", locale);
+  fixtureUrl.searchParams.set("recoverySurface", surface);
   fixtureUrl.searchParams.set("theme", theme);
   fixtureUrl.searchParams.set("themeClasses", themeClasses);
   if (eventless) fixtureUrl.searchParams.set("eventless", "1");
   if (valleDemo) fixtureUrl.searchParams.set("valleDemo", "1");
   await page.goto(fixtureUrl.href, { waitUntil: "networkidle" });
-  await page.getByRole("log").waitFor();
+  await (surface === "syngenta" ? page.getByTestId("syngenta-product-assistant") : surface === "portal" ? page.getByTestId("sommelier-conversation") : page.getByRole("log")).waitFor();
   check(await page.evaluate(({ theme, themeClasses, locale }) => document.documentElement.dataset.theme === theme && document.documentElement.lang === locale && document.documentElement.classList.contains("theme-light") === (theme === "light") && document.documentElement.classList.contains("theme-dark") === (theme === "dark" && themeClasses === "explicit-dark-class"), { theme, themeClasses, locale }), `${width}/${theme}/${locale}/${themeClasses}: fixture uses the declared theme/locale contract`);
   await page.addScriptTag({ content: axeSource });
   return { page, calls, context, width, theme, themeClasses, locale, reducedMotion, close: async () => { report.geolocationCalls += await page.evaluate(() => window.__gpsCalls); await context.close(); } };
@@ -182,7 +184,283 @@ async function viewLatestAnswer(t, label, expectedText) {
   check(observation.completion.completed, `${label}: manual anchor reaches its clamped destination for three actual animation frames within the real 10s bound`);
   check(observation.text.includes(expectedText) && observation.focused && (observation.pageHeight <= observation.viewportHeight + 2 || observation.pageY > 0) && observation.lastScroll?.id === id && observation.lastScroll.block === "start" && observation.lastScroll.behavior === (t.reducedMotion === "reduce" ? "auto" : "smooth"), `${label}: manual anchor reaches the latest full answer and honors reduced motion`);
 }
+
+// Same native loopback harness, four real UI surfaces, no Next build or provider.
+const recoveryRoot = (t, surface) => surface === 'syngenta' ? t.page.getByTestId('syngenta-product-assistant')
+  : surface === 'portal' ? t.page.getByTestId('sommelier-conversation') : t.page.locator('.sun-engagement-suite');
+async function recoverySettled(t, surface) {
+  await t.page.waitForFunction(surface => surface === 'syngenta'
+    ? document.querySelector('[data-testid="syngenta-product-assistant"]')?.getAttribute('data-assistant-pending') === 'false'
+    : surface === 'portal' ? document.querySelector('[data-testid="sommelier-conversation"] form')?.getAttribute('aria-busy') === 'false'
+    : document.querySelector('[role="log"]')?.getAttribute('aria-busy') === 'false', surface);
+}
+const recoveryPayload = (surface, fallback, reason, retryAfter) => {
+  const demo = surface === 'sun-demo' || surface === 'syngenta';
+  const response = reply(fallback ? 'Synthetic official guidance without a confirmed AI answer' : 'Synthetic confirmed answer', fallback, {
+    demo, sources: surface === 'syngenta' ? [{ id: 'product', label: 'Syngenta Argentina', url: 'https://www.syngenta.com.ar/product/crop-protection/fungicida/amistar-xtra' }] : [],
+    suggestedQuestions: ['QA follow-up question'],
+  });
+  if (surface === 'syngenta') Object.assign(response.payload, { demoProfile: 'syngenta', contextSource: 'syngenta_demo' });
+  if (surface === 'sun-demo') response.payload.contextSource = 'valle_secreto_demo';
+  if (reason) response.payload.reason = reason;
+  if (retryAfter !== undefined) response.payload.retryAfter = retryAfter;
+  return response;
+};
+async function runRecoveryCases() {
+  report.recoveryCases = []; report.recoveryFailures = [];
+  const selected = process.env.QA_RECOVERY_SURFACE;
+  if (selected && !["sun-demo", "sun-consumer", "syngenta", "portal", "scope"].includes(selected)) throw new Error("Unknown recovery surface selector");
+  for (const surface of ['sun-demo', 'sun-consumer', 'syngenta', 'portal']) {
+    if (selected && selected !== surface) continue;
+    for (const width of [320, 390, 1280]) for (const theme of ['light', 'dark']) {
+      const locales = surface === 'portal' ? ['es-AR'] : ['es-AR', 'en', 'pt-BR'];
+      for (const locale of locales) {
+        const label = `recovery/${surface}/${width}/${theme}/${locale}`; let mode = 'live';
+        const t = await open({ width, theme, locale, surface: ['syngenta', 'portal'].includes(surface) ? surface : 'sun',
+          valleDemo: surface === 'sun-demo', controlledClock: true, answer: () => mode === 'http-wait'
+            ? { status: 429, headers: { 'retry-after': '30' }, payload: { ok: false, reason: 'sommelier_rate_limited' } }
+            : recoveryPayload(surface, mode === 'fallback-wait', mode === 'fallback-wait' ? 'sommelier_budget_exhausted' : undefined, mode === 'fallback-wait' ? 30 : undefined) });
+        const root = recoveryRoot(t, surface), draft = root.getByRole('textbox'), form = root.locator('form'), submit = form.locator('button[type="submit"]');
+        const chatCount = () => t.calls.filter(call => call.path === '/api/sommelier/chat').length;
+        const attemptDuringWait = async phase => {
+          const before = t.calls.length;
+          await form.evaluate(element => element.requestSubmit());
+          await draft.press('Enter');
+          // requestSubmit exercises the synchronous form guard; DOM probes supplement native disabled checks.
+          await submit.evaluate(button => { const wasDisabled = button.disabled; button.disabled = false; button.click(); button.disabled = wasDisabled; });
+          const direct = surface === 'syngenta' ? root.getByTestId('syngenta-assistant-suggestion')
+            : surface === 'portal' ? root.locator('[role="group"] button')
+            : root.locator('[data-testid="sun-sommelier-prompts"] button,[data-testid="sun-sommelier-follow-ups"] button');
+          if (surface === 'portal') {
+            // Portal suggestions prepare a draft; keeping them usable must not send it.
+            if (await direct.count()) { check(await direct.first().isEnabled(), `${label}/${phase}: prepare-only suggestion remains available`); await direct.first().click(); }
+          } else {
+            for (const button of await direct.all()) check(await button.isDisabled(), `${label}/${phase}: direct prompt or follow-up is disabled during the known wait`);
+            await direct.evaluateAll(buttons => buttons.forEach(button => { const wasDisabled = button.disabled; button.disabled = false; button.click(); button.disabled = wasDisabled; }));
+          }
+          if (surface === 'syngenta' && phase === 'http-wait') {
+            const retry = root.getByRole('button', { name: /Reintentar esta pregunta|Retry this question|Tentar esta pergunta novamente/ });
+            check(await retry.count() === 1 && await retry.isDisabled(), `${label}: explicit retry is visible but disabled during the wait`);
+            await retry.evaluate(button => { const wasDisabled = button.disabled; button.disabled = false; button.click(); button.disabled = wasDisabled; });
+          }
+          await t.page.evaluate(() => Promise.resolve());
+          check(t.calls.length === before, `${label}/${phase}: submit, keyboard, direct handlers and suggestions produce zero requests during wait`);
+        };
+        try {
+          check(t.calls.length === 0, `${label}: mounting makes zero API requests`);
+          await draft.fill('QA initial confirmed conversation'); await form.evaluate(element => element.requestSubmit());
+          await waitCalls(t, 1); await recoverySettled(t, surface);
+          mode = 'fallback-wait'; const question = `QA preserved fallback question ${surface}`;
+          await draft.fill(question); await form.evaluate(element => element.requestSubmit());
+          await waitCalls(t, 2); await recoverySettled(t, surface);
+          check(await draft.inputValue() === question, `${label}: a received fallback preserves the submitted question`);
+          check(await draft.isEditable(), `${label}: a known wait keeps the draft editable`);
+          check(await submit.isDisabled(), `${label}: a local API budget wait prevents immediate resend`);
+          if (surface === 'portal') check(!(await root.getByRole('status').innerText()).includes('Respuesta recibida. Podés hacer otra consulta.'), `${label}: fallback is not announced as a confirmed success`);
+          if (locale === 'es-AR') check(!((await root.innerText()).includes('Podés volver a enviar la pregunta.')), `${label}: known wait never invites an immediate resend`);
+          await draft.fill('QA draft edited while the service is paused');
+          await attemptDuringWait('fallback-wait');
+          const beforeExpiry = t.calls.length;
+          await t.page.clock.fastForward(10_000);
+          check(t.calls.length === beforeExpiry, `${label}: elapsed time alone sends no request`);
+          await t.page.clock.fastForward(21_000);
+          await t.page.waitForFunction(() => [...document.querySelectorAll('form button[type="submit"]')].some(button => !button.disabled));
+          check(t.calls.length === beforeExpiry && chatCount() === 2, `${label}: wait expiry enables a manual action without auto-send`);
+          mode = 'live'; await form.evaluate(element => element.requestSubmit()); await waitCalls(t, 3); await recoverySettled(t, surface);
+          check(await draft.inputValue() === '', `${label}: only the explicit confirmed retry clears its draft`);
+
+          mode = 'http-wait'; const httpQuestion = `QA preserved HTTP wait question ${surface}`;
+          await draft.fill(httpQuestion); await form.evaluate(element => element.requestSubmit()); await waitCalls(t, 4); await recoverySettled(t, surface);
+          check(await draft.inputValue() === httpQuestion && await draft.isEditable() && await submit.isDisabled(), `${label}: HTTP429 header delay preserves the editable draft and gates sending`);
+          await attemptDuringWait('http-wait');
+          if (surface === 'syngenta') {
+            await root.getByRole('button', { name: /Nueva conversación|New conversation|Nova conversa/ }).click();
+            await draft.fill('QA deliberate new conversation during the same wait');
+            check(await submit.isDisabled(), `${label}: resetting the conversation cannot reset the API wait`);
+            const before = t.calls.length; await form.evaluate(element => element.requestSubmit());
+            await t.page.evaluate(() => Promise.resolve()); check(t.calls.length === before, `${label}: reset also preserves the synchronous send guard`);
+          }
+          const before = t.calls.length; await t.page.clock.fastForward(31_000);
+          check(t.calls.length === before && chatCount() === 4, `${label}: no automatic retry when the HTTP wait expires`);
+          check(await t.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${label}: known-wait state fits the responsive viewport`);
+          const selector = surface === 'portal' ? '[data-testid="sommelier-conversation"]' : surface === 'syngenta' ? '[data-testid="syngenta-product-assistant"]' : '.sun-engagement-suite';
+          const a11y = await t.page.evaluate(async selector => (await axe.run(selector, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] } })).violations.map(value => ({
+            id: value.id, impact: value.impact,
+            nodes: value.nodes.map(node => ({ target: node.target, failureSummary: node.failureSummary ?? null })),
+          })), selector);
+          // Preserve scoped findings before the assertion can enter the case catch.
+          report.recoveryAccessibility.push({ surface, width, theme, locale, selector, phase: 'http-wait-expired', violations: a11y });
+          check(a11y.length === 0, `${label}: actual recovery component has zero scoped AXE violations`);
+          report.recoveryCases.push({ surface, width, theme, locale, status: 'passed', chatRequests: chatCount(), synthetic: true });
+        } catch (error) {
+          report.recoveryFailures.push({ surface, width, theme, locale, error: String(error?.stack || error) });
+        } finally { await t.close(); }
+      }
+    }
+  }
+  // A late fallback must not install a wait or restore an old answer after scope change/unmount.
+  for (const surface of ['sun-demo', 'sun-consumer', 'syngenta', 'portal']) {
+    if (selected && selected !== surface) continue;
+    for (const change of ['context', 'unmount']) {
+      let release, held = true; const waiting = new Promise(resolve => { release = resolve; });
+      const t = await open({ width: 390, theme: 'dark', surface: ['syngenta', 'portal'].includes(surface) ? surface : 'sun', valleDemo: surface === 'sun-demo',
+        answer: () => held ? waiting : recoveryPayload(surface, false) });
+      try {
+        const root = recoveryRoot(t, surface); await root.getByRole('textbox').fill('QA cancelled question'); await root.locator('form').evaluate(form => form.requestSubmit()); await waitCalls(t, 1);
+        await t.page.getByTestId(change === 'unmount' ? 'close-chat' : surface === 'syngenta' ? 'locale-change' : 'product-change').click();
+        held = false; release({ ...recoveryPayload(surface, true, 'sommelier_budget_exhausted', 60), payload: { ...recoveryPayload(surface, true, 'sommelier_budget_exhausted', 60).payload, answer: 'QA stale recovery must not reappear' } });
+        if (change === 'unmount') {
+          await t.page.getByTestId('closed').waitFor(); check(await recoveryRoot(t, surface).count() === 0, `${surface}: unmount cannot restore late recovery UI`);
+        } else {
+          if (surface === 'syngenta') await recoveryRoot(t, surface).getByRole('button', { name: /Nueva conversación|New conversation|Nova conversa/ }).click();
+          check(!(await recoveryRoot(t, surface).innerText()).includes('QA stale recovery must not reappear'), `${surface}: context change discards a late fallback`);
+          await recoveryRoot(t, surface).getByRole('textbox').fill('QA new scope manual question');
+          await recoveryRoot(t, surface).locator('form').evaluate(form => form.requestSubmit()); await waitCalls(t, 2); await recoverySettled(t, surface);
+          check(t.calls.filter(call => call.path === '/api/sommelier/chat').at(-1).body.question === 'QA new scope manual question', `${surface}: late old recovery did not install a new-scope wait`);
+        }
+      } catch (error) { report.recoveryFailures.push({ surface, phase: change, error: String(error?.stack || error) }); }
+      finally { release(recoveryPayload(surface, false)); await t.close(); }
+    }
+  }
+
+  // Four bounded scope checks on the same real native components and intercepted transport.
+  if (!selected || selected === 'scope') {
+    report.scopeCases = [];
+    const assistantCalls = t => t.calls.filter(call => call.path !== '/api/sun/locale').length;
+    let mode = 'wait';
+    const t = await open({ width: 390, theme: 'dark', controlledClock: true,
+      answer: () => recoveryPayload('sun-consumer', mode === 'wait', mode === 'wait' ? 'sommelier_budget_exhausted' : undefined, mode === 'wait' ? 30 : undefined) });
+    try {
+      const root = recoveryRoot(t, 'sun-consumer'), input = root.getByRole('textbox'), form = root.locator('form'), submit = form.locator('button[type="submit"]');
+      await input.fill('QA tenant A request'); await form.evaluate(form => form.requestSubmit()); await waitCalls(t, 1); await recoverySettled(t, 'sun-consumer');
+      check(await submit.isDisabled(), 'scope/A: API wait disables tenant A');
+      for (const control of ['locale-change', 'product-change']) {
+        await t.page.getByTestId(control).click(); await input.fill(`QA tenant A after ${control}`);
+        check(await submit.isDisabled(), `scope/A: ${control} cannot erase the same-tenant pause`);
+        const before = assistantCalls(t); await form.evaluate(form => form.requestSubmit()); await t.page.evaluate(() => Promise.resolve());
+        check(assistantCalls(t) === before, `scope/A: ${control} preserves the synchronous guard`);
+      }
+      await t.page.getByTestId('tenant-change').click(); await input.fill('QA tenant B manual request');
+      check(await submit.isEnabled(), 'scope/B: a legitimate different tenant does not inherit A pause');
+      mode = 'live'; await form.evaluate(form => form.requestSubmit()); await waitCalls(t, 2); await recoverySettled(t, 'sun-consumer');
+      check(t.calls.filter(call => call.path === '/api/sommelier/chat').at(-1).body.question === 'QA tenant B manual request', 'scope/B: only explicit B intent sends its own request');
+      await t.page.getByTestId('tenant-return').click(); await input.fill('QA tenant A resumed draft');
+      check(await submit.isDisabled(), 'scope/A-return: returning to A retains its active wait');
+      const before = assistantCalls(t); await form.evaluate(form => form.requestSubmit()); await t.page.evaluate(() => Promise.resolve());
+      check(assistantCalls(t) === before, 'scope/A-return: returning cannot send through a stale enabled handler');
+      await t.page.clock.fastForward(31_000);
+      await t.page.waitForFunction(() => document.querySelector('form button[type="submit"]')?.disabled === false);
+      check(assistantCalls(t) === before, 'scope/A-return: expiry enables A without an automatic request');
+      report.scopeCases.push({ name: 'tenant-A-wait-B-isolation-return-A', status: 'passed', synthetic: true });
+    } catch (error) { report.recoveryFailures.push({ phase: 'tenant-A-B-return-A', error: String(error?.stack || error) }); }
+    finally { await t.close(); }
+
+    let stale = true;
+    const late = await open({ width: 390, theme: 'light', controlledClock: true,
+      answer: () => recoveryPayload('sun-consumer', stale, stale ? 'sommelier_budget_exhausted' : undefined, stale ? 60 : undefined) });
+    try {
+      // Retain the parsed synthetic body, so cancellation cannot merely abort a socket before a reply exists.
+      await late.page.evaluate(() => {
+        const transport = window.fetch.bind(window); window.__scopeHoldNextBody = true; window.__scopeBodyWaiting = 0;
+        window.fetch = async (url, init) => {
+          const response = await transport(url, init);
+          if (String(url) === '/api/sommelier/chat' && window.__scopeHoldNextBody) {
+            window.__scopeHoldNextBody = false; const parse = response.json.bind(response);
+            response.json = async () => { const payload = await parse(); window.__scopeBodyWaiting++;
+              await new Promise(resolve => { window.__scopeReleaseBody = resolve; }); window.__scopeBodyWaiting--; return payload; };
+          }
+          return response;
+        };
+      });
+      const root = recoveryRoot(late, 'sun-consumer'), input = root.getByRole('textbox'), form = root.locator('form'), submit = form.locator('button[type="submit"]');
+      await input.fill('QA old tenant A pending request'); await form.evaluate(form => form.requestSubmit());
+      await late.page.waitForFunction(() => window.__scopeBodyWaiting === 1);
+      await late.page.getByTestId('tenant-change').click(); await late.page.getByTestId('tenant-return').click();
+      await late.page.evaluate(() => { if (!window.__scopeReleaseBody) throw Error('Missing owned held body'); window.__scopeReleaseBody(); window.__scopeReleaseBody = null; });
+      await late.page.waitForFunction(() => window.__scopeBodyWaiting === 0);
+      stale = false; await input.fill('QA new tenant A intent after A-B-A');
+      check(await submit.isEnabled(), 'scope/A-B-A: old A body cannot install a wait in the new A owner');
+      await form.evaluate(form => form.requestSubmit()); await waitCalls(late, 2); await recoverySettled(late, 'sun-consumer');
+      check(late.calls.filter(call => call.path === '/api/sommelier/chat').at(-1).body.question === 'QA new tenant A intent after A-B-A', 'scope/A-B-A: only the new explicit request survives');
+      const before = late.calls.length; await late.page.clock.fastForward(61_000);
+      check(late.calls.length === before, 'scope/A-B-A: no late-body or expiry auto-send');
+      report.scopeCases.push({ name: 'late-body-A-B-A-owner', status: 'passed', synthetic: true });
+    } catch (error) { report.recoveryFailures.push({ phase: 'late-body-A-B-A', error: String(error?.stack || error) }); }
+    finally { await late.page.evaluate(() => window.__scopeReleaseBody?.()).catch(() => {}); await late.close(); }
+
+    for (const surface of ['portal', 'syngenta']) {
+      const t = await open({ width: 390, theme: 'dark', surface, controlledClock: true,
+        answer: () => recoveryPayload(surface, true, 'sommelier_rate_limited', 30) });
+      try {
+        const root = recoveryRoot(t, surface), input = root.getByRole('textbox'), form = root.locator('form'), submit = form.locator('button[type="submit"]');
+        await input.fill(`QA ${surface} initial wait`); await form.evaluate(form => form.requestSubmit()); await waitCalls(t, 1); await recoverySettled(t, surface);
+        if (surface === 'portal') await t.page.getByTestId('product-change').click();
+        else {
+          await t.page.getByTestId('locale-change').click();
+          await root.getByRole('button', { name: /Nueva conversación|New conversation|Nova conversa/ }).click();
+        }
+        await input.fill(`QA ${surface} editable draft after cosmetic change`);
+        check(await input.isEditable() && await submit.isDisabled(), `scope/${surface}: label/locale/reset cannot erase the same account or demo wait`);
+        const before = assistantCalls(t); await form.evaluate(form => form.requestSubmit()); await t.page.evaluate(() => Promise.resolve());
+        check(assistantCalls(t) === before, `scope/${surface}: cosmetic change retains the synchronous guard`);
+        await t.page.clock.fastForward(31_000); check(assistantCalls(t) === before, `scope/${surface}: cosmetic recovery never sends automatically`);
+        report.scopeCases.push({ name: `${surface}-cosmetic-scope`, status: 'passed', synthetic: true });
+      } catch (error) { report.recoveryFailures.push({ surface, phase: 'cosmetic-scope', error: String(error?.stack || error) }); }
+      finally { await t.close(); }
+    }
+    // Cosmetic changes keep the editable draft; a new event/tenant must not inherit it.
+    for (const surface of ['sun-consumer', 'sun-demo']) {
+      const t = await open({ width: 390, theme: surface === 'sun-consumer' ? 'light' : 'dark', controlledClock: true,
+        valleDemo: surface === 'sun-demo', answer: () => recoveryPayload(surface, true, 'sommelier_rate_limited', 60) });
+      try {
+        const root = recoveryRoot(t, surface), input = root.getByRole('textbox'), form = root.locator('form'), submit = form.locator('button[type="submit"]');
+        const sent = `QA initial restored question ${surface}`;
+        const draft = `QA pregunta sobre añada, envío y regalo ${surface}`;
+        await input.fill(sent); await form.evaluate(element => element.requestSubmit()); await waitCalls(t, 1); await recoverySettled(t, surface);
+        check(await input.inputValue() === sent, `draft/${surface}: API fallback first restores the submitted question`);
+        await input.fill(draft);
+        check(await input.isEditable() && await submit.isDisabled(), `draft/${surface}: the edited draft remains available during the known pause`);
+        const before = assistantCalls(t);
+
+        await t.page.getByTestId('locale-change').click();
+        // The welcome reset proves the cosmetic effect ran before checking the
+        // draft; observing only html.lang could race that passive effect.
+        await t.page.waitForFunction(sent => document.documentElement.lang === 'en'
+          && !document.querySelector('[role="log"]')?.textContent?.includes(sent), sent);
+        check(await input.inputValue() === draft, `draft/${surface}: locale change preserves the exact localized draft before any refill`);
+        check(await input.isEditable() && await submit.isDisabled(), `draft/${surface}: locale change preserves the same active wait`);
+        check(assistantCalls(t) === before, `draft/${surface}: changing locale never sends an assistant request`);
+
+        await t.page.getByTestId('label-change').click();
+        await t.page.waitForFunction(() => document.querySelector('[data-testid="product"]')?.textContent === 'Vino QA etiqueta actualizada');
+        await t.page.evaluate(() => Promise.resolve());
+        check(await input.inputValue() === draft, `draft/${surface}: changing only the product label preserves the exact draft before any refill`);
+        check(await input.isEditable() && await submit.isDisabled(), `draft/${surface}: label change cannot erase or renew the active wait`);
+        check(assistantCalls(t) === before, `draft/${surface}: label change causes no automatic request`);
+
+        await t.page.getByTestId('product-change').click();
+        await t.page.waitForFunction(() => document.querySelector('[data-testid="product"]')?.textContent === 'Vino QB'
+          && document.querySelector('[role="log"]')?.closest('.sun-engagement-suite')?.querySelector('form input')?.value === '');
+        check(await input.inputValue() === '', `draft/${surface}: a genuinely different event clears the previous journey draft`);
+        await input.fill('QA new event draft that must not leak to another tenant');
+        await t.page.getByTestId('tenant-change').click();
+        await t.page.waitForFunction(() => document.querySelector('[role="log"]')?.closest('.sun-engagement-suite')?.querySelector('form input')?.value === '');
+        check(await input.inputValue() === '', `draft/${surface}: a different tenant clears the current draft`);
+        check(assistantCalls(t) === before, `draft/${surface}: event/tenant transitions neither POST nor restore another journey draft`);
+        await t.page.clock.fastForward(61_000);
+        check(assistantCalls(t) === before, `draft/${surface}: expiry alone never resends the preserved question`);
+        report.scopeCases.push({ name: `${surface}-cosmetic-draft-preservation`, status: 'passed', synthetic: true, localizedDraftPreserved: true, eventAndTenantClear: true });
+      } catch (error) { report.recoveryFailures.push({ surface, phase: 'cosmetic-draft-preservation', error: String(error?.stack || error) }); }
+      finally { await t.close(); }
+    }
+
+  }
+
+  check(report.recoveryFailures.length === 0, `all four actual UI surfaces honor recovery; failures=${report.recoveryFailures.length}`);
+}
+
 try {
+  if (!process.env.QA_RECOVERY_ONLY) {
   for (const width of [320, 390]) for (const theme of ["light", "dark"]) {
     let release;
     const pending = new Promise(r => { release = r; });
@@ -493,6 +771,8 @@ try {
       release(degraded()); releaseNew?.(degraded()); await t.close();
     }
   }
+  }
+  await runRecoveryCases();
   check(report.realProviderRequests === 0 && report.unexpectedRequests.length === 0, "all API replies are intercepted loopback fixtures");
   check(report.geolocationCalls === 0 && report.errors.length === 0, "zero GPS calls or browser exceptions");
   report.endSourceHashes = await hashes();
@@ -503,5 +783,6 @@ try {
   await writeFile(join(output, "report.json"), JSON.stringify(report, null, 2));
   await browser.close();
   await new Promise(r => server.close(r));
+  stop();
 }
 console.log(JSON.stringify({ status: report.status, checks: report.checks.length, views: report.views.length, output }));

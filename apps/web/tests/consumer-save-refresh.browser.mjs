@@ -299,6 +299,42 @@ async function open(width, theme, scenario, action = 'save') {
   await context.close();
 }
 
+async function preserveCompletedSaveAcrossUiIntent(width,theme){
+  const context=await browser.newContext({viewport:{width,height:900},locale:'es-AR',reducedMotion:'reduce',serviceWorkers:'block'});
+  await context.addCookies([{name:'consumer_qa',value:'local',url:base,httpOnly:true,sameSite:'Lax'},{name:'theme',value:theme,url:base},{name:'nexid_theme_version',value:'white-first-v2',url:base}]);
+  const page=await context.newPage();page.setDefaultTimeout(15_000);let posts=0,sessions=0;
+  await context.exposeBinding('__saveIntentLocationCall',()=>{report.geolocationCalls++;});
+  await page.addInitScript(()=>{Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){void window.__saveIntentLocationCall();throw Error('Unexpected location request');},watchPosition(){void window.__saveIntentLocationCall();throw Error('Unexpected location watch');}}});});
+  page.on('pageerror',error=>report.errors.push({width,theme,scenario:'completed-save-ui-intent',message:error.message}));
+  await page.route('**/*',async route=>{
+    const request=route.request(),url=new URL(request.url());if(url.origin!==base)return route.abort();
+    if(url.pathname==='/api/consumer/session'&&request.method()==='GET'){sessions++;return route.fulfill({json:{ok:true,authenticated:true}});}
+    if(url.pathname===savePath&&request.method()==='POST'){
+      posts++;assert.deepEqual(request.postDataJSON(),{tenantSlug:'save-feedback-qa',bid:'SAVE-FEEDBACK-QA'});
+      return route.fulfill({json:{ok:true,saved:true,eventId},headers:{'set-cookie':'consumer_saved_qa=1; Path=/; HttpOnly; SameSite=Lax'}});
+    }
+    if(!['GET','HEAD'].includes(request.method())){report.unexpectedWrites.push({path:url.pathname,method:request.method()});return route.abort();}return route.continue();
+  });
+  try{
+    await page.goto(base+target,{waitUntil:'networkidle'});const banner=page.getByTestId('tap-association');await banner.getByTestId('tap-association-confirm').waitFor();
+    await banner.getByTestId('tap-association-confirm').click();await banner.getByTestId('tap-association-result-save').waitFor();
+    await page.getByTestId('consumer-home').getByRole('heading',{name:productName,exact:true}).waitFor();
+    await page.waitForLoadState('networkidle');await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
+    check(posts===1,`${width}/${theme}: one explicit save before changing only UI intent`);
+    const beforeIntentSessions=sessions;
+    const navigation=target.replace('action=save','action=products')+'&tapAction=claim';
+    await page.evaluate(path=>history.pushState(null,'',path),navigation);
+    await page.waitForFunction(()=>new URL(location.href).searchParams.get('tapAction')==='claim'&&document.querySelector('[data-testid="tap-association-option-claim"]')?.checked===true);
+    check(await banner.getByTestId('tap-association-result-save').count()===1,`${width}/${theme}: actual Next query update preserves the completed runner and its result`);
+    const save=banner.getByTestId('tap-association-option-save');if(!await save.isVisible())await banner.getByText('Otras opciones',{exact:true}).click();await save.check();
+    const confirm=banner.getByTestId('tap-association-confirm');await confirm.waitFor();check(await confirm.isDisabled(),`${width}/${theme}: completed save remains disabled after local reselection`);await confirm.evaluate(button=>button.click());
+    await page.waitForLoadState('networkidle');await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
+    check(posts===1,`${width}/${theme}: changed URL and explicit terminal button click cannot repeat a completed save`);
+    check(sessions===beforeIntentSessions,`${width}/${theme}: changing only UI intent never resets the session effect`);
+    report.cases.push({scenario:'completed-save-ui-intent',width,theme,posts,sessions,actualNextQueryUpdate:true,retainedCompletedResult:true,physicalTap:false,apiPersistence:false});
+  }finally{await context.close();}
+}
+
 try {
   await startLocalServer();
   report.nextBuildId = (await readFile(join(web, '.next/BUILD_ID'), 'utf8')).trim();
@@ -310,6 +346,7 @@ try {
   for (const theme of ['light', 'dark']) for (const width of [320, 390]) await open(width, theme, 'confirmed-focus-moved');
   for (const theme of ['light', 'dark']) for (const scenario of ['confirmed-scroll-moved', 'lost-focus-moved']) await open(390, theme, scenario);
   for (const theme of ['light', 'dark']) for (const width of [320, 390]) for (const action of ['save', 'join']) await open(width, theme, `membership-inactive-${action}`, action);
+  for (const theme of ['light', 'dark']) for (const width of [320, 390, 1280]) await preserveCompletedSaveAcrossUiIntent(width, theme);
   check(report.errors.length === 0, 'zero application runtime exceptions');
   check(report.unexpectedWrites.length === 0, 'zero account, OTP, telemetry or business writes outside intercepted synthetic save');
   check(report.geolocationCalls === 0, 'zero GPS requests');
