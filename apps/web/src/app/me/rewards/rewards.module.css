@@ -76,6 +76,8 @@
 .empty p, .unavailable p { margin: 0; max-width: 42rem; color: var(--portal-muted); font-size: .9rem; line-height: 1.7; }
 .notice { border: 1px solid var(--portal-border); border-radius: .9rem; padding: 1rem; background: var(--portal-subtle); color: var(--portal-muted); font-size: .875rem; line-height: 1.65; }
 .notice p { margin: 0 0 .65rem; }
+.confirmationHeading { margin: 0 0 .65rem; color: var(--portal-text); font-size: 1rem; line-height: 1.4; font-weight: 750; }
+.confirmationHeading:focus-visible { outline: 3px solid var(--portal-accent); outline-offset: 3px; border-radius: .2rem; }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .rewards :is(button,input,select,summary,a):focus-visible { outline: 3px solid var(--portal-accent); outline-offset: 3px; }
 @media (max-width: 35rem) { .filters > * { width: 100%; flex-basis: 100%; } .pointsSection { padding: 1rem; } .sectionHeading { align-items: flex-start; } }
