@@ -176,3 +176,35 @@ test("SUN's canonical portal navigation survives authentication without acceptin
     assert.equal(normalizeConsumerAuthReturnPath(`/me?fromTap=1&eventId=42&${query}`), "/me", query);
   }
 });
+
+
+test("reward reentry remains a brand-only consumer destination across email and phone without changing OTP start fields", () => {
+  for (const tenant of ["bodega-a", "brand.a", "brand_a", "Balmec-AR", "a".repeat(120)]) {
+    const expected = "/me/rewards?tenant=" + encodeURIComponent(tenant);
+    const login = new URL("/login?consumer=1&next=" + encodeURIComponent(expected), "https://web.example.test");
+    const next = normalizeConsumerAuthReturnPath(login.searchParams.get("next"));
+    assert.equal(next, expected);
+    assert.deepEqual([...new URL(next, "https://web.example.test").searchParams.entries()], [["tenant", tenant]]);
+    assert.deepEqual(consumerAuthStartPayload({ email: "persona@example.test" }, next), { email: "persona@example.test", next });
+    assert.deepEqual(consumerAuthStartPayload({ phone: "+5491155551234" }, next), { phone: "+5491155551234" },
+      "phone start keeps only contact; the browser retains the same normalized brand destination");
+  }
+  assert.equal(normalizeConsumerAuthReturnPath("/me/rewards"), "/me/rewards");
+});
+
+test("reward reentry excludes bearer/device data and refuses ambiguous or unsafe tenant destinations", () => {
+  const expected = "/me/rewards?tenant=brand.a";
+  const dirty = expected + "&voucher=SYNTHETIC_VOUCHER&code=SYNTHETIC_CODE&uid=SYNTHETIC_UID&mac=SYNTHETIC_MAC&ctr=17&freshToken=SYNTHETIC_FRESH&tapAccess=SYNTHETIC_ACCESS&token=SYNTHETIC_TOKEN&pin=SYNTHETIC_PIN&lat=-32&lng=-68&contact=SYNTHETIC_CONTACT&next=https%3A%2F%2Fevil.example#SYNTHETIC_FRAGMENT";
+  assert.equal(normalizeConsumerAuthReturnPath(dirty), expected);
+  assert.deepEqual(consumerAuthStartPayload({ email: "persona@example.test" }, dirty), { email: "persona@example.test", next: expected });
+  for (const query of [
+    "tenant=brand.a&tenant=brand.b", "tenant=brand.a&ten%61nt=brand.a", "tenant=brand%252Ea",
+    "tenant=BRAND.a", "tenant=brand%2Fa", "tenant=brand%5Ca", "tenant=brand%00a",
+    "tenant=brand%E2%80%AEa", "tenant=%E2%81%A6brand.a%E2%81%A9", "tenant=%E0%A4%A",
+    "tenant=" + "a".repeat(121),
+  ]) {
+    const supplied = "/me/rewards?" + query;
+    assert.equal(normalizeConsumerAuthReturnPath(supplied), "/me", supplied);
+    assert.deepEqual(consumerAuthStartPayload({ email: "persona@example.test" }, supplied), { email: "persona@example.test" });
+  }
+});

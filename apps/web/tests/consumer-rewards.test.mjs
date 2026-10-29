@@ -8,6 +8,7 @@ import ts from "typescript";
 import * as tapHandoff from "../src/app/api/_lib/consumer-tap-handoff.ts";
 import * as boundedFetch from "../src/app/me/_components/consumer-bounded-fetch.ts";
 import { rewardNextActions } from "../src/app/me/_components/consumer-reward-next-actions.ts";
+import * as consumerLoginContinuation from "../src/app/login/consumer-login-continuation.ts";
 
 const require = createRequire(import.meta.url);
 const dir = new URL("../src/app/me/", import.meta.url);
@@ -44,6 +45,7 @@ const shared = {
   "../_components/consumer-rewards-model": model,
   "../_components/consumer-reward-reservation": reservation,
   "../_components/consumer-reward-next-actions": { rewardNextActions },
+  "../../login/consumer-login-continuation": consumerLoginContinuation,
 };
 const { ConsumerRewardsClient } = compile(clientSource, shared);
 const NOW = "2026-09-08T12:00:00Z";

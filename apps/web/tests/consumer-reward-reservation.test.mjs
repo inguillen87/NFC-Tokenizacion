@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import * as boundedFetch from "../src/app/me/_components/consumer-bounded-fetch.ts";
 import { rewardNextActions } from "../src/app/me/_components/consumer-reward-next-actions.ts";
+import * as consumerLoginContinuation from "../src/app/login/consumer-login-continuation.ts";
 
 const require = createRequire(import.meta.url);
 const read = path => readFileSync(new URL("../src/app/me/" + path, import.meta.url), "utf8");
@@ -148,6 +149,7 @@ test("SSR advertises an eligible button without requesting or reserving anything
     "next/link": ({ children, ...props }) => React.createElement("a", props, children),
     "./rewards.module.css": css, "../_components/consumer-rewards-model": model,
     "../_components/consumer-reward-next-actions": { rewardNextActions },
+    "../../login/consumer-login-continuation": consumerLoginContinuation,
     "../_components/consumer-reward-reservation": { ...reservation, reserveConsumerReward: () => { calls++; throw Error("unexpected"); }, readConsumerReservation: () => { calls++; throw Error("unexpected"); } },
   });
   const html = renderToStaticMarkup(React.createElement(client.ConsumerRewardsClient, { items: [parsed(row())], initialTenant: "bodega-a", selectedVoucher: null }));
