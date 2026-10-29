@@ -43,10 +43,15 @@ function harness(options = {}) {
   const events = [];
   const queries = [];
   const loaded = {};
+  const ProjectionDate = options.clock ? class extends Date {
+    constructor(...args) { super(...(args.length ? args : [options.clock.now])); }
+    static now() { const now = options.clock.now; options.clock.calls++; options.clock.now += options.clock.step || 0; return now; }
+  } : Date;
   const executor = async (strings, ...values) => {
     events.push("read");
     queries.push({ statement: strings.join("?"), values });
     if (options.queryError) throw options.queryError;
+    options.afterRead?.();
     return options.rows || [];
   };
   const require = (name) => {
@@ -62,10 +67,10 @@ function harness(options = {}) {
   };
   for (const [name, code] of Object.entries(compiled)) {
     const module = { exports: {} };
-    new Function("require", "module", "exports", code)(require, module, module.exports);
+    new Function("require", "module", "exports", "Date", code)(require, module, module.exports, ProjectionDate);
     loaded[name] = module.exports;
   }
-  return { ...loaded, queries, events, get: () => loaded.route.GET(new Request("https://api.nexid.test/consumer/rewards")) };
+  return { ...loaded, queries, events, get: (request = new Request("https://api.nexid.test/consumer/rewards")) => loaded.route.GET(request) };
 }
 
 async function response(h, status) {
@@ -89,8 +94,8 @@ test("authentication precedes all reward reads; unauthorized and unavailable res
 });
 
 test("the production SQL binds owner and tenant on claims, memberships and program balances", async () => {
-  const h = harness();
-  assert.deepEqual(await response(h, 200), { ok: true, items: [], scope: "own_brands", limit: 100 });
+  const h = harness({ clock: { now: NOW, calls: 0 } });
+  assert.deepEqual(await response(h, 200), { ok: true, items: [], scope: "own_brands", limit: 100, checkedAt: new Date(NOW).toISOString() });
   assert.deepEqual(h.events, ["authenticate", "read"]);
   assert.equal(h.queries.length, 1);
   const { statement, values } = h.queries[0];
@@ -312,4 +317,54 @@ test("claim intent is additive and advertised only with the persisted supported 
   for (const row of [reward(), reward({ portal_claim_eligible: false }), reward({ portal_claim_eligible: "true" }), reward({ portal_claim_eligible: true, membership_status: "paused" }), claim({ portal_claim_eligible: true })]) {
     const result = item(row, NOW); assert.equal(result.can_claim, false); assert.equal(Object.hasOwn(result, "claimIntent"), false);
   }
+});
+
+test("checkedAt is the one post-read projection instant for all claim expiry boundaries", async () => {
+  const clock = { now: NOW - 10_000, calls: 0, step: 10_000 };
+  const h = harness({ clock, afterRead: () => { clock.now = NOW; }, rows: [
+    claim({ claim_expires_at_value: new Date(NOW + 1).toISOString() }),
+    claim({ claim_id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd", claim_expires_at_value: new Date(NOW).toISOString() }),
+  ] });
+  const body = await response(h, 200);
+  assert.equal(body.items[0].state, "claimed");
+  assert.equal(body.items[0].redemption_code, "NEXID-OWN-ISSUED-CODE");
+  assert.equal(body.items[1].state, "expired");
+  assert.equal(body.items[1].redemption_code, null);
+  assert.equal(body.checkedAt, new Date(NOW).toISOString());
+  assert.equal(clock.calls, 1, "Projection and label must share one sample, not two nearby timestamps");
+  assert.equal(h.queries.length, 1);
+  assert.deepEqual(h.events, ["authenticate", "read"]);
+});
+
+test("an empty private snapshot carries server time and ignores request clock suggestions", async () => {
+  const clock = { now: NOW, calls: 0 };
+  const h = harness({ clock });
+  const result = await h.get(new Request("https://api.nexid.test/consumer/rewards?checkedAt=2099-01-01T00%3A00%3A00.000Z", {
+    headers: { date: "Thu, 01 Jan 2099 00:00:00 GMT" },
+  }));
+  assert.equal(result.status, 200);
+  assert.equal(result.headers.get("cache-control"), "private, no-store");
+  assert.deepEqual(await result.json(), { ok: true, items: [], scope: "own_brands", limit: 100, checkedAt: new Date(NOW).toISOString() });
+  assert.equal(clock.calls, 1); assert.equal(h.queries.length, 1);
+});
+
+test("denied or unavailable reads keep their exact private errors without claiming a checkedAt", async () => {
+  for (const options of [{ unauthenticated: true }, { authError: new Error(PRIVATE) }, { consumerId: "invalid" }, { queryError: new Error(PRIVATE) }]) {
+    const clock = { now: NOW, calls: 0 }, h = harness({ ...options, clock });
+    const status = options.unauthenticated ? 401 : 503;
+    const body = await response(h, status);
+    assert.deepEqual(body, { ok: false, error: status === 401 ? "unauthorized" : "unavailable" });
+    assert.equal(Object.hasOwn(body, "checkedAt"), false);
+    assert.equal(clock.calls, 0);
+    assert.equal(h.queries.length, options.queryError ? 1 : 0);
+  }
+});
+
+test("existing getPrivateConsumerRewards export preserves its array contract and one read", async () => {
+  const clock = { now: NOW, calls: 0 }, h = harness({ clock, rows: [claim({ claim_expires_at_value: new Date(NOW + 1).toISOString() })] });
+  const items = await h.model.getPrivateConsumerRewards(CONSUMER);
+  assert.equal(Array.isArray(items), true);
+  assert.equal(items.length, 1); assert.equal(items[0].state, "claimed");
+  assert.equal(Object.hasOwn(items, "checkedAt"), false);
+  assert.equal(clock.calls, 1); assert.equal(h.queries.length, 1);
 });

@@ -189,7 +189,7 @@ export function toConsumerRewardItem(row: Record<string, unknown>, now = Date.no
  * cannot use that path. This read relationship grants no claim or consent.
  * Network discovery is deliberately outside this authenticated read contract.
  */
-export async function getPrivateConsumerRewards(consumerId: string, executor: SqlExecutor = sql): Promise<ConsumerRewardItem[]> {
+export async function getPrivateConsumerRewardsSnapshot(consumerId: string, executor: SqlExecutor = sql): Promise<{ items: ConsumerRewardItem[]; checkedAt: string }> {
   if (!/^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(consumerId)) throw new Error("invalid_consumer_id");
 
   const rows = await executor/*sql*/`
@@ -264,6 +264,13 @@ export async function getPrivateConsumerRewards(consumerId: string, executor: Sq
       reward.id DESC, claim.id DESC
     LIMIT ${CONSUMER_REWARDS_LIMIT}
   `;
+  // One application-server projection instant, sampled after the read as before.
+  // This is not the SQL statement timestamp or a grant of future claim validity.
   const now = Date.now();
-  return rows.map((row) => toConsumerRewardItem(row, now));
+  return { items: rows.map((row) => toConsumerRewardItem(row, now)), checkedAt: new Date(now).toISOString() };
+}
+
+/** Preserve the existing array contract for private readers and SQL harnesses. */
+export async function getPrivateConsumerRewards(consumerId: string, executor: SqlExecutor = sql): Promise<ConsumerRewardItem[]> {
+  return (await getPrivateConsumerRewardsSnapshot(consumerId, executor)).items;
 }
