@@ -1,5 +1,5 @@
 import { fetchConsumerJson, type ConsumerJsonResult } from "./consumer-bounded-fetch";
-import { buildConsumerRewardsModel, CONSUMER_REWARD_RESERVATION_INTENT, type ConsumerReward } from "./consumer-rewards-model";
+import { buildConsumerRewardsSnapshot, CONSUMER_REWARD_RESERVATION_INTENT, type ConsumerReward, type ConsumerRewardsSnapshot } from "./consumer-rewards-model";
 
 export type RewardReservationQuote = {
   rewardId: string; tenant: string; brand: string; title: string; program: string;
@@ -11,12 +11,17 @@ export type RewardReservationResult =
   | { status: "denied" }
   | { status: "uncertain" };
 export type RewardReservationLookup =
-  | { status: "confirmed"; items: ConsumerReward[]; claimKey: string }
-  | { status: "not-confirmed"; items: ConsumerReward[] }
+  | { status: "confirmed"; items: ConsumerReward[]; claimKey: string; checkedAt: string }
+  | { status: "not-confirmed"; items: ConsumerReward[]; checkedAt: string }
   | { status: "authentication-required" }
   | { status: "denied" }
   | { status: "uncertain" };
-type Options = { fetchImpl?: typeof fetch; timeoutMs?: number; signal?: AbortSignal; now?: string };
+export type ConsumerRewardsReadResult =
+  | Extract<ConsumerRewardsSnapshot, { status: "ready" }>
+  | { status: "authentication-required" }
+  | { status: "denied" }
+  | { status: "uncertain" };
+type Options = { fetchImpl?: typeof fetch; timeoutMs?: number; signal?: AbortSignal };
 const uuid = (value: unknown): value is string => typeof value === "string" && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value);
 const sameUuid = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 const record = (value: unknown): Record<string, unknown> | null => value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -62,20 +67,23 @@ export async function reserveConsumerReward(quote: RewardReservationQuote, optio
   // Do not present a code or infer ownership from the acknowledgement body.
   return { status: "acknowledged", claimId: claim.id, duplicate: envelope.duplicate };
 }
-/** A private read can confirm the issued UUID; it cannot repair the economic scope of a write. */
-export async function readConsumerReservation(quote: RewardReservationQuote, claimId: string | null, options: Options = {}): Promise<RewardReservationLookup> {
-  if (!uuid(quote.rewardId) || (claimId !== null && !uuid(claimId))) return { status: "denied" };
+/** One explicit private GET. A failed read provides no replacement snapshot. */
+export async function readConsumerRewardsSnapshot(options: Options = {}): Promise<ConsumerRewardsReadResult> {
   const result = await fetchConsumerJson("/api/consumer/rewards", { method: "GET", credentials: "same-origin", cache: "no-store" }, requestOptions(options));
   if (options.signal?.aborted) return { status: "uncertain" };
   if (result.status !== "ready") return { status: refusal(result) };
-  const envelope = record(result.data);
-  if (envelope?.scope !== "own_brands" || envelope.limit !== 100 || !Array.isArray(envelope.items) || envelope.items.length > 100) return { status: "uncertain" };
-  const model = buildConsumerRewardsModel(envelope, options.now ?? new Date().toISOString());
-  if (model.status !== "ready") return { status: "uncertain" };
-  const matches = model.items.filter(item => item.hasClaim && uuid(item.id) && sameUuid(item.id, quote.rewardId)
+  const snapshot = buildConsumerRewardsSnapshot(result.data);
+  return snapshot.status === "ready" ? snapshot : { status: "uncertain" };
+}
+/** A private read can confirm the issued UUID; it cannot repair the economic scope of a write. */
+export async function readConsumerReservation(quote: RewardReservationQuote, claimId: string | null, options: Options = {}): Promise<RewardReservationLookup> {
+  if (!uuid(quote.rewardId) || (claimId !== null && !uuid(claimId))) return { status: "denied" };
+  const snapshot = await readConsumerRewardsSnapshot(options);
+  if (snapshot.status !== "ready") return snapshot;
+  const matches = snapshot.items.filter(item => item.hasClaim && uuid(item.id) && sameUuid(item.id, quote.rewardId)
     && item.tenant === quote.tenant && uuid(item.key.slice(6))
     && (claimId === null || sameUuid(item.key.slice(6), claimId)));
   if (matches.length > 1) return { status: "uncertain" };
-  return matches.length === 1 ? { status: "confirmed", items: model.items, claimKey: matches[0].key }
-    : { status: "not-confirmed", items: model.items };
+  return matches.length === 1 ? { status: "confirmed", items: snapshot.items, claimKey: matches[0].key, checkedAt: snapshot.checkedAt }
+    : { status: "not-confirmed", items: snapshot.items, checkedAt: snapshot.checkedAt };
 }

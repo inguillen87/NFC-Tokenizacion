@@ -47,5 +47,6 @@ createServer(async (req, res) => {
     res.end(JSON.stringify({ok:true,item:{...item,tenant_name:"Marca de prueba",product_name:"Producto de prueba local",brand_name:"Marca de prueba",bid:"QA-LOCAL"}})); return;
   }
   const key = url.pathname.replace("/consumer/", "");
+  if (key === "rewards") { res.end(JSON.stringify({ ok: true, items: scenario === "empty" ? [] : items.rewards, scope: "own_brands", limit: 100, checkedAt: "2026-09-08T15:00:00.000Z" })); return; }
   res.end(JSON.stringify({ ok: true, items: scenario === "empty" ? [] : items[key] || [] }));
 }).listen(3323, "127.0.0.1", () => console.log("Local synthetic portal API http://127.0.0.1:3323/qa"));
