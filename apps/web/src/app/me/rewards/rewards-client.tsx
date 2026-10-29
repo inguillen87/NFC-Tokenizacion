@@ -31,11 +31,11 @@ type ReservationFlow = {
 };
 const sameSource = (a: RewardSourceIdentity, b: RewardSourceIdentity) => a.items === b.items && a.initialTenant === b.initialTenant && a.selectedVoucher === b.selectedVoucher;
 
-export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }: RewardSourceIdentity) {
+export function ConsumerRewardsClient({ items, checkedAt, initialTenant, selectedVoucher }: RewardSourceIdentity & { checkedAt: string }) {
   const identity = { items, initialTenant, selectedVoucher };
   const [filters, setFilters] = useState({ source: identity, tenant: initialTenant, query: "", view: "all" as "all" | "vouchers" | "catalog" });
   const [flow, setFlow] = useState<ReservationFlow | null>(null);
-  const [collection, setCollection] = useState<{ source: RewardSourceIdentity; items: ConsumerReward[] } | null>(null);
+  const [collection, setCollection] = useState<{ source: RewardSourceIdentity; items: ConsumerReward[]; checkedAt: string } | null>(null);
   const owner = useRef(identity);
   const sequence = useRef(0);
   const pending = useRef(false);
@@ -49,7 +49,8 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
   const reentryPath = normalizeConsumerAuthReturnPath("/me/rewards" + (reentryTenant ? "?tenant=" + encodeURIComponent(reentryTenant) : ""));
   const currentFilters = sameSource(filters.source, identity) ? filters : { source: identity, tenant: initialTenant, query: "", view: "all" as const };
   const { tenant, query, view } = currentFilters;
-  const displayedItems = collection && sameSource(collection.source, identity) ? collection.items : items;
+  const displayedSnapshot = collection && sameSource(collection.source, identity) ? collection : { items, checkedAt };
+  const displayedItems = displayedSnapshot.items;
   const selectedKey = active?.claimKey ?? selectedVoucher;
   const busy = active?.phase === "pending" || active?.phase === "checking";
   useEffect(() => {
@@ -83,12 +84,12 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
   }
   function finishLookup(base: ReservationFlow, result: RewardReservationLookup, claimId: string | null) {
     if (result.status === "confirmed") {
-      setCollection({ source: base.source, items: result.items });
+      setCollection({ source: base.source, items: result.items, checkedAt: result.checkedAt });
       setFlow({ ...base, phase: "confirmed", claimId, claimKey: result.claimKey,
         message: "Tu reserva figura en tu cuenta. Revisá el estado y vencimiento del voucher." });
       setFilters({ source: base.source, tenant: base.quote.tenant, query: "", view: "vouchers" });
     } else if (result.status === "not-confirmed") {
-      setCollection({ source: base.source, items: result.items });
+      setCollection({ source: base.source, items: result.items, checkedAt: result.checkedAt });
       setFlow({ ...base, phase: "uncertain", claimId,
         message: "No encontramos una reserva confirmada en esta consulta. Podés comprobarla otra vez sin descontar puntos." });
     } else {

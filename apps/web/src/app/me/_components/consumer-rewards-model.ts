@@ -18,6 +18,9 @@ export type ConsumerReward = {
   reservationNeedsRefresh?: boolean;
 };
 export type ConsumerRewardsSource = { status: "ready"; items: ConsumerReward[] } | { status: "unavailable"; items: null };
+export type ConsumerRewardsSnapshot =
+  | { status: "ready"; items: ConsumerReward[]; checkedAt: string }
+  | { status: "unavailable"; items: null; checkedAt: null };
 function record(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 }
@@ -56,6 +59,16 @@ export function rewardDateLabel(value: string | null): string {
   }).formatToParts(date);
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)?.value ?? "";
   return `${part("day")}/${part("month")}/${part("year")} · ${part("hour")}:${part("minute")} (Argentina)`;
+}
+/** Private response projection time is presentation metadata, never action authority. */
+export function buildConsumerRewardsSnapshot(payload: unknown): ConsumerRewardsSnapshot {
+  const envelope = record(payload), checkedAt = instant(envelope?.checkedAt);
+  if (!envelope || envelope.ok !== true || envelope.scope !== "own_brands" || envelope.limit !== 100
+    || !Array.isArray(envelope.items) || envelope.items.length > 100 || !checkedAt || checkedAt !== envelope.checkedAt) {
+    return { status: "unavailable", items: null, checkedAt: null };
+  }
+  const source = buildConsumerRewardsModel(envelope, checkedAt);
+  return source.status === "ready" ? { ...source, checkedAt } : { ...source, checkedAt: null };
 }
 export function buildConsumerRewardsModel(payload: unknown, now: string): ConsumerRewardsSource {
   const envelope = record(payload);

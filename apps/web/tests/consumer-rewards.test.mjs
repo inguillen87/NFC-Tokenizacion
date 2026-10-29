@@ -50,7 +50,7 @@ const shared = {
 const { ConsumerRewardsClient } = compile(clientSource, shared);
 const NOW = "2026-09-08T12:00:00Z";
 const FUTURE = "2099-09-09T12:00:00Z";
-const list = (items = []) => ({ ok: true, items });
+const list = (items = []) => ({ ok: true, items, scope: "own_brands", limit: 100, checkedAt: new Date(NOW).toISOString() });
 const reward = (overrides = {}) => ({ id: "reward-1", tenant_slug: "demobodega", tenant_name: "Bodega Balmec", title: "Visita a la bodega", program_name: "Club Balmec", points_cost: 100, state: "reported", ...overrides });
 const claim = (overrides = {}) => reward({ claim_id: "claim-1", claim_status: "claimed", claim_expires_at: FUTURE, redemption_code: "BALMEC-1234", ...overrides });
 const wallet = (overrides = {}) => ({ ok: true, tenantWallets: [{ slug: "demobodega", name: "Bodega Balmec", points_balance: 540 }], networkWallet: { enabled: false, points_balance: 0 }, ...overrides });
@@ -85,7 +85,7 @@ async function render(payload, options = {}) {
   return { ...setup, html: renderToStaticMarkup(await setup.page({ searchParams: Promise.resolve(options.params || {}) })) };
 }
 
-const renderClient = (items, props = {}) => renderToStaticMarkup(React.createElement(ConsumerRewardsClient, { items, initialTenant: "", selectedVoucher: null, ...props }));
+const renderClient = (items, props = {}) => renderToStaticMarkup(React.createElement(ConsumerRewardsClient, { items, checkedAt: new Date(NOW).toISOString(), initialTenant: "", selectedVoucher: null, ...props }));
 const pointsSection = (html) => html.match(/<section aria-labelledby="benefits-points-title"[\s\S]*?<\/section>/)?.[0] || "";
 
 test("canonical API tenant slugs retain dots and underscores without collapsing homonymous brands or widening voucher lookup", () => {
@@ -704,4 +704,47 @@ test("a known expired catalog state cannot hide or add to the seven reported req
   assert.match(detail, /Necesitamos revisar los datos de tu cuenta/);
   assert.doesNotMatch(detail, /confirmar la vigencia y los cupos/);
   assert.deepEqual(item.claimUnavailableReasons, reasons, "display ordering must not mutate the private read model");
+});
+
+// Post-runtime protocol regressions; no future helper is imported by these tests.
+test("SSR rejects an unattested private clock instead of publishing an empty or partial collection", async () => {
+  const valid = list([claim({ claim_status: "claimed", redemption_code: "PRIVATE-SSR-CLOCK" })]);
+  const cases = [
+    ["old API without checkedAt", { ...valid, checkedAt: undefined }],
+    ["noncanonical UTC", { ...valid, checkedAt: NOW }],
+    ["impossible date", { ...valid, checkedAt: "2027-02-29T12:00:00.000Z" }],
+    ["different scope", { ...valid, scope: "network" }],
+    ["different limit", { ...valid, limit: 250 }],
+    ["invalid row after own history", { ...valid, items: [...valid.items, null] }],
+  ];
+  for (const [label, body] of cases) {
+    const { html, calls, clientProps } = await render(body);
+    assert.match(html, /No pudimos cargar tus beneficios/, label);
+    assert.doesNotMatch(html, /PRIVATE-SSR-CLOCK|Tus próximos beneficios|data-reward-state=/, label);
+    assert.deepEqual(clientProps, [], label);
+    assert.match(pointsSection(html), /540/, "independent wallet data is preserved: " + label);
+    assert.deepEqual(calls.filter(call => call[0] === "fetch").map(call => call[1]).sort(), ["rewards", "wallet"], label);
+  }
+});
+
+test("SSR accepts an attested empty collection and passes its exact canonical server clock", async () => {
+  const checkedAt = "2028-02-29T12:34:56.789Z";
+  const { html, clientProps } = await render({ ...list([]), checkedAt });
+  assert.doesNotMatch(html, /No pudimos cargar tus beneficios/);
+  assert.match(html, /Tus próximos beneficios, acá/);
+  assert.equal(clientProps.length, 1);
+  assert.equal(clientProps[0].checkedAt, checkedAt); assert.deepEqual(clientProps[0].items, []);
+});
+
+test("SSR uses the server projection boundary for voucher codes while retaining historical spend", async () => {
+  const checkedAt = "2028-02-29T12:34:56.789Z";
+  const { html, clientProps } = await render({ ...list([
+    claim({ claim_id: "claim-clock-expired", claim_status: "claimed", claim_expires_at: checkedAt, redemption_code: "SSR-SERVER-EXPIRED", points_spent: 20 }),
+    claim({ claim_id: "claim-clock-live", claim_status: "claimed", claim_expires_at: "2028-02-29T12:34:56.790Z", redemption_code: "SSR-SERVER-LIVE", points_spent: 40 }),
+  ]), checkedAt });
+  assert.equal(clientProps.length, 1); assert.equal(clientProps[0].checkedAt, checkedAt);
+  assert.deepEqual(clientProps[0].items.map(item => [item.state, item.code, item.cost]), [
+    ["expired", null, 20], ["claimed", "SSR-SERVER-LIVE", 40],
+  ]);
+  assert.doesNotMatch(html, /SSR-SERVER-EXPIRED/); assert.match(html, /SSR-SERVER-LIVE/);
 });

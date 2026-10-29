@@ -63,7 +63,7 @@ export async function createDestinationRecoveryFixture(){
   if(path==='/consumer/taps/900001'&&scenario==='experience-context-mismatched')return reply({ok:true,item:{tap_event_id:'900002',verdict:'VALID_CLOSED',risk_level:'low',created_at:'2026-10-05T12:00:00Z',tenant_slug:otherBrand.slug,tenant_name:otherBrand.name,product_name:'Producto ajeno QA',bid:'LOT-OTHER-QA'}});
   if(path==='/consumer/taps/900001')return reply({ok:true,item:{tap_event_id:'900001',verdict:'VALID_CLOSED',risk_level:'low',created_at:'2026-10-05T12:00:00Z',tenant_slug:brand.slug,tenant_name:brand.name,product_name:product.product_name,bid:product.bid}});
   if(path==='/consumer/wallet')return reply({ok:true,tenantWallets:[],networkWallet:{enabled:false},certificates:[],ownerships:[],nfts:[],balances:[]});
-  if(path==='/consumer/rewards')return reply({ok:true,items:[]});
+  if(path==='/consumer/rewards')return reply({ok:true,items:[],scope:'own_brands',limit:100,checkedAt:'2026-10-06T12:00:00.000Z'});
   if(path==='/consumer/experiences'&&experienceScenarios.has(scenario))return reply({ok:true,items:[],verifiedExperiences:[]});
   if(path==='/consumer/experiences')return reply({ok:true,items:[],offers:[]});
   if(path==='/consumer/privacy')return reply({ok:true,consumer:{display_name:'Cuenta local QA',preferred_locale:'es-AR'},consents:[]});

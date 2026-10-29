@@ -37,7 +37,7 @@ export function consumerBrandsFixture(url,init={}){
     if(tenant)items=items.filter(item=>item.tenant_slug===tenant);
     return result({ok:true,items});
   }
-  if(requestUrl.pathname==='/consumer/rewards')return result({ok:true,items:[],scope:'own_brands',limit:250});
+  if(requestUrl.pathname==='/consumer/rewards')return result({ok:true,items:[],scope:'own_brands',limit:100,checkedAt:'2026-10-01T12:00:00.000Z'});
   if(requestUrl.pathname==='/consumer/wallet')return result({ok:true,tenantWallets:brandsQaMemberships.map(brand=>({slug:brand.slug,name:brand.name,points_balance:brand.points_balance,lifetime_points:null})),networkWallet:{enabled:false}});
   const query=Object.fromEntries(['tenant','from','to','event'].map(key=>[key,requestUrl.searchParams.get(key)||'']));
   if(query.tenant&&!brandsQaMemberships.some(brand=>brand.slug===query.tenant))return result({ok:false,error:'invalid_query'},400);
