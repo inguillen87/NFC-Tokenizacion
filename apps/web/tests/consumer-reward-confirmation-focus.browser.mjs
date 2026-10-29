@@ -23,7 +23,7 @@ const sourcePaths=[
   'src/app/me/_components/consumer-rewards-model.ts','src/app/me/_components/consumer-reward-reservation.ts',
   'src/app/me/_components/consumer-reward-next-actions.ts','src/app/me/_components/consumer-wallet-points-model.ts',
   'src/app/me/_components/consumer-bounded-fetch.ts','src/app/me/_components/portal-shell.module.css',
-  'src/app/me/brands/brands-model.ts','tests/consumer-reward-confirmation-focus.browser.mjs',
+  'src/app/me/brands/brands-model.ts','src/app/login/consumer-login-continuation.ts','tests/consumer-reward-confirmation-focus.browser.mjs',
   '../../package.json','../../package-lock.json','package.json',
 ];
 const sourceHashes=async()=>Object.fromEntries(await Promise.all(sourcePaths.map(async file=>[file,hash(await readFile(join(web,file)))])));
@@ -61,7 +61,7 @@ const report={schema:'nexid.consumer-reward-confirmation-focus.v1',mode,passed:f
   localOnly:true,actualComponent:'ConsumerRewardsClient',actualModels:true,nativeComponentAndPortalCss:true,actualRewardsPageAncestor:true,actualTailwindPreflight:true,syntheticBatchedEventStress:true,
   preflightCssSha256:hash(await readFile(join(root,'node_modules/tailwindcss/preflight.css'))),syntheticProps:true,syntheticTransport:true,
   actualNextServer:false,realAuthentication:false,realDatabase:false,realTenantSynchronization:false,providerMutations:0,physicalTapMeasured:false,
-  qaSource:process.env.QA_SOURCE || null,observedHead,sourceBefore,sourceAfter:null,checks:[],cases:[],serverRequests:[],blockedRequests:[],errors:[],
+  qaSource:process.env.QA_SOURCE || null,observedHead,sourceBefore,sourceAfter:null,checks:[],cases:[],reauthCases:[],serverRequests:[],blockedRequests:[],errors:[],
   closure:{contexts:false,browser:false,server:false,esbuild:false}};
 const server=createServer((req,res)=>{
   const url=new URL(req.url,'http://fixture.invalid');report.serverRequests.push({method:req.method,path:url.pathname});
@@ -76,7 +76,7 @@ let browser,origin;const contexts=new Set();
 function check(value,description){report.checks.push({description,passed:Boolean(value)});assert.ok(value,description);}
 const settle=page=>page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
 async function waitFor(description,predicate){const limit=Date.now()+5000;while(!predicate()){assert.ok(Date.now()<limit,description);await new Promise(done=>setTimeout(done,15));}}
-async function open(width,theme,scenario,{postStatus=200}={}){
+async function open(width,theme,scenario,{postStatus=200,lookupStatus=200,fixtureSearch=''}={}){
   const context=await browser.newContext({viewport:{width,height:1000},locale:'es-AR',reducedMotion:'reduce',serviceWorkers:'block'});contexts.add(context);
   const page=await context.newPage();page.setDefaultTimeout(10000);const posts=[],lookups=[],routeTasks=new Set();let closeStarted=false;
   const entry={width,theme,scenario,mode,posts,lookups,passed:false};report.cases.push(entry);
@@ -90,14 +90,15 @@ async function open(width,theme,scenario,{postStatus=200}={}){
         ? {ok:true,duplicate:false,claim:{id:CLAIM,reward_id:REWARD,redemption_code:'ACK-MUST-NOT-SHOW'}} : {ok:false,error:'synthetic_conflict'})});
     }
     if(url.origin===origin && request.method()==='GET' && url.pathname==='/api/consumer/rewards'){
-      let release;const gate=new Promise(done=>{release=done;});const row={method:'GET',path:url.pathname,intercepted:true,providerFetch:false,release,items:null};lookups.push(row);
-      await gate;return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(payload(row.items ?? [claimedRow(),otherRow()]))});
+      let release;const gate=new Promise(done=>{release=done;});const row={method:'GET',path:url.pathname,intercepted:true,providerFetch:false,status:lookupStatus,release,items:null};lookups.push(row);
+      await gate;return route.fulfill({status:lookupStatus,contentType:'application/json',body:JSON.stringify(lookupStatus===200
+        ? payload(row.items ?? [claimedRow(),otherRow()]) : {ok:false,error:'synthetic_unauthorized'})});
     }
     if(url.origin===origin && request.method()==='GET' && ['/','/fixture.js','/favicon.ico'].includes(url.pathname))return route.continue();
     report.blockedRequests.push({scenario,width,theme,method:request.method(),origin:url.origin,path:url.pathname});return route.abort();
   };
   await page.route('**/*',route=>{const task=handle(route);routeTasks.add(task);task.finally(()=>routeTasks.delete(task)).catch(error=>{if(!closeStarted)report.errors.push({scenario,width,theme,message:String(error)});});return task;});
-  await page.goto(origin+'/?theme='+theme,{waitUntil:'networkidle'});
+  await page.goto(origin+'/?theme='+theme+fixtureSearch,{waitUntil:'networkidle'});
   const card=page.locator('article').filter({has:page.getByRole('heading',{name:TITLE,exact:true})});
   const reserve=card.getByRole('button',{name:'Reservar beneficio',exact:true});
   const group=card.getByRole('group').filter({has:page.getByRole('button',{name:/^Confirmar reserva por \d+ puntos$/})});
@@ -124,6 +125,23 @@ async function open(width,theme,scenario,{postStatus=200}={}){
   }
   return {page,context,entry,posts,lookups,card,reserve,group,affirmative,cancel,focusCheck,openConfirm,deliberateConfirm,finish};
 }
+
+const privateFixtureSearch='&tenant=bodega-b&fromTap=1&eventId=42&action=rewards&tapAction=claim&bid=QA-LOT&voucher=SYNTHETIC_VOUCHER&code=SYNTHETIC_CODE&uid=SYNTHETIC_UID&mac=SYNTHETIC_MAC&ctr=17&freshToken=SYNTHETIC_FRESH&tapAccess=SYNTHETIC_ACCESS&token=SYNTHETIC_TOKEN&pin=SYNTHETIC_PIN&lat=-32&lng=-68&contact=SYNTHETIC_CONTACT&next=https%3A%2F%2Fevil.example#SYNTHETIC_FRAGMENT';
+async function rewardReentryEvidence(page,label){
+  const href=await page.getByRole('link',{name:'Volver a ingresar',exact:true}).getAttribute('href');
+  check(typeof href==='string',label+': an explicit reentry link is available');
+  const login=new URL(href,origin),next=login.searchParams.get('next'),destination=new URL(next ?? '',origin);
+  check(login.origin===origin && login.pathname==='/login' && login.searchParams.get('consumer')==='1'
+    && JSON.stringify([...login.searchParams.keys()].sort())===JSON.stringify(['consumer','next']) && login.hash==='',
+    label+': reentry uses only the consumer login and a singleton next');
+  check(destination.origin===origin && destination.pathname==='/me/rewards' && destination.hash===''
+    && [...destination.searchParams.keys()].every(key=>key==='tenant'),
+    label+': destination is only rewards and at most its brand; no TAP action or capability is replayed');
+  check(!href.includes('SYNTHETIC_') && !href.includes('evil.example'),label+': route credentials, voucher codes, device fields and nested returns do not leak');
+  return {href,next,expectedNext:'/me/rewards?tenant=bodega-a',destinationEntries:[...destination.searchParams.entries()],
+    preserved:next==='/me/rewards?tenant=bodega-a'};
+}
+
 try{
   await new Promise((done,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',done);});origin='http://127.0.0.1:'+server.address().port;
   browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH});
@@ -239,11 +257,53 @@ try{
         f.entry.passed=true;
       }finally{await f.finish();}
     }
+    {
+      const f=await open(width,theme,'reauth-after-post401',{postStatus:401,fixtureSearch:privateFixtureSearch});const {page}=f;
+      try{
+        await f.openConfirm(label+' POST401');await f.deliberateConfirm(label+' POST401');
+        await page.getByText('Estamos preparando tu reserva. Esperá la confirmación.',{exact:true}).waitFor();
+        await page.getByRole('combobox',{name:'Filtrar por marca',exact:true}).selectOption('bodega-b');
+        check(f.posts.length===1 && f.lookups.length===0 && f.posts[0].status===401,label+': held POST401 keeps one attempted reservation and no speculative lookup');
+        check(JSON.stringify(f.posts[0].body)===JSON.stringify({claimIntent:'portal-first-reservation.v1',expectedPointsCost:40,locale:'es-AR'}),label+': reauthentication does not add return fields to the reservation body');
+        f.posts[0].release();await page.getByText('Tu sesión venció. Volvé a ingresar para consultar la reserva.',{exact:true}).waitFor();
+        const afterFailure=await rewardReentryEvidence(page,label+' POST401');
+        await page.getByRole('button',{name:'Limpiar filtros',exact:true}).click();
+        check(await f.reserve.isDisabled(),label+': the original attempted reward stays locked after auth failure and filter reset');
+        await f.reserve.evaluate(el=>{el.click();el.click();});await settle(page);
+        const afterReset=await rewardReentryEvidence(page,label+' POST401 reset');
+        check(f.posts.length===1 && f.lookups.length===0,label+': authentication-required, reset and disabled activations never rePOST or start GET');
+        const evidence={width,theme,scenario:f.entry.scenario,stage:'POST401',afterFailure,afterReset,posts:f.posts.length,lookups:f.lookups.length,
+          expectedPosts:1,expectedLookups:0,preserved:afterFailure.preserved && afterReset.preserved};
+        report.reauthCases.push(evidence);Object.assign(f.entry,{passed:evidence.preserved,reauth:evidence});
+      }finally{await f.finish();}
+    }
+    {
+      const f=await open(width,theme,'reauth-after-acknowledged-get401',{lookupStatus:401,fixtureSearch:privateFixtureSearch});const {page}=f;
+      try{
+        await f.openConfirm(label+' GET401');await f.deliberateConfirm(label+' GET401');
+        f.posts[0].release();await waitFor(label+': acknowledged reservation starts one private GET before GET401',()=>f.lookups.length===1);
+        await page.getByText('Recibimos la solicitud. Estamos comprobando tu voucher.',{exact:true}).waitFor();
+        await page.getByRole('combobox',{name:'Filtrar por marca',exact:true}).selectOption('bodega-b');
+        check(f.posts.length===1 && f.lookups.length===1 && f.lookups[0].status===401,label+': held GET401 keeps the acknowledged reservation while a different brand is selected');
+        check(await page.getByText('ACK-MUST-NOT-SHOW',{exact:true}).count()===0,label+': an acknowledgement never exposes an unconfirmed voucher');
+        f.lookups[0].release();await page.getByText('Tu sesión venció. Volvé a ingresar para consultar la reserva.',{exact:true}).waitFor();
+        const afterFailure=await rewardReentryEvidence(page,label+' GET401');
+        await page.getByRole('button',{name:'Limpiar filtros',exact:true}).click();
+        check(await f.reserve.isDisabled(),label+': the original attempted reward remains locked after an authenticated lookup expires');
+        await f.reserve.evaluate(el=>{el.click();el.click();});await settle(page);
+        const afterReset=await rewardReentryEvidence(page,label+' GET401 reset');
+        check(f.posts.length===1 && f.lookups.length===1,label+': lookup reauthentication and reset never resend POST or automatically repeat GET');
+        const evidence={width,theme,scenario:f.entry.scenario,stage:'POST200→GET401',afterFailure,afterReset,posts:f.posts.length,lookups:f.lookups.length,
+          expectedPosts:1,expectedLookups:1,preserved:afterFailure.preserved && afterReset.preserved};
+        report.reauthCases.push(evidence);Object.assign(f.entry,{passed:evidence.preserved,reauth:evidence});
+      }finally{await f.finish();}
+    }
   }
   report.sourceAfter=await sourceHashes();assert.deepEqual(report.sourceAfter,sourceBefore);
   check(report.errors.length===0 && report.blockedRequests.length===0,'No application errors or unexpected/external requests');
   check(report.serverRequests.every(row=>row.method==='GET'),'Every POST/lookup is intercepted before reaching even the local fixture server');
-  check(report.cases.length===28 && report.cases.every(row=>row.passed),'All seven scenarios cover mobile/desktop and light/dark');
+  check(report.reauthCases.length===8 && report.reauthCases.every(row=>row.preserved),'Both POST401 and POST200→GET401 preserve the original quoted tenant after pending filter changes in all four existing viewports/themes');
+  check(report.cases.length===36 && report.cases.every(row=>row.passed),'All nine scenarios cover mobile/desktop and light/dark');
   report.passed=true;report.regressionPassed=guarded;report.releaseAcceptanceEligible=guarded && Boolean(process.env.QA_SOURCE);
   report.baselineDefectReproduced=!guarded && report.cases.filter(row=>row.scenario==='held-enter-and-checking').every(row=>row.unsafeSpendReproduced)
     && report.cases.filter(row=>row.scenario.startsWith('confirmation-filter-')).every(row=>row.orphanedNoticeReproduced);

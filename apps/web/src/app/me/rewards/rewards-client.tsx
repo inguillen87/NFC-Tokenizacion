@@ -6,6 +6,7 @@ import { ArrowUpRight, Check, ChevronDown, Copy, Gift, Search, Ticket } from "lu
 import { REWARD_STATE_LABELS, rewardAvailabilityNotice, rewardDateLabel, rewardTenant, type ConsumerReward } from "../_components/consumer-rewards-model";
 import { readConsumerReservation, reserveConsumerReward, rewardReservationQuote, sameReservationQuote, type RewardReservationLookup, type RewardReservationQuote } from "../_components/consumer-reward-reservation";
 import { rewardNextActions } from "../_components/consumer-reward-next-actions";
+import { normalizeConsumerAuthReturnPath } from "../../login/consumer-login-continuation";
 import styles from "./rewards.module.css";
 
 function VoucherCode({ code }: { code: string }) {
@@ -44,6 +45,8 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
   const searchInput = useRef<HTMLInputElement | null>(null);
   const returnFocus = useRef<HTMLButtonElement | null>(null);
   const active = flow && sameSource(flow.source, identity) ? flow : null;
+  const reentryTenant = rewardTenant(active?.quote.tenant);
+  const reentryPath = normalizeConsumerAuthReturnPath("/me/rewards" + (reentryTenant ? "?tenant=" + encodeURIComponent(reentryTenant) : ""));
   const currentFilters = sameSource(filters.source, identity) ? filters : { source: identity, tenant: initialTenant, query: "", view: "all" as const };
   const { tenant, query, view } = currentFilters;
   const displayedItems = collection && sameSource(collection.source, identity) ? collection.items : items;
@@ -134,7 +137,7 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
       <Link className={styles.textLink} href={catalogHref}>{catalogTenant ? "Catálogo de esta marca" : "Explorar catálogo"} <ArrowUpRight aria-hidden="true" /></Link></div>
     {active ? <div className={styles.notice} aria-busy={busy}><p role="status" aria-atomic="true">{active.message}</p>
       {active.phase === "uncertain" ? <button type="button" className={styles.primaryLink} onClick={checkReservation}>Comprobar mi reserva</button> : null}
-      {active.phase === "authentication-required" ? <Link className={styles.primaryLink} href="/login?consumer=1&next=%2Fme%2Frewards">Volver a ingresar</Link> : null}
+      {active.phase === "authentication-required" ? <Link className={styles.primaryLink} href={"/login?consumer=1&next=" + encodeURIComponent(reentryPath)}>Volver a ingresar</Link> : null}
       {active.phase === "confirmed" && active.claimKey ? <a className={styles.primaryLink} href={"#voucher-" + active.claimKey}>Ver mi voucher</a> : null}
     </div> : null}
     <div className={styles.filters}>
