@@ -98,13 +98,16 @@ export async function listSdkSensorTimeline(input: {
       AND external_event.event_type = ${SDK_SENSOR_READING_EVENT_TYPE}
       AND external_event.source = ${SDK_SENSOR_EVENT_SOURCE}
       AND jsonb_typeof(external_event.data) = 'object'
-      AND jsonb_object_length(external_event.data) = 1
+      AND external_event.data = jsonb_build_object('sensors', external_event.data->'sensors')
       AND jsonb_typeof(external_event.data->'sensors') = 'object'
       AND external_event.data #>> '{sensors,nexidExpectedBatchId}' = external_event.batch_id::text
       AND external_event.data #>> '{sensors,nexidExpectedTagId}' = external_event.tag_id::text
       AND NOT EXISTS (
         SELECT 1
-        FROM jsonb_object_keys(external_event.data->'sensors') AS sensor_key(key)
+        FROM jsonb_object_keys(
+          CASE WHEN jsonb_typeof(external_event.data->'sensors') = 'object'
+            THEN external_event.data->'sensors' ELSE '{}'::jsonb END
+        ) AS sensor_key(key)
         WHERE sensor_key.key NOT IN (
           'temperatureC', 'humidityPct', 'lightExposure', 'transitShock',
           'measuredAt', 'deviceId', 'source', 'stage',
