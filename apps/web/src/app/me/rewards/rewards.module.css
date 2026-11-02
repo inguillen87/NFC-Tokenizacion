@@ -87,4 +87,4 @@
 .freshnessNotice p { margin: 0; }
 .freshnessNotice strong { color: var(--portal-text); }
 .freshnessNotice .copyButton, .freshnessNotice .primaryLink { justify-self: start; max-width: 100%; }
-.copyButton:disabled, .primaryLink:disabled { opacity: .65; cursor: default; }
+.copyButton:disabled, .copyButton[aria-disabled="true"], .primaryLink:disabled { opacity: .65; cursor: default; }
