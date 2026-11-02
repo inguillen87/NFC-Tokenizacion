@@ -175,11 +175,14 @@ try{
     }
     for(const failure of ['401','403','503','invalid-json','network']){
       const f=await open(width,theme,'wallet-error-'+failure);try{
+        const status=f.panel.getByRole('status');check(await status.count()===1,failure+': points status region exists before the first update');
+        await status.evaluate(node=>{window.__walletPersistentStatus=node;});
         const before=await f.facts(),request=await readWallet(f);
         if(/^\d+$/.test(failure))request.status=Number(failure);else if(failure==='invalid-json')request.rawBody='private diagnostic, not JSON';else request.networkFailure=true;
         request.release();await f.panel.getByRole('button',{name:'Actualizar puntos',exact:true}).waitFor();
         check(await f.panel.getByText('540',{exact:false}).count()===1 && await f.panel.getByText('No informado',{exact:true}).count()===1,failure+': prior positive and unknown balances remain distinct');
         check(!(await f.panel.innerText()).includes('private diagnostic'),failure+': private diagnostics are not rendered');
+        check(await status.evaluate(node=>node===window.__walletPersistentStatus),failure+': updating feedback preserves the same live-region node');
         if(failure==='401'){
           const href=await f.panel.getByRole('link',{name:'Volver a ingresar',exact:true}).getAttribute('href'),login=new URL(href,origin),next=new URL(login.searchParams.get('next'),origin);
           check(login.pathname==='/login' && login.searchParams.get('consumer')==='1' && next.pathname==='/me/rewards' && !next.search && !next.hash && !href.includes('fixture-epoch'),failure+': reentry retains only the safe rewards destination');
@@ -208,7 +211,7 @@ try{
     }
     {
       const f=await open(width,theme,'wallet-stalled-headers-deadline',{unavailable:true});try{
-        const before=await f.facts(),request=await readWallet(f);request.ownerCancellationExpected=true;await f.panel.getByText('No pudimos actualizar tus puntos. Conservamos la información anterior; podés volver a intentarlo.',{exact:true}).waitFor();
+        const before=await f.facts(),request=await readWallet(f);request.ownerCancellationExpected=true;await f.panel.getByText('No pudimos cargar tus puntos. Tus saldos no se muestran como cero; podés volver a intentarlo.',{exact:true}).waitFor();
         check(f.wallets.length===1 && await f.panel.getByRole('button',{name:'Reintentar puntos',exact:true}).isEnabled(),'deadline restores the explicit retry without an automatic second read');
         check(await f.panel.locator('[data-benefit-points="brand"]').count()===0,'unknown prior data never becomes an empty confirmed balance');
         f.wallets[0].release();await settle(f.page);check(await f.panel.getByText('Saldo actualizado QA',{exact:true}).count()===0,'late headers after deadline do not change the unavailable view');

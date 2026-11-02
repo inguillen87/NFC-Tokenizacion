@@ -23,6 +23,7 @@ export function ConsumerRewardBrandPoints({ initialPoints, tenant, sourceEpoch }
   const currentView = sameSource(view.source, identity) ? view : { source: identity, points: initialPoints, phase: "idle" as const };
   const liveView = useRef<View>(currentView); liveView.current = currentView;
   const points = currentView.points, busy = currentView.phase === "pending";
+  const retained = points.status === "ready" && currentView.phase !== "idle" && currentView.phase !== "ready";
   const safeTenant = rewardTenant(tenant);
   const next = normalizeConsumerAuthReturnPath("/me/rewards" + (safeTenant ? "?tenant=" + encodeURIComponent(safeTenant) : ""));
   const reentry = "/login?consumer=1&next=" + encodeURIComponent(next);
@@ -51,8 +52,12 @@ export function ConsumerRewardBrandPoints({ initialPoints, tenant, sourceEpoch }
   }
   const message = currentView.phase === "pending" ? "Consultando tus puntos. Tus beneficios y reservas se conservan."
     : currentView.phase === "authentication-required" ? "Tu sesión venció. Volvé a ingresar para consultar tus puntos."
-      : currentView.phase === "denied" ? "No tenés acceso para consultar estos puntos. Conservamos la información anterior; consultá con la marca."
-        : currentView.phase === "unavailable" ? "No pudimos actualizar tus puntos. Conservamos la información anterior; podés volver a intentarlo."
+      : currentView.phase === "denied" ? points.status === "ready"
+        ? "No tenés acceso para consultar estos puntos. Conservamos la información anterior; consultá con la marca."
+        : "No tenés acceso para consultar estos puntos. Tus saldos no se muestran como cero; consultá con la marca."
+        : currentView.phase === "unavailable" ? points.status === "ready"
+          ? "No pudimos actualizar tus puntos. Conservamos la información anterior; podés volver a intentarlo."
+          : "No pudimos cargar tus puntos. Tus saldos no se muestran como cero; podés volver a intentarlo."
           : currentView.phase === "ready" ? "Actualizamos la consulta de puntos por marca. El saldo de cada programa de beneficios puede ser distinto."
             : points.status === "unavailable" ? "No pudimos cargar tus puntos. Tus saldos no se muestran como cero." : null;
   return <section aria-labelledby="benefits-points-title" className={styles.pointsSection} aria-busy={busy}>
@@ -60,10 +65,10 @@ export function ConsumerRewardBrandPoints({ initialPoints, tenant, sourceEpoch }
       <div className={styles.headingIcon}><Coins aria-hidden="true" /><div><h2 id="benefits-points-title">Puntos por marca</h2><p>Cada marca tiene su propio saldo y condiciones.</p></div></div>
       <Link className={styles.textLink} href="/me/wallet">Ver mi billetera <ArrowUpRight aria-hidden="true" /></Link>
     </div>
-    {message ? <p role="status" aria-atomic="true" className={styles.notice}>{message}</p> : null}
-    {points.status === "ready" ? points.data.length === 0 ? <p className={styles.notice}>Todavía no tenés puntos por marca registrados en esta cuenta.</p>
+    <p role="status" aria-atomic="true" className={message ? styles.notice : styles.srOnly}>{message || ""}</p>
+    {points.status === "ready" ? points.data.length === 0 ? <p className={styles.notice}>{retained ? "En la última consulta no había puntos por marca registrados en esta cuenta." : "Todavía no tenés puntos por marca registrados en esta cuenta."}</p>
       : <div className={styles.brandGrid}>{points.data.map((brand, index) => <article key={`${brand.slug}-${index}`} className={styles.brandCard} data-benefit-points="brand">
-        <Store aria-hidden="true" /><div><h3>{brand.name || brand.slug || "Marca no informada"}</h3><span>Saldo reportado</span></div>
+        <Store aria-hidden="true" /><div><h3>{brand.name || brand.slug || "Marca no informada"}</h3><span>{retained ? "Última consulta" : "Saldo reportado"}</span></div>
         <strong>{brand.balance === null ? "No informado" : <>{brand.balance}<small> pts</small></>}</strong>
       </article>)}</div> : null}
     <button type="button" className={styles.copyButton} aria-disabled={busy} onClick={retry}>{busy ? "Consultando puntos…" : points.status === "ready" ? "Actualizar puntos" : "Reintentar puntos"}</button>

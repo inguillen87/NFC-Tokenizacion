@@ -1214,3 +1214,68 @@ test("the points reader retains the bounded deadline and never retries stalled h
   t.mock.timers.tick(boundedFetch.CONSUMER_READ_TIMEOUT_MS);
   assert.deepEqual(await pending, { status: "unavailable" }); assert.equal(signal.aborted, true); assert.equal(calls, 1);
 });
+
+test("a first failed points retry never claims to retain data that was unavailable", async () => {
+  for (const status of [403, 503]) {
+    const h = brandPointsFixture();
+    try {
+      h.render(); h.flush(); const pending = h.action(h.render())();
+      h.requests[0].fail(status); await pending; const tree = h.render(), text = h.text(tree);
+      assert.ok(text.includes("Tus saldos no se muestran como cero"));
+      assert.ok(!text.includes("Conservamos la información anterior"));
+      assert.equal(h.nodes(tree).filter(node => node.props?.["data-benefit-points"] === "brand").length, 0);
+      assert.equal(h.requests.length, 1);
+    } finally { h.cleanup(); }
+  }
+});
+
+test("failed or pending points refresh labels retained positive and unknown balances as the previous query", async () => {
+  const initialPoints = { status: "ready", data: [
+    { slug: "brand-a", name: "Marca A", balance: 540, lifetime: null },
+    { slug: "brand-b", name: "Marca B", balance: null, lifetime: null },
+  ] };
+  for (const status of [401, 403, 503]) {
+    const h = brandPointsFixture({ initialPoints });
+    try {
+      h.render(); h.flush(); let tree = h.render();
+      assert.equal(h.nodes(tree).filter(node => node.type === "span" && h.text(node) === "Saldo reportado").length, 2);
+      const pending = h.action(tree)(); tree = h.render();
+      assert.equal(h.nodes(tree).filter(node => node.type === "span" && h.text(node) === "Última consulta").length, 2);
+      h.requests[0].fail(status); await pending; tree = h.render();
+      assert.equal(h.nodes(tree).filter(node => node.type === "span" && h.text(node) === "Última consulta").length, 2);
+      assert.ok(h.text(tree).includes("540") && h.text(tree).includes("No informado"));
+      assert.equal(h.nodes(tree).filter(node => node.type === "span" && h.text(node) === "Saldo reportado").length, 0);
+      if (status === 401) assert.ok(h.text(tree).includes("Tu sesión venció"));
+      assert.equal(h.requests.length, 1);
+    } finally { h.cleanup(); }
+  }
+});
+
+test("an empty retained points query is historical rather than a newly confirmed empty balance", async () => {
+  const h = brandPointsFixture({ initialPoints: { status: "ready", data: [] } });
+  try {
+    h.render(); h.flush(); const pending = h.action(h.render())();
+    h.requests[0].fail(503); await pending; const text = h.text(h.render());
+    assert.ok(text.includes("En la última consulta no había puntos por marca registrados en esta cuenta."));
+    assert.ok(!text.includes("Todavía no tenés puntos por marca registrados en esta cuenta."));
+  } finally { h.cleanup(); }
+});
+
+test("the points status region exists while empty and is populated without replacing its JSX position", async () => {
+  const h = brandPointsFixture({ initialPoints: { status: "ready", data: [] } });
+  const status = tree => h.nodes(tree).filter(node => node.props?.role === "status");
+  try {
+    h.render(); h.flush(); let tree = h.render();
+    assert.equal(status(tree).length, 1); assert.equal(h.text(status(tree)[0]), "");
+    assert.equal(status(tree)[0].type, "p"); assert.equal(status(tree)[0].props.className, css.srOnly);
+    const initialChildren = tree.props.children, initialIndex = initialChildren.indexOf(status(tree)[0]);
+    assert.ok(initialIndex >= 0);
+    const pending = h.action(tree)(); tree = h.render();
+    assert.equal(status(tree).length, 1); assert.equal(tree.props.children.indexOf(status(tree)[0]), initialIndex);
+    assert.ok(h.text(status(tree)[0]).includes("Consultando tus puntos"));
+    h.requests[0].release(wallet({ tenantWallets: [] })); await pending; tree = h.render();
+    assert.equal(status(tree).length, 1); assert.equal(tree.props.children.indexOf(status(tree)[0]), initialIndex);
+    assert.equal(status(tree)[0].props["aria-atomic"], "true");
+    assert.ok(h.text(status(tree)[0]).includes("Actualizamos la consulta"));
+  } finally { h.cleanup(); }
+});
