@@ -5,8 +5,7 @@ import { checkAdmin, checkAdminPermission, getAdminTenantScope } from "../../../
 import { sql } from "../../../../lib/db";
 import { json } from "../../../../lib/http";
 import { effectiveTenantFilter } from "../../../../lib/admin-tenant-filter";
-import { AdminRewardError, parseAdminRewardCommand } from "../../../../lib/admin-reward-policy";
-import { saveAdminReward } from "../../../../lib/admin-reward-service";
+import { handleAdminRewardPost } from "../../../../lib/admin-reward-request";
 import { toAdminRewardReadItem } from "../../../../lib/admin-reward-read-model";
 
 export async function GET(req: Request) {
@@ -65,31 +64,5 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await checkAdmin(req);
-  if (auth) return auth;
-  const permission = checkAdminPermission(req, "rewards:write");
-  if (permission) return permission;
-
-  const { forcedTenantSlug } = getAdminTenantScope(req);
-  const rawBody = await req.json().catch(() => null);
-  const body = (rawBody && typeof rawBody === "object" && !Array.isArray(rawBody) ? rawBody : {}) as Record<string, any>;
-  const tenantSlug = effectiveTenantFilter({
-    forcedTenantSlug,
-    requestedTenantSlug: String(body.tenant_slug || body.tenant || "")
-  });
-
-  if (!tenantSlug) {
-    return json({ ok: false, error: "tenant_required" }, 400);
-  }
-
-  try {
-    const command = parseAdminRewardCommand(rawBody);
-    const tenantRows = await sql`SELECT id FROM tenants WHERE slug = ${tenantSlug} LIMIT 1`;
-    if (!tenantRows.length) return json({ ok: false, error: "tenant_not_found" }, 400);
-    const reward = await saveAdminReward(String(tenantRows[0].id), command);
-    return json({ ok: true, reward }, 200, { "cache-control": "private, no-store" });
-  } catch (error) {
-    return json({ ok: false, error: error instanceof AdminRewardError ? error.code : "reward_save_unavailable" },
-      error instanceof AdminRewardError ? error.status : 503, { "cache-control": "private, no-store" });
-  }
+  return handleAdminRewardPost(req, "legacy");
 }

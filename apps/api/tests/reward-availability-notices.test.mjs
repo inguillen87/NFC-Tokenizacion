@@ -197,6 +197,7 @@ test("both admin GET scopes read requirements with an exact tenant-program join 
       if (name.endsWith("/http")) return { json: (body, status = 200) => Response.json(body, { status }) };
       if (name.endsWith("/admin-tenant-filter")) return { effectiveTenantFilter: ({ forcedTenantSlug, requestedTenantSlug }) => forcedTenantSlug || requestedTenantSlug || "" };
       if (name.endsWith("/admin-reward-read-model")) return admin;
+      if (name.endsWith("/admin-reward-request")) return { handleAdminRewardPost: () => { throw new Error("unexpected reward write during GET"); } };
       if (name.endsWith("/admin-reward-policy")) return {};
       if (name.endsWith("/admin-reward-service")) return {};
       throw new Error(`unexpected dependency ${name}`);
