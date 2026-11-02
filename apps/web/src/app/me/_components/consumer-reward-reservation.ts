@@ -40,14 +40,6 @@ export function sameReservationQuote(a: RewardReservationQuote, b: RewardReserva
   return a.rewardId === b.rewardId && a.tenant === b.tenant && a.brand === b.brand && a.title === b.title
     && a.program === b.program && a.pointsCost === b.pointsCost && a.programBalance === b.programBalance;
 }
-function requestOptions(options: Options) {
-  const fetchImpl = options.fetchImpl ?? fetch;
-  return { timeoutMs: options.timeoutMs, fetchImpl: ((url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-    if (options.signal?.aborted) return Promise.reject(new DOMException("Cancelled", "AbortError"));
-    const signals = [init?.signal, options.signal].filter((signal): signal is AbortSignal => Boolean(signal));
-    return fetchImpl(url, { ...init, ...(signals.length ? { signal: AbortSignal.any(signals) } : {}) });
-  }) as typeof fetch };
-}
 function refusal(result: ConsumerJsonResult): "authentication-required" | "denied" | "uncertain" {
   return result.status === "http-error" && result.httpStatus === 401 ? "authentication-required"
     : result.status === "http-error" && result.httpStatus === 403 ? "denied" : "uncertain";
@@ -58,7 +50,7 @@ export async function reserveConsumerReward(quote: RewardReservationQuote, optio
   const result = await fetchConsumerJson("/api/consumer/rewards/" + encodeURIComponent(quote.rewardId) + "/claim", {
     method: "POST", credentials: "same-origin", cache: "no-store", headers: { "content-type": "application/json" },
     body: JSON.stringify({ claimIntent: CONSUMER_REWARD_RESERVATION_INTENT, expectedPointsCost: quote.pointsCost, locale: "es-AR" }),
-  }, requestOptions(options));
+  }, options);
   if (options.signal?.aborted) return { status: "uncertain" };
   if (result.status !== "ready") return { status: refusal(result) };
   const envelope = record(result.data), claim = record(envelope?.claim);
@@ -69,7 +61,7 @@ export async function reserveConsumerReward(quote: RewardReservationQuote, optio
 }
 /** One explicit private GET. A failed read provides no replacement snapshot. */
 export async function readConsumerRewardsSnapshot(options: Options = {}): Promise<ConsumerRewardsReadResult> {
-  const result = await fetchConsumerJson("/api/consumer/rewards", { method: "GET", credentials: "same-origin", cache: "no-store" }, requestOptions(options));
+  const result = await fetchConsumerJson("/api/consumer/rewards", { method: "GET", credentials: "same-origin", cache: "no-store" }, options);
   if (options.signal?.aborted) return { status: "uncertain" };
   if (result.status !== "ready") return { status: refusal(result) };
   const snapshot = buildConsumerRewardsSnapshot(result.data);

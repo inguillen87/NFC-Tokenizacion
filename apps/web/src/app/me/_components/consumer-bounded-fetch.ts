@@ -13,26 +13,37 @@ function cancelBody(response: Response | undefined) {
 export async function fetchConsumerJson(
   url: string,
   init: Omit<RequestInit, "signal">,
-  options: { fetchImpl?: typeof fetch; timeoutMs?: number } = {},
+  options: { fetchImpl?: typeof fetch; timeoutMs?: number; signal?: AbortSignal } = {},
 ): Promise<ConsumerJsonResult> {
+  // A cancelled owner cannot start a read or a mutation.
+  if (options.signal?.aborted) return { status: "unavailable", reason: "network" };
   const controller = new AbortController();
   const timeoutMs = options.timeoutMs ?? CONSUMER_READ_TIMEOUT_MS;
   const fetchImpl = options.fetchImpl ?? fetch;
   let response: Response | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<ConsumerJsonResult>((resolve) => {
-    timer = setTimeout(() => {
-      controller.abort();
-      cancelBody(response);
-      resolve({ status: "unavailable", reason: "timeout" });
-    }, timeoutMs);
-  });
+  let stoppedReason: "timeout" | "network" | undefined;
+  let resolveStopped!: (result: ConsumerJsonResult) => void;
+  const stopped = new Promise<ConsumerJsonResult>((resolve) => { resolveStopped = resolve; });
+  const stop = (reason: "timeout" | "network") => {
+    if (stoppedReason !== undefined) return;
+    stoppedReason = reason;
+    controller.abort();
+    cancelBody(response);
+    resolveStopped({ status: "unavailable", reason });
+  };
+  const cancelOwner = () => stop("network");
+  options.signal?.addEventListener("abort", cancelOwner, { once: true });
+  // Cover cancellation between the first check and listener registration.
+  if (options.signal?.aborted) cancelOwner();
+  timer = setTimeout(() => stop("timeout"), timeoutMs);
   const request = (async (): Promise<ConsumerJsonResult> => {
+    if (stoppedReason !== undefined) return { status: "unavailable", reason: stoppedReason };
     try {
       response = await fetchImpl(url, { ...init, signal: controller.signal });
       if (controller.signal.aborted) {
         cancelBody(response);
-        return { status: "unavailable", reason: "timeout" };
+        return { status: "unavailable", reason: stoppedReason ?? "network" };
       }
       if (!response.ok) {
         cancelBody(response);
@@ -41,21 +52,23 @@ export async function fetchConsumerJson(
       try {
         const data: unknown = await response.json();
         return controller.signal.aborted
-          ? { status: "unavailable", reason: "timeout" }
+          ? { status: "unavailable", reason: stoppedReason ?? "network" }
           : { status: "ready", data };
       } catch {
         cancelBody(response);
-        return { status: "unavailable", reason: controller.signal.aborted ? "timeout" : "invalid-json" };
+        return { status: "unavailable", reason: stoppedReason ?? "invalid-json" };
       }
     } catch {
-      return { status: "unavailable", reason: controller.signal.aborted ? "timeout" : "network" };
+      return { status: "unavailable", reason: stoppedReason ?? "network" };
     }
   })();
   try {
     // Abort alone is insufficient when a transport or body reader ignores it.
-    return await Promise.race([request, timeout]);
+    return await Promise.race([request, stopped]);
   } finally {
     if (timer !== undefined) clearTimeout(timer);
+    // Keep the owner linked until the full JSON body, not just its headers, settles.
+    options.signal?.removeEventListener("abort", cancelOwner);
   }
 }
 

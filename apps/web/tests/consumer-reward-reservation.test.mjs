@@ -11,10 +11,10 @@ import * as consumerLoginContinuation from "../src/app/login/consumer-login-cont
 
 const require = createRequire(import.meta.url);
 const read = path => readFileSync(new URL("../src/app/me/" + path, import.meta.url), "utf8");
-function compile(source, overrides = {}, dateConstructor = Date) {
+function compile(source, overrides = {}, dateConstructor = Date, abortSignalConstructor = AbortSignal) {
   const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
   const loaded = { exports: {} };
-  new Function("require", "module", "exports", "Date", output)(name => Object.hasOwn(overrides, name) ? overrides[name] : require(name), loaded, loaded.exports, dateConstructor);
+  new Function("require", "module", "exports", "Date", "AbortSignal", output)(name => Object.hasOwn(overrides, name) ? overrides[name] : require(name), loaded, loaded.exports, dateConstructor, abortSignalConstructor);
   return loaded.exports;
 }
 const wallet = compile(read("_components/consumer-wallet-points-model.ts"));
@@ -148,6 +148,7 @@ test("SSR advertises an eligible button without requesting or reserving anything
   const client = compile(read("rewards/rewards-client.tsx"), {
     "next/link": ({ children, ...props }) => React.createElement("a", props, children),
     "./rewards.module.css": css, "../_components/consumer-rewards-model": model,
+    "../_components/consumer-reward-presentation-clock": compile(read("_components/consumer-reward-presentation-clock.ts")),
     "../_components/consumer-reward-next-actions": { rewardNextActions },
     "../../login/consumer-login-continuation": consumerLoginContinuation,
     "../_components/consumer-reward-reservation": { ...reservation, reserveConsumerReward: () => { calls++; throw Error("unexpected"); }, readConsumerReservation: () => { calls++; throw Error("unexpected"); } },
@@ -309,4 +310,35 @@ test("an aborted private snapshot cannot replace data even when the transport re
     assert.deepEqual(result, { status: "uncertain" }, mode);
     assert.equal(calls, mode === "before read" ? 0 : 1);
   }
+});
+
+test("benefit reads and a single reservation work when the local AbortSignal has no any", async () => {
+  // Compile only this module with the absent feature; do not change a global browser API.
+  const noAny = Object.freeze({ any: undefined });
+  const compatible = compile(read("_components/consumer-reward-reservation.ts"), {
+    "./consumer-bounded-fetch": boundedFetch, "./consumer-rewards-model": model,
+  }, Date, noAny);
+  const calls = [];
+  const options = { fetchImpl: async (url, init) => { calls.push([url, init.method]); return response(init.method === "POST" ? ack() : payload([ownClaim()])); } };
+  assert.deepEqual(await compatible.reserveConsumerReward(quote(), options), { status: "acknowledged", claimId: CLAIM, duplicate: false });
+  const lookup = await compatible.readConsumerReservation(quote(), CLAIM, options);
+  assert.equal(lookup.status, "confirmed"); assert.equal(lookup.claimKey, "claim-" + CLAIM);
+  assert.deepEqual(calls, [["/api/consumer/rewards/" + REWARD + "/claim", "POST"], ["/api/consumer/rewards", "GET"]]);
+});
+
+test("a cancelled reservation body remains uncertain without a second POST", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const controller = new AbortController(); let finishBody; let signal; let calls = 0;
+  const pending = reservation.reserveConsumerReward(quote(), {
+    signal: controller.signal, fetchImpl: async (_url, init) => {
+      calls++; assert.equal(init.method, "POST"); signal = init.signal;
+      return { ok: true, body: { cancel: async () => {} }, json: () => new Promise(resolve => { finishBody = resolve; }) };
+    },
+  });
+  await Promise.resolve(); assert.equal(typeof finishBody, "function"); controller.abort();
+  let settled = false; pending.then(() => { settled = true; });
+  for (let step = 0; step < 8; step++) await Promise.resolve();
+  assert.equal(settled, true); assert.equal(signal.aborted, true); assert.deepEqual(await pending, { status: "uncertain" });
+  finishBody(ack()); for (let step = 0; step < 4; step++) await Promise.resolve();
+  t.mock.timers.tick(boundedFetch.CONSUMER_READ_TIMEOUT_MS * 2); assert.equal(calls, 1);
 });

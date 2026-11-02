@@ -521,3 +521,105 @@ test("passport rejects malformed consumer DTOs at the server-render boundary wit
     assert.deepEqual(h.loaded.calls.map(call => new URL(call.url).pathname), ["/consumer/session"]);
   }
 });
+
+class TrackedOwnerSignal extends EventTarget {
+  aborted = false;
+  added = 0;
+  removed = 0;
+  addEventListener(type, listener, options) {
+    if (type === "abort") this.added++;
+    return super.addEventListener(type, listener, options);
+  }
+  removeEventListener(type, listener, options) {
+    if (type === "abort") this.removed++;
+    return super.removeEventListener(type, listener, options);
+  }
+  abort() { this.aborted = true; this.dispatchEvent(new Event("abort")); }
+}
+
+test("an already cancelled owner starts no private request", async () => {
+  const owner = new TrackedOwnerSignal(); owner.abort(); let calls = 0;
+  const result = await fetchConsumerJson("/api/consumer/rewards", { method: "GET" }, {
+    signal: owner, fetchImpl: async () => { calls++; return new Response("{}"); },
+  });
+  assert.deepEqual(result, { status: "unavailable", reason: "network" });
+  assert.equal(calls, 0); assert.equal(owner.added, 0); assert.equal(owner.removed, 0);
+});
+
+test("owner cancellation settles ignored header abort once and removes its listener", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const owner = new TrackedOwnerSignal(); let calls = 0; let transportSignal;
+  const pending = fetchConsumerJson("/api/consumer/rewards", { method: "GET" }, {
+    signal: owner, fetchImpl: async (_url, init) => { calls++; transportSignal = init.signal; return new Promise(() => {}); },
+  });
+  assert.equal(calls, 1); assert.equal(owner.added, 1); assert.equal(owner.removed, 0);
+  let settled = false; pending.then(() => { settled = true; }); owner.abort();
+  for (let step = 0; step < 8; step++) await Promise.resolve();
+  // Baseline code ignores the owner, so check before awaiting instead of hanging the suite.
+  assert.equal(settled, true); assert.equal(transportSignal.aborted, true);
+  assert.deepEqual(await pending, { status: "unavailable", reason: "network" });
+  assert.equal(calls, 1); assert.equal(owner.removed, 1);
+  t.mock.timers.tick(CONSUMER_READ_TIMEOUT_MS * 2); assert.equal(calls, 1);
+});
+
+test("owner cancellation remains connected through an ignored JSON body and discards late data", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const owner = new TrackedOwnerSignal(); let finishBody; let cancelled = 0; let calls = 0; let transportSignal;
+  const pending = fetchConsumerJson("/api/consumer/rewards", { method: "GET" }, {
+    signal: owner, fetchImpl: async (_url, init) => {
+      calls++; transportSignal = init.signal;
+      return { ok: true, body: { cancel: async () => { cancelled++; } }, json: () => new Promise(resolve => { finishBody = resolve; }) };
+    },
+  });
+  await Promise.resolve(); assert.equal(typeof finishBody, "function"); assert.equal(owner.removed, 0);
+  let settled = false; pending.then(() => { settled = true; }); owner.abort();
+  for (let step = 0; step < 8; step++) await Promise.resolve();
+  assert.equal(settled, true); assert.equal(transportSignal.aborted, true); assert.equal(cancelled, 1);
+  assert.deepEqual(await pending, { status: "unavailable", reason: "network" });
+  assert.equal(owner.removed, 1); finishBody({ private: "late ignored body" });
+  for (let step = 0; step < 4; step++) await Promise.resolve();
+  assert.equal(calls, 1); t.mock.timers.tick(CONSUMER_READ_TIMEOUT_MS * 2); assert.equal(calls, 1);
+});
+
+test("completed JSON removes owner cancellation and clears the deadline", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const owner = new TrackedOwnerSignal(); let transportSignal; let calls = 0;
+  const result = await fetchConsumerJson("/api/consumer/rewards", { method: "GET" }, {
+    signal: owner, fetchImpl: async (_url, init) => { calls++; transportSignal = init.signal; return new Response('{"ok":true}'); },
+  });
+  assert.deepEqual(result, { status: "ready", data: { ok: true } });
+  assert.equal(owner.added, 1); assert.equal(owner.removed, 1);
+  owner.abort(); t.mock.timers.tick(CONSUMER_READ_TIMEOUT_MS * 2);
+  assert.equal(transportSignal.aborted, false); assert.equal(calls, 1);
+});
+
+test("a deadline still covers the complete body when an owner is present", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const owner = new TrackedOwnerSignal(); let transportSignal; let calls = 0; let cancelled = 0;
+  const pending = fetchConsumerJson("/api/consumer/rewards", { method: "GET" }, {
+    signal: owner, fetchImpl: async (_url, init) => {
+      calls++; transportSignal = init.signal;
+      return { ok: true, body: { cancel: async () => { cancelled++; } }, json: () => new Promise(() => {}) };
+    },
+  });
+  await Promise.resolve(); t.mock.timers.tick(CONSUMER_READ_TIMEOUT_MS - 1);
+  assert.equal(transportSignal.aborted, false); assert.equal(owner.removed, 0);
+  t.mock.timers.tick(1);
+  assert.deepEqual(await pending, { status: "unavailable", reason: "timeout" });
+  assert.equal(transportSignal.aborted, true); assert.equal(cancelled, 1); assert.equal(owner.removed, 1);
+  owner.abort(); assert.equal(calls, 1);
+});
+
+test("HTTP and invalid JSON terminal outcomes both remove the owner listener", async () => {
+  for (const [response, expected] of [
+    [() => new Response("private diagnostic", { status: 403 }), { status: "http-error", httpStatus: 403 }],
+    [() => new Response("{private diagnostic"), { status: "unavailable", reason: "invalid-json" }],
+  ]) {
+    const owner = new TrackedOwnerSignal(); let transportSignal;
+    const result = await fetchConsumerJson("/api/consumer/rewards", { method: "GET" }, {
+      signal: owner, fetchImpl: async (_url, init) => { transportSignal = init.signal; return response(); },
+    });
+    assert.deepEqual(result, expected); assert.equal(owner.added, 1); assert.equal(owner.removed, 1);
+    owner.abort(); assert.equal(transportSignal.aborted, false);
+  }
+});

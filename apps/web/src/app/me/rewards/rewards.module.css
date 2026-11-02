@@ -82,3 +82,9 @@
 .rewards :is(button,input,select,summary,a):focus-visible { outline: 3px solid var(--portal-accent); outline-offset: 3px; }
 @media (max-width: 35rem) { .filters > * { width: 100%; flex-basis: 100%; } .pointsSection { padding: 1rem; } .sectionHeading { align-items: flex-start; } }
 @media (prefers-reduced-motion: reduce) { .rewards *, .rewards *::before, .rewards *::after { transition: none !important; animation: none !important; } }
+
+.freshnessNotice { display: grid; gap: .65rem; margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--portal-border); border-radius: .9rem; background: var(--portal-subtle); color: var(--portal-muted); font-size: .875rem; line-height: 1.65; overflow-wrap: anywhere; }
+.freshnessNotice p { margin: 0; }
+.freshnessNotice strong { color: var(--portal-text); }
+.freshnessNotice .copyButton, .freshnessNotice .primaryLink { justify-self: start; max-width: 100%; }
+.copyButton:disabled, .primaryLink:disabled { opacity: .65; cursor: default; }
