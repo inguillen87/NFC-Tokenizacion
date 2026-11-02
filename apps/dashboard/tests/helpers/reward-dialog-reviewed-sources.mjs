@@ -1,0 +1,29 @@
+import assert from 'node:assert/strict';
+import {REWARD_PROGRAM_CONTEXT_REVIEWED_SOURCES} from './reward-program-context-reviewed-sources.mjs';
+import {ENGAGEMENT_GOVERNANCE_CHANGED} from './engagement-governance-reviewed-sources.mjs';
+
+// Only the exact reviewed R7 successor is projected to the independently pinned
+// D531 origin. Historical fixtures and every previous overlay remain unchanged.
+export const REWARD_DIALOG_SOURCE_BASE='a38a432e96cea93df53f1fca6bd58335b42a290a';
+export const REWARD_DIALOG_REVIEWED_SOURCES=Object.freeze({
+ 'apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx':Object.freeze({
+  before:'68e5c9f6d4ab1a4f707ee3a3cb650ec6632063b0721e8a644c53102231dff221',
+  after:'d804252a53d123b9b191ccf9cef73eccf3ea2ba47005a4e67599fa3187b65ce4',
+ }),
+ 'apps/dashboard/src/lib/permission-policy.ts':Object.freeze({
+  before:'45472db8d700e049945cc3322cb701599a3dac5b2e3762c60521e32394df8962',
+  after:'57eab8597c1be95e611f41590e9008aeb957b6e83423384501ebecbe574951d3',
+ }),
+});
+function independentOrigin(path){
+ return path==='apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx'
+  ? REWARD_PROGRAM_CONTEXT_REVIEWED_SOURCES[path]?.after
+  : ENGAGEMENT_GOVERNANCE_CHANGED[path]?.after;
+}
+export function rewardDialogPriorHash(path,actual){
+ if(!Object.hasOwn(REWARD_DIALOG_REVIEWED_SOURCES,path))return actual;
+ const pin=REWARD_DIALOG_REVIEWED_SOURCES[path];
+ assert.equal(pin.before,independentOrigin(path),path+' independently pinned D531 origin');
+ assert.equal(actual,pin.after,path+' exact reviewed reward-dialog increment');
+ return pin.before;
+}

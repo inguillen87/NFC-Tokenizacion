@@ -191,6 +191,7 @@ export function requiredPermissionForAdminResource(method: string, normalizedPat
   if (normalizedPath === "loyalty/configuration") {
     return normalizedMethod === "GET" ? "rewards:read" : normalizedMethod === "POST" ? "rewards:write" : null;
   }
+  if (normalizedMethod === "POST" && normalizedPath === "loyalty/rewards/create") return "rewards:write";
   if (normalizedPath === "loyalty/rewards") {
     return normalizedMethod === "GET" ? "rewards:read" : "rewards:write";
   }

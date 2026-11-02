@@ -94,3 +94,12 @@ test('SSE and tenant setup forward only validated session bearers and keep demo 
   assert.match(clerk, /clerkAuth\.getToken\(\)/);
   assert.doesNotMatch(clerk, /ADMIN_API_KEY/);
 });
+
+test('strict reward creation uses the existing exact write permission without widening routes or methods', () => {
+  assert.equal(requiredPermissionForAdminResource('POST', 'loyalty/rewards/create'), 'rewards:write');
+  assert.equal(requiredPermissionForAdminResource('post', 'loyalty/rewards/create'), 'rewards:write');
+  assert.equal(requiredPermissionForAdminResource('GET', 'loyalty/rewards'), 'rewards:read');
+  assert.equal(requiredPermissionForAdminResource('POST', 'loyalty/rewards'), 'rewards:write');
+  for (const [method, resource] of [['GET', 'loyalty/rewards/create'], ['POST', 'loyalty/rewards/create/other'], ['POST', 'loyalty/rewards/create-extra']]) assert.equal(requiredPermissionForAdminResource(method, resource), null);
+  assert.equal(requiresSuperAdminForAdminResource('POST', 'loyalty/rewards/create'), false);
+});
