@@ -16,6 +16,7 @@ const read = (path) => readFileSync(new URL(path, dir), "utf8");
 const modelSource = read("_components/consumer-rewards-model.ts");
 const pageSource = read("rewards/page.tsx");
 const clientSource = read("rewards/rewards-client.tsx");
+const presentationClockSource = read("_components/consumer-reward-presentation-clock.ts");
 const cssSource = read("rewards/rewards.module.css");
 
 function compile(source, overrides = {}) {
@@ -30,6 +31,7 @@ function compile(source, overrides = {}) {
 
 const walletModel = compile(read("_components/consumer-wallet-points-model.ts"));
 const model = compile(modelSource, { "./consumer-wallet-points-model": walletModel });
+const presentationClock = compile(presentationClockSource);
 const reservation = compile(read("_components/consumer-reward-reservation.ts"), { "./consumer-rewards-model": model, "./consumer-bounded-fetch": boundedFetch });
 const api = compile(read("_components/consumer-api.ts"), {
   "next/headers": { headers: () => { throw new Error("unexpected-network-read"); } },
@@ -43,6 +45,7 @@ const shared = {
   "next/link": ({ children, prefetch, ...props }) => React.createElement("a", props, children),
   "./rewards.module.css": css,
   "../_components/consumer-rewards-model": model,
+  "../_components/consumer-reward-presentation-clock": presentationClock,
   "../_components/consumer-reward-reservation": reservation,
   "../_components/consumer-reward-next-actions": { rewardNextActions },
   "../../login/consumer-login-continuation": consumerLoginContinuation,
@@ -253,7 +256,9 @@ test("SSR distinguishes unavailable rewards from empty results and keeps wallet 
   const failedWallet = await render(list([claim()]), { wallet: null });
   assert.match(pointsSection(failedWallet.html), /No pudimos cargar tus puntos/);
   assert.doesNotMatch(pointsSection(failedWallet.html), /Todavía no tenés|>0\s*</);
-  assert.match(failedWallet.html, /BALMEC-1234/);
+  assert.match(failedWallet.html, /Preparando el código de tu voucher/);
+  assert.doesNotMatch(failedWallet.html, /BALMEC-1234|Copiar código/);
+  assert.match(failedWallet.html, /Visita a la bodega|Estado registrado/);
   const noBrands = await render(list(), { wallet: wallet({ tenantWallets: [] }) });
   assert.match(pointsSection(noBrands.html), /Todavía no tenés puntos por marca/);
   assert.doesNotMatch(pointsSection(noBrands.html), /No pudimos cargar|>0\s*</);
@@ -312,15 +317,19 @@ test("SSR client starts with all kinds, an empty search and only the requested b
   assert.doesNotMatch(unknownBrand, /data-reward-state=/);
 });
 
-test("SSR codes remain copyable as text and date labels explicitly identify the Argentina timezone", () => {
+test("SSR retains voucher history and prepares its local anchor before presenting a code", () => {
   const item = readItem(claim());
   const html = renderClient([item]);
-  assert.match(html, /<code>BALMEC-1234<\/code>/);
-  assert.match(html, /Copiar código/);
+  assert.doesNotMatch(html, /<code>|BALMEC-1234|Copiar código/);
+  assert.match(html, /Preparando el código de tu voucher/);
+  assert.match(html, /Preparando tus vouchers/);
+  assert.match(html, /Última consulta/);
+  assert.match(html, /Estado registrado/);
   assert.match(html, /\(Argentina\)/);
-  assert.match(html, /La empresa confirma el canje y sus condiciones/);
+  assert.equal(item.code, "BALMEC-1234", "presentation does not erase the owned server receipt");
   assert.equal(model.rewardDateLabel(null), "No informado");
-  assert.match(clientSource, /navigator\.clipboard\.writeText\(code\)/);
+  assert.match(clientSource, /const currentCode = getCode\(item\)/);
+  assert.match(clientSource, /navigator\.clipboard\.writeText\(currentCode\)/);
   assert.match(clientSource, /No se pudo copiar/);
 });
 
@@ -746,5 +755,321 @@ test("SSR uses the server projection boundary for voucher codes while retaining 
   assert.deepEqual(clientProps[0].items.map(item => [item.state, item.code, item.cost]), [
     ["expired", null, 20], ["claimed", "SSR-SERVER-LIVE", 40],
   ]);
-  assert.doesNotMatch(html, /SSR-SERVER-EXPIRED/); assert.match(html, /SSR-SERVER-LIVE/);
+  assert.doesNotMatch(html, /SSR-SERVER-EXPIRED|SSR-SERVER-LIVE|<code>|Copiar código/);
+  assert.match(html, /Preparando el código de tu voucher/);
+  assert.match(html, /Puntos del reclamo|Estado registrado/);
+});
+
+
+test("mounted voucher presentation permits only one local expiry timeout and no automatic network", () => {
+  // The original model/client no-polling fence remains unchanged above.
+  assert.doesNotMatch(presentationClockSource, /\bfetch\s*\(|readConsumer|reserveConsumer|setInterval|requestAnimationFrame|Math\.random|Date\.now|router\.refresh|dangerouslySetInnerHTML/);
+  assert.equal([...presentationClockSource.matchAll(/\bsetTimeout\s*\(/g)].length, 1);
+  assert.match(presentationClockSource, /Math\.min\(MAX_REWARD_PRESENTATION_DELAY_MS/);
+  assert.match(presentationClockSource, /clearTimeout\(timer\)/);
+  assert.match(presentationClockSource, /removeEventListener\("visibilitychange", visibility\)/);
+  assert.match(presentationClockSource, /removeEventListener\("pageshow", pageShow\)/);
+  assert.doesNotMatch(presentationClockSource, /addEventListener\(\s*["'](?:blur|focus)["']/);
+  const effects = clientSource.match(/useEffect\(\(\) => \{[\s\S]*?\}, \[[^\]]*\]\);/g)?.join("\n") ?? "";
+  assert.doesNotMatch(effects, /readConsumerRewardsSnapshot|readConsumerReservation|reserveConsumerReward/);
+});
+
+// Source-only proposal authored by benefits_source_followups; Root/another reviewer must review it.
+// Pure presentation and local hook lifecycle tests do not certify HTTP ownership or React hydration.
+const mountedCheckedAt = "2026-10-29T10:00:00.000Z";
+function mountedReceipt(offset = 2_000, extra = {}) {
+  return { key: "claim-mounted-a", id: "reward-mounted-a", tenant: "bodega-a", brand: "Bodega A",
+    title: "Visita", program: "Club A", programBalance: 100, description: null, cost: 40,
+    hasClaim: true, state: "claimed", code: "MOUNTED-OWNED", expiresAt: new Date(Date.parse(mountedCheckedAt) + offset).toISOString(), ...extra };
+}
+
+test("mounted presentation blocks a voucher at equality and preserves its historical receipt", () => {
+  const item = mountedReceipt(), items = [item], before = JSON.stringify(items);
+  const clock = presentationClock.createRewardClock(items, mountedCheckedAt, 10);
+  assert.equal(presentationClock.rewardPresentation(clock, item, 2_009, true).code, "MOUNTED-OWNED");
+  const atDeadline = presentationClock.rewardPresentation(clock, item, 2_010, true);
+  assert.equal(atDeadline.code, null); assert.equal(atDeadline.expired, true); assert.equal(atDeadline.status, "fresh");
+  assert.equal(presentationClock.rewardPresentation(clock, item, 2_011, true).code, null);
+  assert.equal(JSON.stringify(items), before, "presentation never rewrites spend, status, owner or receipt");
+});
+
+test("invalid server clocks and monotonic samples cannot gain validity or heal silently", () => {
+  const item = mountedReceipt();
+  for (const checkedAt of ["", "not-a-clock", "2026-10-29T10:00:00Z", "2026-02-30T10:00:00.000Z"]) {
+    const clock = presentationClock.createRewardClock([item], checkedAt, 0);
+    assert.equal(presentationClock.rewardPresentation(clock, item, 1, true).code, null, checkedAt);
+  }
+  for (const invalid of [Number.NaN, Number.POSITIVE_INFINITY, -1]) {
+    const clock = presentationClock.createRewardClock([item], mountedCheckedAt, invalid);
+    assert.equal(presentationClock.rewardClockNow(clock, 1, true), null);
+  }
+  for (const invalid of [Number.NaN, Number.POSITIVE_INFINITY, 99, Number.MAX_SAFE_INTEGER]) {
+    const clock = presentationClock.createRewardClock([item], mountedCheckedAt, 100);
+    assert.equal(presentationClock.rewardClockNow(clock, invalid, true), null);
+    assert.equal(presentationClock.rewardPresentation(clock, item, 101, true).code, null, "a later good sample needs an explicit new snapshot");
+  }
+});
+
+test("nearest expiry recomputes remaining time and caps the platform timer delay", () => {
+  const first = mountedReceipt(), second = mountedReceipt(5_000, { key: "claim-mounted-b", code: "MOUNTED-SECOND" });
+  const clock = presentationClock.createRewardClock([second, first], mountedCheckedAt, 0);
+  assert.equal(presentationClock.nextRewardExpiryDelay(clock, 0, true), 2_000);
+  assert.equal(presentationClock.nextRewardExpiryDelay(clock, 2_000, true), 3_000);
+  assert.equal(presentationClock.nextRewardExpiryDelay(clock, 6_000, true), null, "late wake-up must not add nominal timer delays");
+  const cap = 2_147_483_647, far = mountedReceipt(cap + 5_000);
+  const farClock = presentationClock.createRewardClock([far], mountedCheckedAt, 0);
+  assert.equal(presentationClock.nextRewardExpiryDelay(farClock, 0, true), cap);
+  assert.equal(presentationClock.nextRewardExpiryDelay(farClock, cap, true), 5_000);
+  assert.equal(presentationClock.rewardPresentation(farClock, far, cap, true).code, "MOUNTED-OWNED");
+});
+
+test("presentation never invents a code for terminal, foreign or non-voucher rows", () => {
+  for (const extra of [{ state: "redeemed" }, { state: "cancelled" }, { state: "expired" }, { hasClaim: false, state: "reported" }, { code: null }, { expiresAt: null }]) {
+    const item = mountedReceipt(2_000, extra), clock = presentationClock.createRewardClock([item], mountedCheckedAt, 0);
+    assert.equal(presentationClock.rewardPresentation(clock, item, 1, true).code, null);
+  }
+  const item = mountedReceipt(), clock = presentationClock.createRewardClock([item], mountedCheckedAt, 0);
+  assert.equal(presentationClock.rewardPresentation(clock, { ...item }, 1, true).code, null, "another source's equal-looking row is not the adopted receipt");
+});
+
+test("a bounded refresh must retain every old claim identity without mixing tenants or rewards", () => {
+  const a = mountedReceipt(), b = mountedReceipt(4_000, { key: "claim-mounted-b", id: "reward-mounted-b", tenant: "bodega-b" });
+  assert.equal(presentationClock.retainsRewardClaims([a, b], [{ ...b, state: "redeemed", code: null }, { ...a, code: "NEW-OWN-CODE" }]), true);
+  for (const replacement of [[], [b], [b, { ...a, tenant: "foreign" }], [b, { ...a, id: "foreign-reward" }], [b, { ...a, key: "claim-foreign" }], [b, { ...a, hasClaim: false }]]) {
+    assert.equal(presentationClock.retainsRewardClaims([a, b], replacement), false);
+  }
+  assert.equal(presentationClock.retainsRewardClaims([mountedReceipt(2_000, { hasClaim: false })], []), true, "a published catalog row is not an issued receipt");
+});
+
+function mountedClockHarness(initialItems, initialCheckedAt = mountedCheckedAt) {
+  // Dependencies are module-local bindings; no browser or Node global is overwritten.
+  class LocalTarget {
+    listeners = new Map();
+    addEventListener(type, listener) { if (!this.listeners.has(type)) this.listeners.set(type, new Set()); this.listeners.get(type).add(listener); }
+    removeEventListener(type, listener) { this.listeners.get(type)?.delete(listener); }
+    dispatch(type, event = {}) { for (const listener of [...(this.listeners.get(type) || [])]) listener(event); }
+    count(type) { return this.listeners.get(type)?.size || 0; }
+  }
+  const localDocument = new LocalTarget(), localWindow = new LocalTarget(); localDocument.visibilityState = "visible";
+  const slots = [], effects = new Map(), timers = new Map(), created = [];
+  let cursor = 0, sample = 0, nextTimer = 0, items = initialItems, checkedAt = initialCheckedAt, networkCalls = 0, wall = Date.parse("2100-01-01T00:00:00.000Z");
+  const equal = (a, b) => a && b && a.length === b.length && a.every((value, index) => Object.is(value, b[index]));
+  const localReact = {
+    useRef(initial) { const index = cursor++; if (!slots[index]) slots[index] = { current: initial }; return slots[index]; },
+    useState(initial) { const index = cursor++; if (!slots[index]) slots[index] = { value: typeof initial === "function" ? initial() : initial };
+      return [slots[index].value, update => { slots[index].value = typeof update === "function" ? update(slots[index].value) : update; }]; },
+    useEffect(effect, deps) { const index = cursor++; if (!slots[index]) slots[index] = { kind: "effect", deps: null, cleanup: null };
+      const slot = slots[index]; if (!equal(slot.nextDeps || slot.deps, deps)) { slot.nextDeps = deps; effects.set(index, { slot, effect, deps }); } },
+  };
+  const localSetTimeout = (callback, delay) => { const id = ++nextTimer; timers.set(id, { callback, at: sample + delay, delay }); created.push(delay); return id; };
+  const localClearTimeout = id => { timers.delete(id); };
+  class UntrustedDeviceDate extends Date { constructor(...args) { super(...(args.length ? args : [wall])); } static now() { return wall; } }
+  const noNetwork = () => { networkCalls++; throw Error("Presentation clock attempted a network request"); };
+  const forbidRecurring = () => { throw Error("Presentation clock attempted recurring polling"); };
+  const output = ts.transpileModule(read("_components/consumer-reward-presentation-clock.ts"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const loaded = { exports: {} };
+  new Function("require", "module", "exports", "performance", "document", "window", "setTimeout", "clearTimeout", "Date", "fetch", "setInterval", "requestAnimationFrame", output)(
+    name => { if (name === "react") return localReact; throw Error("Unexpected presentation clock dependency: " + name); },
+    loaded, loaded.exports, { now: () => sample }, localDocument, localWindow, localSetTimeout, localClearTimeout, UntrustedDeviceDate, noNetwork, forbidRecurring, forbidRecurring,
+  );
+  function render(nextItems = items, nextCheckedAt = checkedAt) { items = nextItems; checkedAt = nextCheckedAt; cursor = 0; return loaded.exports.useRewardPresentationClock(items, checkedAt); }
+  function flushEffects() { const pending = [...effects.values()]; effects.clear(); for (const { slot, effect, deps } of pending) {
+    slot.cleanup?.(); slot.deps = deps; slot.nextDeps = null; slot.cleanup = effect() || null;
+  } }
+  function runDue() { let iterations = 0; while (true) { const entry = [...timers].filter(([, timer]) => timer.at <= sample).sort((a, b) => a[1].at - b[1].at)[0];
+    if (!entry) return; assert.ok(++iterations <= 100, "local timer must not spin"); timers.delete(entry[0]); entry[1].callback();
+  } }
+  return { render, flushEffects, document: localDocument, window: localWindow, timers, created,
+    setSample(value, run = false) { sample = value; if (run) runDue(); }, setWall(value) { wall = Date.parse(value); }, runDue,
+    networkCalls: () => networkCalls,
+    unmount() { effects.clear(); for (const slot of slots) if (slot?.kind === "effect") { slot.cleanup?.(); slot.cleanup = null; } },
+  };
+}
+
+test("the local hook prepares before its browser anchor, then uses monotonic time and a single nearest alarm", () => {
+  const a = mountedReceipt(), b = mountedReceipt(5_000, { key: "claim-mounted-b", code: "MOUNTED-SECOND" }), h = mountedClockHarness([a, b]);
+  let view = h.render(); assert.equal(view.status, "preparing"); assert.equal(view.inspect(a).code, null); assert.equal(view.getCode(a), null);
+  assert.equal(h.timers.size, 0); assert.equal(h.document.count("visibilitychange"), 0);
+  h.flushEffects(); view = h.render(); assert.equal(view.status, "fresh"); assert.equal(view.getCode(a), "MOUNTED-OWNED");
+  assert.equal(h.timers.size, 1); assert.equal(h.created[0], 2_000);
+  h.document.dispatch("focus"); h.window.dispatch("focus"); h.window.dispatch("blur");
+  h.setWall("1900-01-01T00:00:00.000Z"); h.setSample(1_999); view = h.render(); assert.equal(view.inspect(a).code, "MOUNTED-OWNED");
+  h.setSample(2_000); assert.equal(view.getCode(a), null, "a retained click is blocked even before a delayed timer callback runs");
+  h.runDue(); view = h.render(); assert.equal(view.inspect(a).expired, true); assert.equal(view.getCode(b), "MOUNTED-SECOND");
+  assert.equal(h.timers.size, 1); assert.equal(h.created.at(-1), 3_000); assert.equal(h.networkCalls(), 0);
+  h.unmount(); assert.equal(h.timers.size, 0);
+});
+
+test("hidden and bfcache invalidate one anchor without healing or requesting on visible or focus", () => {
+  for (const event of ["hidden", "bfcache"]) {
+    const item = mountedReceipt(), h = mountedClockHarness([item]); h.render(); h.flushEffects(); let view = h.render();
+    if (event === "hidden") { h.document.visibilityState = "hidden"; h.document.dispatch("visibilitychange"); }
+    else { h.window.dispatch("pageshow", { persisted: false }); assert.equal(view.getCode(item), "MOUNTED-OWNED"); h.window.dispatch("pageshow", { persisted: true }); }
+    view = h.render(); assert.equal(view.status, "stale"); assert.equal(view.getCode(item), null); assert.equal(h.timers.size, 0);
+    h.document.visibilityState = "visible"; h.document.dispatch("visibilitychange"); h.window.dispatch("focus");
+    view = h.render(); assert.equal(view.status, "stale"); assert.equal(view.inspect(item).expired, false, "lifecycle does not invent a terminal server receipt");
+    assert.equal(h.timers.size, 0); assert.equal(h.networkCalls(), 0); h.unmount();
+    assert.equal(h.document.count("visibilitychange"), 0); assert.equal(h.window.count("pageshow"), 0);
+  }
+});
+
+test("source replacement blocks stale closures before effects and cleans the old owner timer and listeners", () => {
+  const oldItem = mountedReceipt(), h = mountedClockHarness([oldItem]); h.render(); h.flushEffects(); const oldView = h.render(), retained = oldView.getCode;
+  const nextItem = mountedReceipt(6_000, { key: "claim-mounted-next", tenant: "bodega-b", code: "MOUNTED-NEXT" });
+  let next = h.render([nextItem]); assert.equal(next.status, "preparing"); assert.equal(next.inspect(nextItem).code, null); assert.equal(retained(oldItem), null);
+  h.setSample(2_000, true); assert.equal(h.timers.size, 0, "the old callback may not schedule another owner alarm");
+  h.flushEffects(); next = h.render(); assert.equal(next.getCode(nextItem), "MOUNTED-NEXT"); assert.equal(retained(oldItem), null);
+  assert.equal(h.timers.size, 1); assert.equal(h.document.count("visibilitychange"), 1); assert.equal(h.window.count("pageshow"), 1);
+  h.unmount(); assert.equal(next.getCode(nextItem), null); assert.equal(h.timers.size, 0);
+  assert.equal(h.document.count("visibilitychange"), 0); assert.equal(h.window.count("pageshow"), 0); assert.equal(h.networkCalls(), 0);
+});
+
+test("invalid new sources and regressive live samples block codes and retire their alarms", () => {
+  const item = mountedReceipt(), h = mountedClockHarness([item]); h.setSample(100); h.render(); h.flushEffects(); let view = h.render();
+  assert.equal(view.getCode(item), "MOUNTED-OWNED"); h.setSample(99); assert.equal(view.getCode(item), null); assert.equal(h.timers.size, 0);
+  h.setSample(101); view = h.render(); assert.equal(view.status, "stale"); assert.equal(view.getCode(item), null);
+  const next = { ...item }; view = h.render([next], "not-a-server-clock"); assert.equal(view.status, "preparing"); assert.equal(view.getCode(next), null);
+  h.flushEffects(); view = h.render(); assert.equal(view.status, "stale"); assert.equal(view.getCode(next), null); assert.equal(h.timers.size, 0);
+  assert.equal(h.networkCalls(), 0); h.unmount(); assert.equal(h.document.count("visibilitychange"), 0); assert.equal(h.window.count("pageshow"), 0);
+});
+
+test("far-future hook deadlines use the platform cap and recompute instead of expiring early", () => {
+  const cap = 2_147_483_647, item = mountedReceipt(cap + 5_000), h = mountedClockHarness([item]);
+  h.render(); h.flushEffects(); let view = h.render(); assert.equal(h.created[0], cap); assert.equal(h.timers.size, 1);
+  h.setSample(cap, true); view = h.render(); assert.equal(view.getCode(item), "MOUNTED-OWNED");
+  assert.equal(h.created.at(-1), 5_000); assert.equal(h.timers.size, 1);
+  h.setSample(cap + 5_000, true); view = h.render(); assert.equal(view.getCode(item), null); assert.equal(view.inspect(item).expired, true);
+  assert.equal(h.timers.size, 0); assert.equal(h.networkCalls(), 0); h.unmount();
+});
+
+test("a regressive sample first seen during render marks the view stale and retires its alarm after commit", () => {
+  const item = mountedReceipt(), h = mountedClockHarness([item]);
+  h.setSample(100); h.render(); h.flushEffects(); let view = h.render(); h.flushEffects();
+  assert.equal(view.status, "fresh"); assert.equal(h.timers.size, 1);
+  h.setSample(99); view = h.render();
+  assert.equal(view.status, "stale", "the banner and receipt use the same invalid observation without a prior getCode call");
+  assert.equal(view.inspect(item).status, "stale"); assert.equal(view.inspect(item).code, null);
+  assert.equal(h.timers.size, 1, "render leaves alarm retirement to the committed effect");
+  h.flushEffects(); assert.equal(h.timers.size, 0, "the committed invalid observation retires its own alarm");
+  h.setSample(101); view = h.render();
+  assert.equal(view.status, "stale"); assert.equal(view.getCode(item), null, "a later good sample cannot heal the retired snapshot");
+  assert.equal(h.networkCalls(), 0); h.unmount();
+  assert.equal(h.document.count("visibilitychange"), 0); assert.equal(h.window.count("pageshow"), 0);
+});
+
+// Exact test preimage: f0ef3fa252f7d656a9e8a3cb4a164cfb12b51944eaf021ba9df3c38dd8e55ba2.
+// Successor of immutable ABA unit R1; writer-only local driver, not clock/SSR/hydration proof.
+function mountedWriterActionFixture() {
+  const own = claim({ id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", claim_id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc" });
+  const originalItems = readModel(list([own, reservableReward({ points_cost: 40 })])).items;
+  const refreshedPayload = list([own, reservableReward({ points_cost: 80 })]);
+  const slots = [], queuedEffects = new Map(), postRequests = [];
+  let cursor = 0, getRequests = 0, finishGet;
+  const localReact = {
+    useRef(initial) { const index = cursor++; if (!slots[index]) slots[index] = { current: initial }; return slots[index]; },
+    useState(initial) { const index = cursor++; if (!slots[index]) slots[index] = { value: typeof initial === "function" ? initial() : initial };
+      return [slots[index].value, update => { slots[index].value = typeof update === "function" ? update(slots[index].value) : update; }]; },
+    useEffect(effect, deps) { const index = cursor++; if (!slots[index]) slots[index] = { kind: "effect", deps: null, cleanup: null };
+      const slot = slots[index], before = slot.nextDeps || slot.deps;
+      if (!before || before.length !== deps.length || before.some((value, position) => !Object.is(value, deps[position]))) {
+        slot.nextDeps = deps; queuedEffects.set(index, { slot, effect, deps });
+      }
+    },
+  };
+  const fetchImpl = async (url, init) => {
+    if (init.method === "GET") {
+      getRequests++; assert.equal(url, "/api/consumer/rewards"); assert.equal(init.body, undefined);
+      return new Promise(resolve => { finishGet = () => resolve(new Response(JSON.stringify(refreshedPayload), { headers: { "content-type": "application/json" } })); });
+    }
+    assert.equal(init.method, "POST"); postRequests.push({ url, body: JSON.parse(init.body) });
+    return new Response("{}", { status: 503, headers: { "content-type": "application/json" } });
+  };
+  const client = compile(clientSource, {
+    ...shared, react: localReact,
+    "../_components/consumer-reward-presentation-clock": {
+      ...presentationClock,
+      useRewardPresentationClock: () => ({ status: "fresh", inspect: item => ({ status: "fresh", code: item.code, expired: false }),
+        getCode: item => item.code, invalidate: () => {} }),
+    },
+    "../_components/consumer-reward-reservation": {
+      ...reservation,
+      reserveConsumerReward: (quote, options) => reservation.reserveConsumerReward(quote, { ...options, fetchImpl }),
+      readConsumerRewardsSnapshot: options => reservation.readConsumerRewardsSnapshot({ ...options, fetchImpl }),
+      readConsumerReservation: (quote, claimId, options) => reservation.readConsumerReservation(quote, claimId, { ...options, fetchImpl }),
+    },
+  }).ConsumerRewardsClient;
+  const props = { items: originalItems, checkedAt: new Date(NOW).toISOString(), initialTenant: "", selectedVoucher: null };
+  const render = () => { cursor = 0; return client(props); };
+  const flushEffects = () => { const pendingEffects = [...queuedEffects.values()]; queuedEffects.clear();
+    for (const { slot, effect, deps } of pendingEffects) { slot.cleanup?.(); slot.deps = deps; slot.nextDeps = null; slot.cleanup = effect() || null; } };
+  const nodes = node => Array.isArray(node) ? node.flatMap(nodes)
+    : node && typeof node === "object" && node.props ? [node, ...nodes(node.props.children)] : [];
+  const textOf = node => (Array.isArray(node) ? node.map(textOf).join(" ")
+    : typeof node === "string" || typeof node === "number" ? String(node)
+      : node && typeof node === "object" && node.props ? textOf(node.props.children) : "").replace(/\s+/g, " ").trim();
+  const button = (tree, text) => { const found = nodes(tree).filter(node => node.type === "button" && textOf(node) === text);
+    assert.equal(found.length, 1, "one actual client action: " + text); return found[0]; };
+  return { render, flushEffects, button, textOf, postRequests, event: { currentTarget: { focus() {} } },
+    getRequests: () => getRequests,
+    finishGet() { assert.equal(typeof finishGet, "function", "explicit synthetic GET is pending"); finishGet(); },
+    cleanup() { queuedEffects.clear(); for (const slot of slots) if (slot?.kind === "effect") { slot.cleanup?.(); slot.cleanup = null; } },
+  };
+}
+
+test("a retained old confirmation cannot write after refresh and a new deliberate confirmation", async () => {
+  const h = mountedWriterActionFixture();
+  try {
+    h.render(); h.flushEffects(); let tree = h.render();
+    assert.equal(h.getRequests(), 0); assert.deepEqual(h.postRequests, [], "mount does not reserve or refresh");
+    h.button(tree, "Reservar beneficio").props.onClick(h.event);
+    tree = h.render(); h.flushEffects();
+    const oldConfirm40 = h.button(tree, "Confirmar reserva por 40 puntos").props.onClick;
+    const refresh = h.button(tree, "Actualizar mis vouchers").props.onClick();
+    assert.equal(h.getRequests(), 1); h.finishGet(); await refresh;
+    tree = h.render();
+    const quoteChangeExplained = h.textOf(tree).includes("La información de este beneficio cambió. Revisá el costo y volvé a preparar la reserva.");
+    h.button(tree, "Reservar beneficio").props.onClick(h.event);
+    await oldConfirm40(); // Immediately after opening80, before the next paint.
+    assert.deepEqual(h.postRequests, [], "an old40 handler cannot write merely because a different flow returned to phase confirm");
+    assert.equal(quoteChangeExplained, true, "the refreshed price requires an explanation and a new deliberate preparation");
+    tree = h.render(); await h.button(tree, "Confirmar reserva por 80 puntos").props.onClick();
+    assert.deepEqual(h.postRequests, [{ url: "/api/consumer/rewards/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/claim",
+      body: { claimIntent: "portal-first-reservation.v1", expectedPointsCost: 80, locale: "es-AR" } }]);
+    assert.equal(h.getRequests(), 1, "the uncertain result never rePOSTs or starts an automatic lookup");
+    tree = h.render(); assert.ok(h.textOf(tree).includes("Comprobar mi reserva"));
+  } finally { h.cleanup(); }
+});
+
+test("unmount retires a never-attempted confirmation and its retained refresh action", async () => {
+  // A separate live fixture proves the40 callback is actionable while mounted.
+  const control = mountedWriterActionFixture();
+  try {
+    control.render(); control.flushEffects(); let tree = control.render();
+    control.button(tree, "Reservar beneficio").props.onClick(control.event); tree = control.render(); control.flushEffects();
+    const confirm = control.button(tree, "Confirmar reserva por 40 puntos"); assert.notEqual(confirm.props.disabled, true);
+    await confirm.props.onClick();
+    assert.deepEqual(control.postRequests, [{ url: "/api/consumer/rewards/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/claim",
+      body: { claimIntent: "portal-first-reservation.v1", expectedPointsCost: 40, locale: "es-AR" } }]);
+    assert.equal(control.getRequests(), 0);
+  } finally { control.cleanup(); }
+  // This fresh fixture has no previous mutation, so attempted cannot mask an unmount bug.
+  const h = mountedWriterActionFixture();
+  try {
+    h.render(); h.flushEffects(); let tree = h.render();
+    h.button(tree, "Reservar beneficio").props.onClick(h.event); tree = h.render(); h.flushEffects();
+    const confirm = h.button(tree, "Confirmar reserva por 40 puntos"); assert.notEqual(confirm.props.disabled, true);
+    const retainedConfirm40 = confirm.props.onClick, retainedRefresh = h.button(tree, "Actualizar mis vouchers").props.onClick;
+    assert.deepEqual(h.postRequests, []); assert.equal(h.getRequests(), 0);
+    h.cleanup(); // Actual effect cleanups only; the harness adds no mounted authority of its own.
+    await retainedConfirm40();
+    assert.deepEqual(h.postRequests, [], "a real previously enabled handler cannot start a mutation after unmount");
+    assert.equal(h.getRequests(), 0);
+    const lateRead = retainedRefresh();
+    // If a broken guard starts a synthetic read, settle it before the assertion rather than leaving a six-second hang.
+    if (h.getRequests() > 0) h.finishGet();
+    await lateRead; assert.equal(h.getRequests(), 0, "a retained refresh callback cannot start a read after unmount");
+    assert.deepEqual(h.postRequests, []);
+  } finally { h.cleanup(); }
 });
