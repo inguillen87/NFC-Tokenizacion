@@ -114,7 +114,7 @@ export async function runRewardWalletNextScenarios({browser,origin,fixture,repor
    await card.getByRole('button',{name:'Reservar beneficio',exact:true}).click();
    await card.getByRole('heading',{name:'Revisá tu reserva',exact:true}).waitFor();
    await card.getByRole('button',{name:'Confirmar reserva por 40 puntos',exact:true}).click();
-   await page.waitForFunction(()=>document.querySelector('[data-reward-state]')?.textContent.includes('Estamos preparando tu reserva'));
+   await page.getByRole('status').filter({hasText:/^Estamos preparando tu reserva\. Esperá la confirmación\.$/}).waitFor();
    await waitFor('one intercepted original reservation',()=>entry.posts.length===1&&Boolean(postGate));
    let status='Estamos preparando tu reserva. Esperá la confirmación.';
    if(phase!=='pending'){
@@ -137,7 +137,7 @@ export async function runRewardWalletNextScenarios({browser,origin,fixture,repor
    check(await panel.getByText('No informado',{exact:true}).count()===1,label+': unknown brand balance stays unknown');
    check(await panel.getByRole('button',{name:'Actualizar puntos',exact:true}).evaluate(node=>node===document.activeElement),label+': keyboard focus survives the read');
    check(await card.getByRole('button',{name:'Reservar beneficio',exact:true}).isDisabled(),label+': original attempted reward cannot be rePOSTed');
-   if(phase==='uncertain')check(await card.getByRole('button',{name:'Comprobar mi reserva',exact:true}).isEnabled(),label+': explicit reconciliation remains available');
+   if(phase==='uncertain')check(await page.getByRole('status').filter({hasText:status}).locator('..').getByRole('button',{name:'Comprobar mi reserva',exact:true}).isEnabled(),label+': explicit reconciliation remains available');
    await assess(page,'#consumer-portal-content',`reward-wallet-next-${phase}-${width}-${theme}`,width,theme);entry.passed=true;
   }finally{
    closing=true;for(const release of gates)release();await Promise.allSettled([...tasks]);
