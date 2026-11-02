@@ -62,6 +62,37 @@ export async function runAdminRewardPostgresQa({ connect, dockerAttestation } = 
 
     const second = await open(); await second.query(`SET search_path TO "${schema}",pg_catalog`);
     const secondPid = (await second.query("SELECT pg_backend_pid() AS pid")).rows[0].pid;
+    const strictCreate = (overrides = {}, client = first) => saveAdminReward(tenant, parseAdminRewardCommand({
+      code: "VISIT", title: "Explicit new benefit", creationIntent: "admin-reward-first-create.v1", ...overrides,
+    }), executeFor(client));
+    const beforeStrictConflict = (await first.query("SELECT * FROM rewards WHERE id=$1", [rewardId])).rows[0];
+    await assert.rejects(strictCreate(), /reward_create_conflict/);
+    assert.deepEqual((await first.query("SELECT * FROM rewards WHERE id=$1", [rewardId])).rows[0], beforeStrictConflict);
+    cases.push("explicit_creation_duplicate_never_updates_existing_reward");
+
+    const strictNew = await strictCreate({ code: "STRICT_NEW", program_id: oldProgram, status: "draft", stock_total: 0 });
+    assert.equal(strictNew.program_id, oldProgram); assert.equal(strictNew.status, "draft"); assert.equal(strictNew.stock_remaining, 0);
+    assert.equal((await first.query("SELECT status FROM loyalty_programs WHERE id=$1", [oldProgram])).rows[0].status, "paused");
+    cases.push("explicit_creation_keeps_selected_program_and_publication_status");
+
+    await first.query("BEGIN");
+    const firstCreated = await strictCreate({ code: "STRICT_RACE", program_id: oldProgram, title: "Winner", stock_total: 0 });
+    const competing = strictCreate({ code: "STRICT_RACE", program_id: oldProgram, title: "Loser", stock_total: 99 }, second)
+      .then(value => ({ value, error: null }), error => ({ value: null, error }));
+    let creationLocked = false;
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const state = (await first.query("SELECT wait_event_type FROM pg_stat_activity WHERE pid=$1", [secondPid])).rows[0];
+      if (state?.wait_event_type === "Lock") { creationLocked = true; break; }
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    await first.query("COMMIT");
+    const competed = await competing;
+    assert.equal(creationLocked, true, "the second INSERT must actually wait on the persisted unique key");
+    assert.equal(competed.value, null); assert.equal(competed.error?.message, "reward_create_conflict");
+    const racedRows = (await first.query("SELECT id,title,stock_total,stock_remaining FROM rewards WHERE program_id=$1 AND code='STRICT_RACE'", [oldProgram])).rows;
+    assert.deepEqual(racedRows, [{ id: firstCreated.id, title: "Winner", stock_total: 0, stock_remaining: 0 }]);
+    cases.push("concurrent_explicit_creation_unique_key_conflict_never_overwrites_winner");
+
     await first.query("BEGIN"); await first.query("UPDATE rewards SET stock_remaining=stock_remaining-1 WHERE id=$1", [rewardId]);
     const pending = saveAdminReward(tenant, parseAdminRewardCommand({ code: "VISIT", title: "Concurrent total", reward_id: rewardId, program_id: oldProgram, stock_total: 20, stock_remaining: 20 }), executeFor(second));
     let locked = false;

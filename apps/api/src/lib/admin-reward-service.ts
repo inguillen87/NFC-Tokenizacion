@@ -1,5 +1,5 @@
 import { sql, type SqlExecutor } from "./db";
-import { AdminRewardError, adjustedAdminRewardStock, type AdminRewardCommand } from "./admin-reward-policy";
+import { ADMIN_REWARD_CREATE_INTENT, AdminRewardError, adjustedAdminRewardStock, type AdminRewardCommand } from "./admin-reward-policy";
 
 /** Programs are persisted tenant configuration. Catalog edits never create,
  * activate or move a program, including when its current status is paused. */
@@ -13,6 +13,8 @@ export async function saveAdminReward(tenantId: string, command: AdminRewardComm
         FROM rewards reward JOIN loyalty_programs program ON program.id = reward.program_id AND program.tenant_id = reward.tenant_id
         WHERE reward.tenant_id = ${tenantId}::uuid AND reward.code = ${command.code}
           AND (${command.programId || null}::uuid IS NULL OR reward.program_id = ${command.programId || null}::uuid) LIMIT 2`;
+  // Explicit creation never reuses the legacy code-based update path.
+  if (command.creationIntent === ADMIN_REWARD_CREATE_INTENT && candidates.length) throw new AdminRewardError("reward_create_conflict", 409);
   if (candidates.length > 1) throw new AdminRewardError("reward_program_ambiguous", 409);
   if (command.rewardId && candidates.length !== 1) throw new AdminRewardError("reward_not_found", 404);
 

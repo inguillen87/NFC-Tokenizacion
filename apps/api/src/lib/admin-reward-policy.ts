@@ -1,3 +1,4 @@
+export const ADMIN_REWARD_CREATE_INTENT = "admin-reward-first-create.v1" as const;
 export const ADMIN_REWARD_TYPES = ["DISCOUNT", "EXPERIENCE", "TASTING", "TOUR", "FREE_SHIPPING", "EARLY_ACCESS", "DIGITAL_COLLECTIBLE", "CONTENT_UNLOCK", "GIFT", "SERVICE", "WARRANTY_EXTENSION", "REFILL", "VIP_ACCESS", "WINE_BOTTLE", "WINE_BOX"] as const;
 const UUID = /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i;
 const MAX_INTEGER = 2_147_483_647;
@@ -8,6 +9,7 @@ export class AdminRewardError extends Error {
 
 export type AdminRewardCommand = {
   rewardId?: string; programId?: string; code: string; title: string;
+  creationIntent?: typeof ADMIN_REWARD_CREATE_INTENT;
   description?: string; type?: string; pointsCost?: number; stockTotal?: number;
   stockRemaining?: number; imageUrl?: string; requiresAgeGate?: boolean;
   networkVisible?: boolean; status?: string;
@@ -43,6 +45,10 @@ export function parseAdminRewardCommand(raw: unknown): AdminRewardCommand {
   if (body.reward_id !== undefined) command.rewardId = identifier(body.reward_id, "reward_id");
   if (body.program_id !== undefined) command.programId = identifier(body.program_id, "program_id");
   if (command.rewardId && !command.programId) throw new AdminRewardError("reward_program_required");
+  if (body.creationIntent !== undefined) {
+    if (body.creationIntent !== ADMIN_REWARD_CREATE_INTENT || command.rewardId) throw new AdminRewardError("invalid_reward_creation_intent");
+    command.creationIntent = ADMIN_REWARD_CREATE_INTENT;
+  }
   if (body.description !== undefined) command.description = text(body.description, "description", 4000);
   if (body.image_url !== undefined) command.imageUrl = text(body.image_url, "image_url", 2048);
   if (body.type !== undefined) {
