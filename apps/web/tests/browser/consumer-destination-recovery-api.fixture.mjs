@@ -3,7 +3,7 @@ import {createServer} from 'node:http';
 import {createHash} from 'node:crypto';
 export async function createDestinationRecoveryFixture(){
  const requests=[];
- const scenarios=new Set(['ready','empty','session-500','session-401','session-false','session-malformed','session-network','session-headers-stall','session-body-stall','brands-unavailable','brands-malformed','catalog-unavailable','catalog-malformed','products-unavailable','taps-unavailable','experience-context-ready','experience-context-unavailable','experience-context-mismatched']);
+ const scenarios=new Set(['ready','empty','session-500','session-401','session-false','session-malformed','session-network','session-headers-stall','session-body-stall','brands-unavailable','brands-malformed','catalog-unavailable','catalog-malformed','products-unavailable','taps-unavailable','experience-context-ready','experience-context-unavailable','experience-context-mismatched','rewards-wallet-ready']);
  const brand={slug:'loading-qa',name:'Marca local QA',status:'active',points_balance:0};
  const experienceScenarios=new Set(['experience-context-ready','experience-context-unavailable','experience-context-mismatched']),otherBrand={slug:'other-brand',name:'Marca distinta QA',status:'active',points_balance:0};
  const product={id:'00000000-0000-4000-8000-000000000002',product_name:'Producto local QA',brand_name:brand.name,tenant_slug:brand.slug,bid:'LOT-QA',latest_tap_event_id:'900001',first_tap_event_id:'900001',ownership_status:'viewed',latest_verdict:'VALID_CLOSED',created_at:'2026-10-05T12:00:00Z',latest_tap_at:'2026-10-05T12:00:00Z'};
@@ -62,7 +62,9 @@ export async function createDestinationRecoveryFixture(){
   if(path==='/consumer/taps/900001'&&scenario==='experience-context-unavailable')return reply({ok:false,error:'fixture_unavailable'},503);
   if(path==='/consumer/taps/900001'&&scenario==='experience-context-mismatched')return reply({ok:true,item:{tap_event_id:'900002',verdict:'VALID_CLOSED',risk_level:'low',created_at:'2026-10-05T12:00:00Z',tenant_slug:otherBrand.slug,tenant_name:otherBrand.name,product_name:'Producto ajeno QA',bid:'LOT-OTHER-QA'}});
   if(path==='/consumer/taps/900001')return reply({ok:true,item:{tap_event_id:'900001',verdict:'VALID_CLOSED',risk_level:'low',created_at:'2026-10-05T12:00:00Z',tenant_slug:brand.slug,tenant_name:brand.name,product_name:product.product_name,bid:product.bid}});
+  if(path==='/consumer/wallet'&&scenario==='rewards-wallet-ready')return reply({ok:false,error:'synthetic_wallet_unavailable'},503);
   if(path==='/consumer/wallet')return reply({ok:true,tenantWallets:[],networkWallet:{enabled:false},certificates:[],ownerships:[],nfts:[],balances:[]});
+  if(path==='/consumer/rewards'&&scenario==='rewards-wallet-ready')return reply({ok:true,items:[{id:'cccccccc-cccc-4ccc-8ccc-cccccccccccc',title:'Reserva sintética de puntos QA',tenant_slug:'loading-qa',tenant_name:brand.name,program_name:'Programa sintético QA',program_points_balance:100,points_cost:40,state:'reported',catalog_state:'reported',claim_id:null,claim_status:null,claim_expires_at:null,redemption_code:null,points_spent:null,can_claim:true,claimIntent:'portal-first-reservation.v1'}],scope:'own_brands',limit:100,checkedAt:'2026-10-06T12:00:00.000Z'});
   if(path==='/consumer/rewards')return reply({ok:true,items:[],scope:'own_brands',limit:100,checkedAt:'2026-10-06T12:00:00.000Z'});
   if(path==='/consumer/experiences'&&experienceScenarios.has(scenario))return reply({ok:true,items:[],verifiedExperiences:[]});
   if(path==='/consumer/experiences')return reply({ok:true,items:[],offers:[]});

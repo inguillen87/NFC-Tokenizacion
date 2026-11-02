@@ -41,10 +41,20 @@ const api = compile(read("_components/consumer-api.ts"), {
   "../../api/_lib/server-api-transport": { fetchRuntimeApi: () => { throw Error("Unexpected network read"); } },
 });
 const css = Object.fromEntries([...cssSource.matchAll(/\.([a-zA-Z][\w-]*)/g)].map((match) => [match[1], match[1]]));
+const brandPointsRead = compile(read("_components/consumer-wallet-brand-read.ts"), {
+  "./consumer-bounded-fetch": boundedFetch, "./consumer-wallet-points-model": walletModel,
+});
+const { ConsumerRewardBrandPoints } = compile(read("_components/consumer-reward-brand-points-client.tsx"), {
+  "next/link": ({ children, prefetch, ...props }) => React.createElement("a", props, children),
+  "../rewards/rewards.module.css": css, "./consumer-rewards-model": model,
+  "../../login/consumer-login-continuation": consumerLoginContinuation,
+  "./consumer-wallet-brand-read": brandPointsRead,
+});
 const shared = {
   "next/link": ({ children, prefetch, ...props }) => React.createElement("a", props, children),
   "./rewards.module.css": css,
   "../_components/consumer-rewards-model": model,
+  "../_components/consumer-reward-brand-points-client": { ConsumerRewardBrandPoints },
   "../_components/consumer-reward-presentation-clock": presentationClock,
   "../_components/consumer-reward-reservation": reservation,
   "../_components/consumer-reward-next-actions": { rewardNextActions },
@@ -1072,4 +1082,135 @@ test("unmount retires a never-attempted confirmation and its retained refresh ac
     await lateRead; assert.equal(h.getRequests(), 0, "a retained refresh callback cannot start a read after unmount");
     assert.deepEqual(h.postRequests, []);
   } finally { h.cleanup(); }
+});
+
+// Post-runtime only: these modules must exist before this acceptance candidate is admitted.
+function brandPointsFixture({ initialPoints = { status: "unavailable", data: null }, tenant = "", sourceEpoch = "server-render-A" } = {}) {
+  const slots = [], effects = new Map(), requests = [];
+  let cursor = 0, props = { initialPoints, tenant, sourceEpoch };
+  const fakeReact = {
+    useRef(initial) { const index = cursor++; if (!slots[index]) slots[index] = { current: initial }; return slots[index]; },
+    useState(initial) { const index = cursor++; if (!slots[index]) slots[index] = { value: typeof initial === "function" ? initial() : initial };
+      return [slots[index].value, update => { slots[index].value = typeof update === "function" ? update(slots[index].value) : update; }]; },
+    useEffect(effect, deps) { const index = cursor++; if (!slots[index]) slots[index] = { kind: "effect", deps: null, cleanup: null };
+      const slot = slots[index], old = slot.nextDeps || slot.deps;
+      if (!old || old.length !== deps.length || old.some((value, position) => !Object.is(value, deps[position]))) {
+        slot.nextDeps = deps; effects.set(index, { slot, effect, deps });
+      }
+    },
+  };
+  const fetchImpl = (url, init) => new Promise(resolve => requests.push({ url, init, release: body => resolve(new Response(JSON.stringify(body), { headers: { "content-type": "application/json" } })),
+    fail: status => resolve(new Response("{}", { status, headers: { "content-type": "application/json" } })) }));
+  const component = compile(read("_components/consumer-reward-brand-points-client.tsx"), {
+    react: fakeReact, "next/link": shared["next/link"], "../rewards/rewards.module.css": css,
+    "./consumer-rewards-model": model, "../../login/consumer-login-continuation": consumerLoginContinuation,
+    "./consumer-wallet-brand-read": { readConsumerBrandPoints: options => brandPointsRead.readConsumerBrandPoints({ ...options, fetchImpl }) },
+  }).ConsumerRewardBrandPoints;
+  const nodes = node => Array.isArray(node) ? node.flatMap(nodes) : node && typeof node === "object" && node.props ? [node, ...nodes(node.props.children)] : [];
+  const text = node => (Array.isArray(node) ? node.map(text).join(" ") : typeof node === "string" || typeof node === "number" ? String(node) : node?.props ? text(node.props.children) : "").replace(/\s+/g, " ").trim();
+  return { requests, nodes, text,
+    render(next = props) { props = next; cursor = 0; return component(props); },
+    flush() { const queued = [...effects.values()]; effects.clear(); for (const { slot, effect, deps } of queued) { slot.cleanup?.(); slot.deps = deps; slot.nextDeps = null; slot.cleanup = effect() || null; } },
+    action(tree) { const buttons = nodes(tree).filter(node => node.type === "button"); assert.equal(buttons.length, 1); return buttons[0].props.onClick; },
+    props: () => props,
+    cleanup() { effects.clear(); for (const slot of slots) if (slot?.kind === "effect") { slot.cleanup?.(); slot.cleanup = null; } },
+  };
+}
+
+test("brand-points reads use one existing private GET and retain unknown balances without borrowing network points", async () => {
+  let calls = 0;
+  const result = await brandPointsRead.readConsumerBrandPoints({ fetchImpl: async (url, init) => {
+    calls++; assert.equal(url, "/api/consumer/wallet"); assert.equal(init.method, "GET"); assert.equal(init.credentials, "same-origin");
+    assert.equal(init.cache, "no-store"); assert.equal(init.body, undefined);
+    return new Response(JSON.stringify(wallet({ tenantWallets: [{ slug: "brand-a", name: "Marca A", points_balance: null }], networkWallet: { enabled: true, points_balance: 999 } })));
+  } });
+  assert.equal(calls, 1); assert.deepEqual(result, { status: "ready", points: { status: "ready", data: [{ slug: "brand-a", name: "Marca A", balance: null, lifetime: null }] } });
+  for (const [status, expected] of [[401, "authentication-required"], [403, "denied"], [503, "unavailable"]]) {
+    assert.deepEqual(await brandPointsRead.readConsumerBrandPoints({ fetchImpl: async () => new Response("private diagnostic", { status }) }), { status: expected });
+  }
+  assert.deepEqual(await brandPointsRead.readConsumerBrandPoints({ fetchImpl: async () => new Response('{"ok":true,"tenantWallets":[null]}') }), { status: "unavailable" });
+  const owner = new AbortController(); owner.abort(); calls = 0;
+  assert.deepEqual(await brandPointsRead.readConsumerBrandPoints({ signal: owner.signal, fetchImpl: async () => { calls++; throw Error("must not run"); } }), { status: "unavailable" });
+  assert.equal(calls, 0);
+});
+
+test("a deliberate points retry is single-flight and a failed refresh preserves its last known values", async () => {
+  const h = brandPointsFixture();
+  try {
+    h.render(); h.flush(); let tree = h.render(); assert.equal(h.requests.length, 0);
+    const retry = h.action(tree), first = retry(), duplicate = retry();
+    assert.equal(h.requests.length, 1); h.requests[0].release(wallet()); await Promise.all([first, duplicate]);
+    tree = h.render(); assert.ok(h.text(tree).includes("540"));
+    const second = h.action(tree)(); assert.equal(h.requests.length, 2); h.requests[1].fail(503); await second;
+    tree = h.render(); assert.ok(h.text(tree).includes("540")); assert.ok(h.text(tree).includes("Conservamos la información anterior"));
+    assert.equal(h.requests.length, 2); assert.ok(h.requests.every(request => request.init.method === "GET"));
+  } finally { h.cleanup(); }
+});
+
+test("an opaque wallet render epoch rejects old data even when both sources are unavailable and tenant is empty", async () => {
+  const unavailable = { status: "unavailable", data: null }, h = brandPointsFixture({ initialPoints: unavailable, tenant: "", sourceEpoch: "opaque-A" });
+  try {
+    h.render(); h.flush(); let tree = h.render(); const oldAction = h.action(tree), oldRead = oldAction();
+    const nextProps = { initialPoints: unavailable, tenant: "", sourceEpoch: "opaque-B" };
+    tree = h.render(nextProps); h.requests[0].release(wallet()); await oldRead;
+    tree = h.render(); assert.ok(!h.text(tree).includes("540"), "A response is discarded before B's passive cleanup");
+    h.flush(); await oldAction(); assert.equal(h.requests.length, 1);
+    tree = h.render(); const currentRead = h.action(tree)(); h.requests[1].release(wallet({ tenantWallets: [] })); await currentRead;
+    tree = h.render(); assert.ok(h.text(tree).includes("Todavía no tenés puntos")); assert.ok(!h.text(tree).includes("540"));
+  } finally { h.cleanup(); }
+});
+
+test("points retries stop after unmount and 401 reentry preserves only a validated tenant", async () => {
+  for (const tenant of ["bodega-a", "../bodega", "SYNTHETIC_CODE?token=secret"]) {
+    const h = brandPointsFixture({ tenant });
+    try {
+      h.render(); h.flush(); let tree = h.render(); const retained = h.action(tree), pending = retained();
+      h.requests[0].fail(401); await pending; tree = h.render();
+      const links = h.nodes(tree).filter(node => node.props?.href?.startsWith("/login?")); assert.equal(links.length, 1);
+      const login = new URL(links[0].props.href, "https://portal.invalid"), next = new URL(login.searchParams.get("next"), login.origin);
+      assert.equal(next.pathname, "/me/rewards"); assert.deepEqual([...next.searchParams], tenant === "bodega-a" ? [["tenant", "bodega-a"]] : []);
+      assert.ok(!links[0].props.href.includes("SYNTHETIC")); h.cleanup(); await retained(); assert.equal(h.requests.length, 1);
+    } finally { h.cleanup(); }
+  }
+  const h = brandPointsFixture();
+  try {
+    h.render(); h.flush(); const retained = h.action(h.render()), pending = retained();
+    h.cleanup(); assert.equal(h.requests[0].init.signal.aborted, true); await pending;
+    h.requests[0].release(wallet()); await retained(); assert.equal(h.requests.length, 1);
+  } finally { h.cleanup(); }
+});
+
+test("points refresh keeps the reward writer's original attempt and readback context untouched", async () => {
+  const writer = mountedWriterActionFixture(), panel = brandPointsFixture();
+  try {
+    writer.render(); writer.flushEffects(); let tree = writer.render(); writer.button(tree, "Reservar beneficio").props.onClick(writer.event);
+    tree = writer.render(); writer.flushEffects(); const confirm = writer.button(tree, "Confirmar reserva por 40 puntos").props.onClick;
+    const pendingWrite = confirm(); panel.render(); panel.flush(); const pointsRead = panel.action(panel.render())();
+    panel.requests[0].release(wallet()); await Promise.all([pendingWrite, pointsRead]);
+    tree = writer.render(); assert.ok(writer.textOf(tree).includes("Comprobar mi reserva"));
+    assert.equal(writer.postRequests.length, 1); assert.equal(writer.postRequests[0].body.expectedPointsCost, 40);
+    await confirm(); assert.equal(writer.postRequests.length, 1, "a stale confirmation is not revived by the independent points update");
+    assert.equal(writer.getRequests(), 0); assert.equal(panel.requests.length, 1);
+  } finally { writer.cleanup(); panel.cleanup(); }
+});
+
+test("authenticated SSR gives the wallet panel its own opaque render lifetime without changing rewards identity", async () => {
+  const setup = loadPage(list([claim()]), { wallet: null });
+  const first = await setup.page({ searchParams: Promise.resolve({}) }), second = await setup.page({ searchParams: Promise.resolve({}) });
+  const nodes = node => Array.isArray(node) ? node.flatMap(nodes) : node?.props ? [node, ...nodes(node.props.children)] : [];
+  const panels = [first, second].map(tree => nodes(tree).find(node => node.type === ConsumerRewardBrandPoints));
+  assert.ok(panels.every(Boolean));
+  for (const panel of panels) { assert.match(panel.props.sourceEpoch, /^[0-9a-f-]{36}$/i); assert.equal(panel.key, panel.props.sourceEpoch); assert.equal(panel.props.tenant, ""); }
+  assert.notEqual(panels[0].props.sourceEpoch, panels[1].props.sourceEpoch);
+  assert.ok(!clientSource.includes("sourceEpoch"), "wallet lifetime metadata never becomes reward writer identity");
+  const rewardsElement = nodes(first).find(node => Array.isArray(node.props?.items) && typeof node.props.checkedAt === "string");
+  assert.equal(rewardsElement.props.checkedAt, new Date(NOW).toISOString());
+});
+
+test("the points reader retains the bounded deadline and never retries stalled headers", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  let calls = 0, signal;
+  const pending = brandPointsRead.readConsumerBrandPoints({ fetchImpl: async (_url, init) => { calls++; signal = init.signal; return new Promise(() => {}); } });
+  t.mock.timers.tick(boundedFetch.CONSUMER_READ_TIMEOUT_MS);
+  assert.deepEqual(await pending, { status: "unavailable" }); assert.equal(signal.aborted, true); assert.equal(calls, 1);
 });
