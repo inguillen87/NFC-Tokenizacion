@@ -23,6 +23,7 @@ import { runConsumerRewardsReadPostgresQa } from "../tests/helpers/consumer-rewa
 import { runConsumerRewardHttpPostgresQa, REWARD_HTTP_POSTGRES_EXPECTED } from "../tests/helpers/consumer-reward-http-postgres-harness.mjs";
 import { runAdminRewardPostgresQa } from "../tests/helpers/admin-reward-postgres-harness.mjs";
 import { runConfigurationPostgresQa } from "../tests/helpers/tenant-configuration-postgres-harness.mjs";
+import { runSdkSensorReadPostgresQa } from "../tests/helpers/sdk-sensor-read-postgres-case.mjs";
 import { runLoyaltyCurrentStatePostgresQa } from '../tests/helpers/loyalty-current-state-postgres-harness.mjs';
 import { runMarketplaceContextualPostgresQa } from '../tests/helpers/marketplace-contextual-postgres-harness.mjs';
 import { runTenantMarketplaceCatalogPostgresQa } from '../tests/helpers/tenant-marketplace-catalog-postgres-qa.mjs';
@@ -230,7 +231,7 @@ async function run() {
   assert.equal(tenantConfiguration.checks.length, 18);
   const loyaltyGovernance = await runLoyaltyCurrentStatePostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
   assert.ok(loyaltyGovernance.ok && loyaltyGovernance.cleanup.schemaDropped && loyaltyGovernance.cleanup.connectionsClosed, 'Loyalty governance SQL regression or cleanup failed');
-  assert.equal(loyaltyGovernance.checks.length, 139);
+  assert.equal(loyaltyGovernance.checks.length, 140);
   assert.ok(loyaltyGovernance.checks.every(check => check.ok));
   assert.equal(loyaltyGovernance.lockObservations.length, 37);
   const marketplaceGovernance = await runMarketplaceContextualPostgresQa({ connect: connectCurrentTagQa, dockerAttestation });
@@ -2001,6 +2002,16 @@ async function run() {
     assert.equal(sdkEventReplayPayload.eventId, sdkEventPayload.eventId);
     assert.deepEqual(sdkEventReplayPayload.webhookOutbox, sdkEventPayload.webhookOutbox);
 
+    // Direct default reader probe makes a SQL failure fail the job, outside SUN's optional catch.
+    const { listSdkSensorTimeline } = await import("../src/lib/sdk-sensor-sun-source.ts");
+    assert.deepEqual(await listSdkSensorTimeline({tenantId,bid,uidHex,limit:2}),[]);
+    const sdkSensorReadEvidence = await runSdkSensorReadPostgresQa({connect:connectCurrentTagQa,dockerAttestation,
+      target:{tenantId,batchId,tagId,bid,uidHex},
+      foreignTarget:{tenantId:otherTenantId,batchId:consumerNetworkFixture.tenantB.batchId,tagId:consumerNetworkFixture.tenantB.operational.tagId,bid:consumerNetworkFixture.tenantB.bid,uidHex:consumerNetworkFixture.tenantB.operational.uidHex},
+    });
+    assert(sdkSensorReadEvidence.ok && sdkSensorReadEvidence.readerTransactionReadOnly && sdkSensorReadEvidence.cleanup.fixtureRowsDeleted && sdkSensorReadEvidence.cleanup.connectionsClosed);
+    sdkSensorReadEvidence.defaultPathEmptyProbe = true;
+
     const claimedWebhooks = await claimWebhookDeliveries(10);
     assert.equal(claimedWebhooks.length, 1);
     const webhookDeliveryId = String(claimedWebhooks[0].id);
@@ -2326,6 +2337,7 @@ async function run() {
         consumer_network_fixture_events: consumerNetworkEvents.length,
         consumer_network_routes: Object.keys(consumerNetworkPayloads).length,
       },
+      sdk_sensor_read: sdkSensorReadEvidence,
       bootstrap_prerequisites: bootstrapPrerequisites,
       current_tag_regressions: currentTagRegressionEvidence,
       supplier_chain_acceptance: supplierChainEvidence,

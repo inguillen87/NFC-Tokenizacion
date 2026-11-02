@@ -1,4 +1,5 @@
 import { sql } from "./db";
+import { isPublicConfigurationEventId } from "./configuration-event-id";
 import { ACTIONS_VERSION, CUSTOMER_ACTIONS, record } from "./tenant-loyalty-configuration";
 import { getPublishedTriviaForEvent } from "./trivia-service";
 
@@ -18,7 +19,7 @@ export const unavailableCustomerConfiguration = (): PublishedCustomerConfigurati
 const defaults = {query:sql,readTrivia:getPublishedTriviaForEvent};
 export async function getPublishedCustomerConfiguration(eventId: string, overrides: Partial<typeof defaults> = {}): Promise<PublishedCustomerConfiguration> {
   const {query,readTrivia} = {...defaults,...overrides};
-  if (!/^[1-9]\d{0,15}$/.test(eventId) || !Number.isSafeInteger(Number(eventId))) throw new Error("configuration_event_invalid");
+  if (!isPublicConfigurationEventId(eventId)) throw new Error("configuration_event_invalid");
   const events = await query`
     SELECT e.tenant_id, t.slug AS tenant_slug, sp.metadata FROM events e
     JOIN tenants t ON t.id=e.tenant_id LEFT JOIN tenant_sun_profiles sp ON sp.tenant_id=e.tenant_id

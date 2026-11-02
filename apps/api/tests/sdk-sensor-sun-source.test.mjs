@@ -111,10 +111,11 @@ test("SUN source selects only allowlisted SDK sensor fields and projects valid r
   assert.match(source, /external_event\.tag_id/);
   assert.match(source, /batch\.tenant_id = \$\{input\.tenantId\}::uuid/);
   assert.match(source, /upper\(tag\.uid_hex\) = upper\(external_event\.uid_hex\)/);
-  assert.match(source, /jsonb_object_length\(external_event\.data\) = 1/);
+  assert.doesNotMatch(source, /jsonb_object_length/);
+  assert.match(source, /external_event\.data = jsonb_build_object\('sensors', external_event\.data->'sensors'\)/);
   assert.match(source, /nexidExpectedBatchId}' = external_event\.batch_id::text/);
   assert.match(source, /nexidExpectedTagId}' = external_event\.tag_id::text/);
-  assert.match(source, /jsonb_object_keys\(external_event\.data->'sensors'\)/);
+  assert.match(source, /FROM jsonb_object_keys\(\s*CASE WHEN jsonb_typeof\(external_event\.data->'sensors'\) = 'object'\s*THEN external_event\.data->'sensors' ELSE '\{\}'::jsonb END\s*\) AS sensor_key\(key\)/);
   assert.doesNotMatch(source, /SELECT\s+external_event\.data(?:\s|,)/i);
   assert.match(source, /SDK_SENSOR_READING_EVENT_TYPE/);
   assert.match(source, /SDK_SENSOR_EVENT_SOURCE/);

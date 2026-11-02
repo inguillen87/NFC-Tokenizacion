@@ -40,6 +40,7 @@ export async function runLoyaltyCurrentStatePostgresQa({ connect, dockerAttestat
     const db = await import("../../src/lib/db.ts");
     const loyalty = await import("../../src/lib/loyalty-service.ts");
     const trivia = await import("../../src/lib/trivia-service.ts");
+    const publishedConfiguration = await import("../../src/lib/published-customer-configuration.ts");
     const { markTagManuallyOpened } = await import("../../src/lib/mark-tag-manually-opened.ts");
     const portal = await import("../../src/lib/consumer-portal-service.ts");
     await admin.query(`CREATE SCHEMA ${s}`);
@@ -69,7 +70,9 @@ export async function runLoyaltyCurrentStatePostgresQa({ connect, dockerAttestat
       CREATE TABLE ${s}.rewards(id uuid PRIMARY KEY, tenant_id uuid, program_id uuid, code text, title text, status text DEFAULT 'active', requires_age_gate boolean DEFAULT false, eligibility_json jsonb NOT NULL DEFAULT '{}'::jsonb, points_cost integer DEFAULT 40, stock_remaining integer DEFAULT 2, starts_at timestamptz DEFAULT now()-interval '1 day', ends_at timestamptz, updated_at timestamptz DEFAULT now());
       CREATE TABLE ${s}.reward_redemptions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), tenant_id uuid, program_id uuid, reward_id uuid, member_id uuid, status text, points_spent integer, redemption_code text UNIQUE, metadata_json jsonb DEFAULT '{}', created_at timestamptz DEFAULT now());
       CREATE TABLE ${s}.tag_profiles(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), tag_id uuid, product_name text, winery text, region text, grape_varietal text, vintage text);
-      CREATE TABLE ${s}.tenant_sun_profiles(tenant_id uuid PRIMARY KEY, vertical text);
+      CREATE TABLE ${s}.tenant_sun_profiles(tenant_id uuid PRIMARY KEY, vertical text, metadata jsonb NOT NULL DEFAULT '{}');
+      CREATE TABLE ${s}.marketplace_brand_profiles(tenant_id uuid PRIMARY KEY, status text, visible_in_network boolean);
+      CREATE TABLE ${s}.marketplace_products(tenant_id uuid, status text);
       CREATE TABLE ${s}.loyalty_quizzes(id uuid PRIMARY KEY, tenant_id uuid, program_id uuid, code text, title text, description text, vertical text DEFAULT 'wine', product_filter_json jsonb DEFAULT '{}', status text DEFAULT 'active', starts_at timestamptz DEFAULT now()-interval '1 day', ends_at timestamptz, questions_json jsonb, points_per_correct integer DEFAULT 10, completion_bonus integer DEFAULT 5, pass_threshold integer DEFAULT 1, updated_at timestamptz DEFAULT now());
       CREATE TABLE ${s}.loyalty_quiz_attempts(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), tenant_id uuid, program_id uuid, quiz_id uuid, member_id uuid, tap_event_id bigint, consumer_id uuid, score integer, total_questions integer, points_awarded integer, answers_json jsonb, status text, idempotency_key text UNIQUE, metadata_json jsonb DEFAULT '{}', created_at timestamptz DEFAULT now());
       CREATE TABLE ${s}.tenant_consumer_memberships(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), tenant_id uuid, consumer_id uuid, loyalty_program_id uuid, source text, first_tap_event_id bigint, last_tap_event_id bigint, status ${s}.tenant_membership_status NOT NULL DEFAULT 'active', points_balance integer DEFAULT 0, lifetime_points integer DEFAULT 0, metadata_json jsonb DEFAULT '{}', last_activity_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now(), UNIQUE(tenant_id,consumer_id));
@@ -108,7 +111,7 @@ export async function runLoyaltyCurrentStatePostgresQa({ connect, dockerAttestat
       await admin.query(`INSERT INTO ${s}.rewards(id,tenant_id,program_id,code,title) VALUES ($1,$2,$3,'qa-reward','Synthetic reward')`,[f.rewardId,f.tenantId,f.programId]);
       if(options.redemption) await admin.query(`INSERT INTO ${s}.tenant_consumer_memberships(tenant_id,consumer_id,loyalty_program_id,status,points_balance,lifetime_points) VALUES($1,$2,$3,'active',$4,$4)`,[f.tenantId,f.consumerId,f.programId,options.points??100]);
       await admin.query(`INSERT INTO ${s}.tag_profiles(tag_id,product_name,winery,region) VALUES ($1,'Synthetic product','QA Bodega','QA Region')`,[f.tagId]);
-      await admin.query(`INSERT INTO ${s}.tenant_sun_profiles VALUES ($1,'wine')`,[f.tenantId]);
+      await admin.query(`INSERT INTO ${s}.tenant_sun_profiles(tenant_id,vertical) VALUES ($1,'wine')`,[f.tenantId]);
       const code=`posttap-wine-${createHash("sha256").update(`${f.programId}:Synthetic product:QA Bodega:QA Region`).digest("base64url").slice(0,10).toLowerCase()}`;
       await admin.query(`INSERT INTO ${s}.loyalty_quizzes(id,tenant_id,program_id,code,title,description,questions_json) VALUES ($1,$2,$3,$4,'Synthetic quiz','Configured fixture',$5::jsonb)`,[f.quizId,f.tenantId,f.programId,code,JSON.stringify([{id:"q1",prompt:"Synthetic choice",options:["Correct","Other"],correctIndex:0,explanation:"Synthetic explanation",insightTag:"fixture"}])]);
       return f;
@@ -429,6 +432,29 @@ export async function runLoyaltyCurrentStatePostgresQa({ connect, dockerAttestat
     ]) await check(`legacy concurrent ${table} ${setSql}: actual lock wait uses current policy and price`,async()=>{const f=await fixture({redemption:true});f.membershipId=(await admin.query(`SELECT id FROM ${s}.tenant_consumer_memberships WHERE tenant_id=$1 AND consumer_id=$2`,[f.tenantId,f.consumerId])).rows[0].id;const before=await state(f);const result=await governanceRace(f,table,f[idKey],setSql,()=>redeem(f));assert.equal(result.ok,success);const after=await state(f);if(success){assert.equal(result.redemption.points_spent,25);assert.equal(after.loyalty_members[0].points_balance,75);assert.equal(after.points_ledger[0].delta,-25);assert.equal(after.rewards[0].stock_remaining,1);assert.equal(after.reward_redemptions.length,1);}else{if(table==='rewards'){assert.equal(after.rewards[0].stock_remaining,setSql==='stock_remaining=0'?0:before.rewards[0].stock_remaining);before.rewards=after.rewards;}if(table==='loyalty_members')before.loyalty_members[0].status='blocked';if(table==='tenant_consumer_memberships')before.tenant_consumer_memberships[0].status='blocked';assert.deepEqual(after,before);}});
     for(const kind of ['program','reward']) await check(`legacy ${kind} expires while waiting: transaction snapshot now cannot authorize spend`,async()=>{const f=await fixture({redemption:true});await admin.query(kind==='program'?`UPDATE ${s}.loyalty_programs SET end_at=clock_timestamp()+interval '0.7 seconds' WHERE id=$1`:`UPDATE ${s}.rewards SET ends_at=clock_timestamp()+interval '0.7 seconds' WHERE id=$1`,[kind==='program'?f.programId:f.rewardId]);const before=await state(f);await admin.query('BEGIN');let pending;try{await admin.query(`SELECT id FROM ${s}.loyalty_members WHERE id=$1 FOR UPDATE`,[f.memberId]);pending=redeem(f).then(value=>({value}),error=>({error}));let observation;const deadline=Date.now()+6000;while(Date.now()<deadline){const{rows}=await observer.query("SELECT pid,wait_event_type,wait_event,query FROM pg_stat_activity WHERE pid=$1 AND wait_event_type='Lock'",[pids[1]]);if(rows[0]){observation=rows[0];break;}await new Promise(resolve=>setTimeout(resolve,20));}assert.ok(observation,'Legacy redeemer must really wait before expiry');report.lockObservations.push({eventId:f.eventId,kind:'legacy-expiry-during-wait',...observation});await new Promise(resolve=>setTimeout(resolve,900));await admin.query('COMMIT');}catch(error){await admin.query('ROLLBACK');if(pending)await pending;throw error;}const result=await pending;if(result.error)throw result.error;assert.equal(result.value.ok,false);assert.equal(result.value.error,'reward_configuration_changed');assert.deepEqual(await state(f),before);});
     await check('legacy receipt insertion failure rolls back points, stock and ledger together',async()=>{const f=await fixture({redemption:true});await admin.query(`CREATE FUNCTION ${s}.reject_redemption_receipt() RETURNS trigger LANGUAGE plpgsql AS $fixture$ BEGIN RAISE EXCEPTION 'synthetic_redemption_receipt_failure' USING ERRCODE='P0001'; END $fixture$`);await admin.query(`CREATE TRIGGER reject_redemption_receipt BEFORE INSERT ON ${s}.reward_redemptions FOR EACH ROW EXECUTE FUNCTION ${s}.reject_redemption_receipt()`);try{const before=await state(f);await assert.rejects(redeem(f),/synthetic_redemption_receipt_failure/);assert.deepEqual(await state(f),before);}finally{await admin.query(`DROP TRIGGER reject_redemption_receipt ON ${s}.reward_redemptions`);await admin.query(`DROP FUNCTION ${s}.reject_redemption_receipt()`);}});
+    await check('public configuration and default trivia preserve adjacent signed-bigint event identities without writes',async()=>{
+      const eventIds=['9007199254740992','9007199254740993','9223372036854775806','9223372036854775807'],fixtures=[];
+      for(const eventId of eventIds){
+        const f=await fixture();await admin.query(`UPDATE ${s}.events SET id=$1::bigint WHERE id=$2::bigint`,[eventId,f.eventId]);f.eventId=eventId;
+        await admin.query(`UPDATE ${s}.tenant_sun_profiles SET metadata=$1::jsonb WHERE tenant_id=$2`,[JSON.stringify({postTap:{version:'nexid.tenant-actions.v1',status:'published',allowedActions:['lead']}}),f.tenantId]);fixtures.push(f);
+      }
+      const results=[];
+      for(const f of fixtures){
+        const before=await state(f),offset=report.statements.length;
+        // No overrides: both public SQL and default trivia use the owned PG executor.
+        const configuration=await publishedConfiguration.getPublishedCustomerConfiguration(f.eventId);
+        const reads=report.statements.slice(offset);assert(reads.length>=5);assert(reads.every(read=>/^\s*SELECT\b/i.test(read.text)&&!read.error),'Public/default-trivia path must perform successful SELECTs only');
+        const eventReads=reads.filter(read=>/FROM events e/.test(read.text));assert.equal(eventReads.length,2);
+        for(const read of eventReads){assert.equal(typeof read.parameters[0],'string');assert.equal(read.parameters[0],f.eventId);}
+        assert.equal(configuration.status,'published');assert.deepEqual(configuration.allowedActions,['lead']);assert.equal(configuration.program.id,f.programId);assert.equal(configuration.trivia.id,f.quizId);assert.match(configuration.trivia.revision,/^[a-f0-9]{64}$/);
+        assert.equal(configuration.catalogAvailable,false);assert.deepEqual(await state(f),before);
+        const driverId=(await observer.query(`SELECT id FROM ${s}.events WHERE id=$1::bigint`,[f.eventId])).rows[0].id;assert.equal(typeof driverId,'string');assert.equal(driverId,f.eventId);
+        results.push({eventId:f.eventId,programId:configuration.program.id,quizId:configuration.trivia.id});
+      }
+      assert.equal(new Set(results.map(result=>result.programId)).size,4);assert.equal(new Set(results.map(result=>result.quizId)).size,4);
+      return{eventIds,distinctPersistedTenants:fixtures.length,defaultTriviaReadPath:true,exactDriverStrings:true,businessWritesDuringRead:0};
+    });
+
     report.ok=report.checks.every(row=>row.ok);
   } finally {
     removeExecutor?.();
