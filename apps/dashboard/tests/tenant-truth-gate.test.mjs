@@ -56,8 +56,8 @@ test("RewardsClient is explicitly source-aware and cannot expose mutations in de
   for (const prop of ["isDemo", "canWrite", "dataSource"]) {
     assert.match(rewardsClient, new RegExp(`${prop}:`));
   }
-  assert.match(rewardsClient, /if \(!canWrite\) return/);
-  assert.match(rewardsClient, /if \(!canWrite\) \{[\s\S]*Esta sesión tiene acceso de solo lectura/);
+  assert.match(rewardsClient, /!latestSource\.current\.canWrite/);
+  assert.match(rewardsClient, /!mounted\.current \|\| !canWrite \|\| !tenantScope\.trim\(\)/);
   assert.match(rewardsClient, /\{canWrite \? \([\s\S]*Nuevo Beneficio/);
   assert.match(rewardsClient, /isModalOpen && canWrite/);
   assert.match(rewardsClient, /Datos ilustrativos · sin persistencia/);

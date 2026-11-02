@@ -128,22 +128,37 @@ test("unknown context remains unselected while a cleared query restores services
   } finally { globalThis.fetch = previousFetch; }
 });
 
-test("edit dialog exposes saved restrictions and opens its program in a separate protected tab", () => {
-  let stateIndex = 0;
-  const editingState = [true, reward, reward.code, reward.title, "Descripción QA", "TASTING", reward.points, reward.stock_total, "", reward.status, reward.requires_age_gate, reward.network_visible];
-  const reactShim = { ...React, useState: initial => { const index = stateIndex++; return [index < editingState.length ? editingState[index] : typeof initial === "function" ? initial() : initial, () => {}]; }, useEffect: () => {}, useRef: () => ({ current: null }) };
+test("edit dialog exposes saved restrictions and opens its program in a separate protected tab", t => {
+  // Drive the actual mounted component's Edit callback; no hook-slot indexes or
+  // fabricated owner are used. DOM rendering below remains a synthetic SSR test.
   const Notice = loadComponent("../src/components/reward-reservation-notice.tsx", { "../lib/reward-reservation-notices": notices });
   const Icon = () => React.createElement("svg", { "aria-hidden": "true" });
-  const Rewards = loadComponent("../src/app/(app)/loyalty/rewards/rewards-client.tsx", {
-    react: reactShim, "next/navigation": { useRouter: () => ({ refresh: () => {} }) }, "@product/ui": {},
-    "../../../../components/reward-reservation-notice": { default: Notice, __esModule: true },
-    "../../../../lib/reward-reservation-notices": notices,
-    "lucide-react": new Proxy({}, { get: () => Icon }),
-  });
-  const renderRewards = (patch = {}) => {
-    stateIndex = 0;
-    return renderToStaticMarkup(React.createElement(Rewards, { initialRewards: [reward], tenantScope: tenant, isDemo: false, canWrite: true, dataSource: "production", availability: "ready", sourceReason: "", ...patch }));
-  };
+  const nodes = node => Array.isArray(node) ? node.flatMap(nodes) : node && typeof node === "object" && node.props ? [node, ...nodes(node.props.children)] : [];
+  const text = node => Array.isArray(node) ? node.map(text).join(" ") : typeof node === "string" || typeof node === "number" ? String(node) : node?.props ? text(node.props.children) : "";
+  function mountedRewards(patch = {}) {
+    const slots = [], effects = new Map(); let cursor = 0;
+    const props = { initialRewards: [reward], tenantScope: tenant, isDemo: false, canWrite: true, dataSource: "production", availability: "ready", sourceReason: "", ...patch };
+    const reactShim = { ...React,
+      useState(initial) { const i = cursor++; if (!slots[i]) slots[i] = { value: typeof initial === "function" ? initial() : initial }; return [slots[i].value, value => { slots[i].value = typeof value === "function" ? value(slots[i].value) : value; }]; },
+      useRef(initial) { const i = cursor++; if (!slots[i]) slots[i] = { current: initial }; return slots[i]; },
+      useEffect(effect, deps) { const i = cursor++; if (!slots[i]) slots[i] = { effect: true, deps: null, cleanup: null }; const slot = slots[i], previous = slot.next || slot.deps;
+        if (!previous || previous.length !== deps.length || previous.some((value, index) => !Object.is(value, deps[index]))) { slot.next = deps; effects.set(i, { slot, effect, deps }); }
+      },
+    };
+    const Rewards = loadComponent("../src/app/(app)/loyalty/rewards/rewards-client.tsx", {
+      react: reactShim, "next/navigation": { useRouter: () => ({ refresh: () => {} }) }, "@product/ui": {},
+      "../../../../components/reward-reservation-notice": { default: Notice, __esModule: true },
+      "../../../../lib/reward-reservation-notices": notices, "lucide-react": new Proxy({}, { get: () => Icon }),
+    });
+    const render = () => { cursor = 0; return Rewards(props); };
+    const flush = () => { const queued = [...effects.values()]; effects.clear(); for (const { slot, effect, deps } of queued) { slot.cleanup?.(); slot.deps = deps; slot.next = null; slot.cleanup = effect() || null; } };
+    const cleanup = () => { effects.clear(); for (const slot of slots) if (slot?.effect) { slot.cleanup?.(); slot.cleanup = null; } };
+    render(); flush();
+    const edit = nodes(render()).find(node => node.type === "button" && text(node).trim() === "Editar");
+    edit?.props.onClick(); const tree = render(); flush();
+    return { tree, cleanup };
+  }
+  const renderRewards = (patch = {}) => { const fixture = mountedRewards(patch); try { return renderToStaticMarkup(fixture.tree); } finally { fixture.cleanup(); } };
   const html = renderRewards();
   assert.match(html, /aria-label="Condiciones guardadas del beneficio"/);
   assert.match(html, /<details[^>]*open=""/);
@@ -157,10 +172,8 @@ test("edit dialog exposes saved restrictions and opens its program in a separate
   for (const availability of ["ready_empty", "upstream_error", "forbidden"]) assert.doesNotMatch(renderRewards({ availability }), /Consultar programa \(abre otra pestaña\)/);
   for (const patch of [{ isDemo: true }, { tenantScope: "" }, { dataSource: "demo" }, { dataSource: "unavailable" }]) assert.doesNotMatch(renderRewards(patch), /Consultar programa \(abre otra pestaña\)/);
 
-  // Exercise the actual modal key handler; a link between form controls must remain in the native Tab order.
-  stateIndex = 0;
-  const findDialog = node => Array.isArray(node) ? node.map(findDialog).find(Boolean) : node && typeof node === "object" ? node.type === "dialog" ? node : findDialog(node.props?.children) : null;
-  const dialog = findDialog(Rewards({ initialRewards: [reward], tenantScope: tenant, isDemo: false, canWrite: true, dataSource: "production", availability: "ready", sourceReason: "" }));
+  const fixture = mountedRewards(); t.after(fixture.cleanup);
+  const dialog = nodes(fixture.tree).find(node => node.type === "dialog");
   assert.ok(dialog);
   let firstFocused = 0, lastFocused = 0, prevented = 0;
   const first = { focus: () => firstFocused++ }, summary = { focus: () => {} }, anchor = { focus: () => {} }, input = { focus: () => {} }, last = { focus: () => lastFocused++ };

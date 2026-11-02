@@ -55,3 +55,18 @@ test("stock/program errors explain recovery and preserve the edit form", () => {
   assert.doesNotMatch(rewardSaveErrorCopy("private-database-error"), /private-database-error/);
   assert.match(source, /Cambiar el total agrega o quita unidades/);
 });
+
+
+test("the new-benefit payload carries an explicit creation intent while exact edits do not", () => {
+  const creating = buildRewardSavePayload("tenant-a", form(), null);
+  assert.equal(creating.creationIntent, "admin-reward-first-create.v1");
+  assert.equal(Object.hasOwn(creating, "reward_id"), false);
+  const editing = buildRewardSavePayload("tenant-a", form(), reward);
+  assert.equal(Object.hasOwn(editing, "creationIntent"), false);
+  assert.equal(editing.reward_id, reward.id); assert.equal(editing.program_id, reward.program_id);
+});
+
+test("a duplicate new code explains deliberate recovery and keeps the current form", () => {
+  const copy = rewardSaveErrorCopy("reward_create_conflict");
+  assert.match(copy, /otro código/); assert.match(copy, /existente.*editar/); assert.match(copy, /formulario sigue aquí/);
+});
