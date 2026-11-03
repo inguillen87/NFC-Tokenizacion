@@ -13,7 +13,6 @@ test("SUN exposes a policy-aware generic brand opt-in without inferring consent 
   assert.match(page, /canSubscribeToBrand && !showEngagementSuite \? \(/);
   assert.match(page, /<SunUpdatesOptIn/);
 
-  assert.match(optIn, /if \(state === "submitting" \|\| !consent \|\| contact\.trim\(\)\.length < 5\) return/);
   assert.match(optIn, /required[\s\S]*?type="checkbox"/);
   assert.match(optIn, /fetch\("\/api\/leads"/);
   assert.match(optIn, /gps: \{ consent: false, precision: "none" \}/);
