@@ -13,8 +13,8 @@ export default async function SecurityPage({ searchParams }: { searchParams?: Pr
 
   return (
     <PortalShell
-      title="Seguridad y canales de contacto"
-      subtitle="Revisá tus contactos de acceso y recuperación. Un solo código alcanza para entrar."
+      title="Seguridad de tu cuenta"
+      subtitle="Administrá los medios que usás para recibir tus códigos de acceso."
       notificationCount={Number(stats.unread || 0)}
     >
       <SecurityPanel initialConsumer={consumer} />

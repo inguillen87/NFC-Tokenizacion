@@ -35,7 +35,7 @@ const destinations=[
  ['/me/sommelier?tenant=loading-qa&eventId=900001','Asistente de vinos'],
  ['/me/cork-analyzer?eventId=900001','Simulación visual de corcho y cápsula'],
  ['/me/privacy?tenant=loading-qa','Tus permisos con las marcas'],
- ['/me/security?fromTap=1&eventId=900001','Seguridad y canales de contacto'],
+ ['/me/security?fromTap=1&eventId=900001','Seguridad de tu cuenta'],
  ['/me/taps?event=900001&from=2026-10-01&to=2026-10-06','Historial de lecturas'],
  ['/me/taps/900001?fromTap=1&tenant=loading-qa','Tu lectura guardada'],
 ];
@@ -199,9 +199,52 @@ async function experienceRejected(width,theme,status){
   await assess(page,'[data-testid="consumer-experiences"]',name,width,theme);await page.evaluate(()=>Promise.all(window.__destinationDeliveries));
  }finally{release();await context.close();}
 }
+async function securityNavigation(width,theme){
+ const{context,page}=await open(width,theme,'ready'),name='security-navigation-'+width+'-'+theme;
+ const originalFont={value:'',priority:''};
+ const geometry=async phase=>{
+  await page.evaluate(()=>document.fonts.ready.then(()=>undefined));
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  const measured=await page.evaluate(()=>{
+   const header=document.querySelector('.consumer-portal-root > header'),main=document.querySelector('#consumer-portal-content'),heading=main?.querySelector('h1'),root=header?.closest('.consumer-portal-root');
+   if(!header||!main||!heading||!root)throw Error('Owned portal heading/header unavailable');
+   const box=element=>{const r=element.getBoundingClientRect();return{top:r.top,bottom:r.bottom,height:r.height,left:r.left,right:r.right};};
+   return{header:box(header),main:box(main),heading:box(heading),innerWidth,clientWidth:document.documentElement.clientWidth,innerHeight,scrollY,mainFocused:document.activeElement===main,headerOffset:root.style.getPropertyValue('--portal-header-block-size'),scrollMargin:getComputedStyle(main).scrollMarginBlockStart};
+  });
+  report.securityNavigation??=[];report.securityNavigation.push({width,theme,phase,...measured});
+  check(measured.heading.top>=measured.header.bottom-1&&measured.heading.bottom<=measured.innerHeight+1,name+'/'+phase+': complete account heading stays below sticky header and visible');
+ };
+ try{
+  await page.goto(origin+'/me/products',{waitUntil:'networkidle'});
+  await page.getByRole('button',{name:'Más',exact:true}).click();
+  await page.getByRole('dialog',{name:'Más opciones',exact:true}).locator('a[href="/me/security"]').click();
+  await page.waitForURL(url=>url.pathname==='/me/security');
+  await page.getByRole('heading',{name:'Seguridad de tu cuenta',exact:true}).waitFor();
+  await geometry('next-link');
+  const access=page.getByRole('region',{name:'Tus medios de acceso',exact:true}),support=page.getByRole('region',{name:'Contactar a NexID',exact:true});
+  check(await access.getByText('Tu email',{exact:true}).count()===1&&await access.getByText('Tu WhatsApp',{exact:true}).count()===1,name+': access labels explicitly describe personal details');
+  check(await support.getByRole('link').count()===3&&await support.getByRole('link',{name:'info@nexid.lat',exact:true}).getAttribute('href')==='mailto:info@nexid.lat',name+': corporate contact is a separate region with primary public email');
+  check(await support.getByRole('link').evaluateAll(nodes=>nodes.every(node=>node.getBoundingClientRect().height>=44)),name+': corporate contacts have44px targets');
+  check(await support.locator('a[href="https://api.whatsapp.com/send?phone=5492613168608"]').count()===1&&await support.locator('a[href="https://api.whatsapp.com/send?phone=56988689095"]').count()===1,name+': published country contacts retained without opening external chats');
+  await page.getByRole('link',{name:'Ir al contenido',exact:true}).focus();await page.keyboard.press('Enter');
+  await geometry('main-anchor');
+  const font=await page.evaluate(()=>({value:document.documentElement.style.getPropertyValue('font-size'),priority:document.documentElement.style.getPropertyPriority('font-size')}));Object.assign(originalFont,font);
+  await page.evaluate(()=>document.documentElement.style.setProperty('font-size','200%'));
+  await page.waitForFunction(()=>{const header=document.querySelector('.consumer-portal-root > header'),root=header?.closest('.consumer-portal-root');return header&&root&&Math.abs(parseFloat(root.style.getPropertyValue('--portal-header-block-size'))-Math.ceil(header.getBoundingClientRect().height))<=1;});
+  await page.getByRole('link',{name:'Ir al contenido',exact:true}).focus();await page.keyboard.press('Enter');
+  await geometry('large-text-main-anchor');
+  await page.evaluate(font=>{if(font.value)document.documentElement.style.setProperty('font-size',font.value,font.priority);else document.documentElement.style.removeProperty('font-size');},originalFont);
+  await assess(page,'#consumer-portal-content',name,width,theme);
+  await page.evaluate(()=>Promise.all(window.__destinationDeliveries));
+ }finally{
+  await page.evaluate(font=>{if(font.value)document.documentElement.style.setProperty('font-size',font.value,font.priority);else document.documentElement.style.removeProperty('font-size');},originalFont).catch(()=>{});
+  await context.close();
+ }
+}
 try{
  let ready=false;for(let i=0;i<120;i++){if(serverFailed||next.exitCode!==null)break;try{if((await fetch(origin+'/release.json',{signal:AbortSignal.timeout(1000)})).ok){ready=true;break;}}catch{}await new Promise(resolve=>setTimeout(resolve,250));}
  check(ready,'isolated production Next ready');browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH});
+ for(const width of [320,1280])for(const theme of ['light','dark'])await securityNavigation(width,theme);
  for(const destination of destinations)for(const theme of ['light','dark'])await recover(destination,390,theme,'session-500');
  for(const destination of destinations){await anonymous(destination,'session-401');await anonymous(destination,'session-false');}
  for(const index of [0,1,2,12])for(const scenario of ['session-headers-stall','session-body-stall'])await recover(destinations[index],320,'dark',scenario);
