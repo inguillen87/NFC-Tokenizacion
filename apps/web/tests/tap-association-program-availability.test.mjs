@@ -16,7 +16,7 @@ const payload = (tenant = "brand-a", program = true, status = "published") => ({
 } });
 
 function fixture(t, initial = ctx()) {
-  const slots = [], effects = new Map(), calls = [], reads = [], writes = [], saved = new Map();
+  const slots = [], effects = new Map(), calls = [], reads = [], writes = [], saved = new Map(), domRefs = new Map();
   let cursor = 0, context = initial, setterCalls = 0, refreshes = 0;
   const replace = (key, value) => { saved.set(key, { own: Object.hasOwn(globalThis, key), value: globalThis[key] }); globalThis[key] = value; };
   const body = {}, document = { body, activeElement: body, documentElement: { lang: "es-AR" }, addEventListener() {}, removeEventListener() {} };
@@ -60,9 +60,26 @@ function fixture(t, initial = ctx()) {
   }, module, module.exports);
   const nodes = node => Array.isArray(node) ? node.flatMap(nodes) : node && typeof node === "object" && node.props ? [node, ...nodes(node.props.children)] : [];
   const text = node => (Array.isArray(node) ? node.map(text).join(" ") : typeof node === "string" || typeof node === "number" ? String(node) : node?.props ? text(node.props.children) : "").replace(/\s+/g, " ").trim();
+  const setRef = (ref, value) => typeof ref === "function" ? ref(value) : ref.current = value;
+  function commitRefs(tree) {
+    const next = new Map();
+    for (const node of nodes(tree)) if (node.props.ref) {
+      const ref = node.props.ref, previous = domRefs.get(ref);
+      assert(!next.has(ref), "synthetic DOM supports one mounted node per ref");
+      const sameNode = previous && previous.type === node.type && Object.is(previous.key, node.key);
+      if (previous && !sameNode) setRef(ref, null);
+      const dom = sameNode ? previous.dom : { focus() { document.activeElement = this; }, scrollIntoView() {} };
+      // Commit the controlled value to the stable input node, rather than
+      // pretending every ref is a heading that only supports focus/scroll.
+      if (node.type === "input" && Object.hasOwn(node.props, "value")) dom.value = String(node.props.value ?? "");
+      next.set(ref, { type: node.type, key: node.key, dom }); setRef(ref, dom);
+    }
+    for (const ref of domRefs.keys()) if (!next.has(ref)) setRef(ref, null);
+    domRefs.clear(); for (const [ref, value] of next) domRefs.set(ref, value);
+  }
   const h = { calls, reads, writes, nodes, text, setterCalls: () => setterCalls, refreshes: () => refreshes,
     render(next = context) { context = next; cursor = 0; const tree = module.exports.__testAssociationCard({ context, destination: "/me" });
-      for (const node of nodes(tree)) if (node.props.ref) node.props.ref.current = { focus() {}, scrollIntoView() {} }; return tree; },
+      commitRefs(tree); return tree; },
     flush() { const queued = [...effects.values()]; effects.clear(); for (const { slot, effect, deps } of queued) { slot.cleanup?.(); slot.deps = deps; slot.next = null; slot.cleanup = effect() || null; } },
     async turn() { await new Promise(resolve => setImmediate(resolve)); },
     byTestId(tree, id) { const node = nodes(tree).find(n => n.props["data-testid"] === id); assert.ok(node, id); return node; },
@@ -70,7 +87,8 @@ function fixture(t, initial = ctx()) {
     posts() { return calls.filter(c => c.init.method === "POST"); },
     readySession() { const call = calls.find(c => c.url === "/api/consumer/session"); assert.ok(call); call.release(200, { ok: true, authenticated: true }); },
     clickConfirm(tree) { const trigger = { contains: value => value === trigger }; document.activeElement = trigger; h.byTestId(tree, "tap-association-confirm").props.onClick({ currentTarget: trigger }); },
-    cleanup() { effects.clear(); for (const slot of slots) if (slot?.effect) { slot.cleanup?.(); slot.cleanup = null; } },
+    cleanup() { effects.clear(); for (const slot of slots) if (slot?.effect) { slot.cleanup?.(); slot.cleanup = null; }
+      for (const ref of domRefs.keys()) setRef(ref, null); domRefs.clear(); },
     async finish() { for (const call of calls) call.release(503, { ok: false, reason: "fixture_cleanup" }); h.cleanup(); await Promise.allSettled([...reads, ...writes]); await h.turn(); for (const [key, old] of saved) { if (old.own) globalThis[key] = old.value; else delete globalThis[key]; } },
   };
   h.render(); h.flush(); return h;
@@ -224,4 +242,65 @@ test("explicit programme recheck never renews consumed or no-programme enrollmen
       h.clickConfirm(tree); await h.turn(); assert.equal(h.posts().length, 1); assert.equal(h.refreshes(), 0);
     } finally { await h.finish(); }
   }
+});
+
+test("a PIN claim limited before consumption needs explicit reentry and reads the current DOM on a same-turn clear/click", async t => {
+  const h = fixture(t, ctx("715", "brand-a", "claim"));
+  try {
+    h.readySession(); h.programCalls()[0].release(200, payload()); await h.reads[0]; await h.turn();
+    let tree = h.render(); h.flush();
+    const pin = () => h.byTestId(tree, "tap-association-claim-pin");
+    const change = value => { const node = pin(), dom = node.props.ref.current; dom.value = value; node.props.onChange({ target: dom }); return dom; };
+    const firstDom = change("FIRST-OWNED-PIN"), inputRef = pin().props.ref; tree = h.render();
+    assert.equal(inputRef.current, firstDom, "the mounted controlled input keeps its DOM node across renders");
+    assert.equal(inputRef.current.value, "FIRST-OWNED-PIN");
+    h.clickConfirm(tree); assert.equal(h.posts().length, 1);
+    assert.deepEqual(JSON.parse(h.posts()[0].init.body), { tenantSlug: "brand-a", pin: "FIRST-OWNED-PIN" });
+    tree = h.render(); h.flush();
+    assert.equal(inputRef.current, firstDom); assert.equal(inputRef.current.value, "", "the actual component clears its controlled input before receipt");
+    h.posts()[0].release(429, { ok: false, reason: "rate_limited" }); await h.writes[0]; await h.turn(); tree = h.render(); h.flush();
+    assert.equal(h.byTestId(tree, "tap-association-result-claim").props["data-outcome"], "rate_limited");
+    assert.equal(h.byTestId(tree, "tap-association-confirm").props.disabled, true);
+    assert.match(h.text(tree), /Volvé a ingresarlo/);
+    assert.match(pin().props["aria-describedby"], /tap-association-pin-reentry/);
+    h.clickConfirm(tree); await h.turn(); assert.equal(h.posts().length, 1, "an empty retry never reaches transport"); assert.equal(h.refreshes(), 0);
+    change("REENTERED-OWNED-PIN"); tree = h.render();
+    assert.equal(h.byTestId(tree, "tap-association-confirm").props.disabled, false);
+    const staleTree = tree;
+    change(""); h.clickConfirm(staleTree);
+    assert.equal(h.posts().length, 1, "the same-turn input event and old click closure cannot submit the deleted PIN");
+    tree = h.render(); h.flush(); assert.equal(inputRef.current.value, "");
+    assert.equal(h.byTestId(tree, "tap-association-confirm").props.disabled, true);
+    change("REENTERED-OWNED-PIN"); tree = h.render(); h.clickConfirm(tree);
+    assert.equal(h.posts().length, 2); assert.deepEqual(JSON.parse(h.posts()[1].init.body), { tenantSlug: "brand-a", pin: "REENTERED-OWNED-PIN" });
+    tree = h.render(); h.flush(); assert.equal(inputRef.current.value, "");
+    h.posts()[1].release(200, { ok: true, eventId: "715", ownership_scope: "nexid_off_chain_digital_title", ownership: { status: "claimed" } });
+    await h.writes[1]; await h.turn(); tree = h.render(); h.flush();
+    assert.equal(h.byTestId(tree, "tap-association-result-claim").props["data-outcome"], "claimed");
+    assert.equal(h.byTestId(tree, "tap-association-confirm").props.disabled, true);
+    assert.equal(inputRef.current, null, "removing the input clears its ref rather than retaining a stale DOM node");
+    h.clickConfirm(tree); await h.turn(); assert.equal(h.posts().length, 2); assert.equal(h.refreshes(), 1);
+  } finally { await h.finish(); }
+});
+
+test("a separate optional-PIN claim keeps an explicit no-PIN retry after the known limiter", async t => {
+  const h = fixture(t, ctx("715", "brand-a", "claim"));
+  try {
+    h.readySession(); h.programCalls()[0].release(200, payload()); await h.reads[0]; await h.turn();
+    let tree = h.render(); h.flush(); const pinRef = h.byTestId(tree, "tap-association-claim-pin").props.ref;
+    assert.equal(pinRef.current.value, ""); assert.equal(h.byTestId(tree, "tap-association-confirm").props.disabled, false);
+    h.clickConfirm(tree); assert.equal(h.posts().length, 1); assert.deepEqual(JSON.parse(h.posts()[0].init.body), { tenantSlug: "brand-a" });
+    tree = h.render(); h.flush();
+    h.posts()[0].release(429, { ok: false, reason: "rate_limited" }); await h.writes[0]; await h.turn(); tree = h.render(); h.flush();
+    assert.equal(h.byTestId(tree, "tap-association-result-claim").props["data-outcome"], "rate_limited");
+    assert.equal(h.byTestId(tree, "tap-association-confirm").props.disabled, false);
+    assert.equal(h.nodes(tree).find(node => node.props.id === "tap-association-pin-reentry"), undefined);
+    assert.equal(pinRef.current.value, ""); assert.equal(h.posts().length, 1); assert.equal(h.refreshes(), 0);
+    h.clickConfirm(tree); assert.equal(h.posts().length, 2); assert.deepEqual(JSON.parse(h.posts()[1].init.body), { tenantSlug: "brand-a" });
+    tree = h.render(); h.flush();
+    h.posts()[1].release(200, { ok: true, eventId: "715", ownership_scope: "nexid_off_chain_digital_title", ownership: { status: "claimed" } });
+    await h.writes[1]; await h.turn(); tree = h.render(); h.flush();
+    assert.equal(h.byTestId(tree, "tap-association-result-claim").props["data-outcome"], "claimed");
+    assert.equal(h.byTestId(tree, "tap-association-confirm").props.disabled, true); assert.equal(h.posts().length, 2); assert.equal(h.refreshes(), 1);
+  } finally { await h.finish(); }
 });

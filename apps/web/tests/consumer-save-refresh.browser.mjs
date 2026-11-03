@@ -79,6 +79,7 @@ async function open(width, theme, scenario, action = 'save') {
   const requestPath = action === 'save' ? savePath : `/api/mobile/passport/${eventId}/consumer/join-tenant`;
   const confirmed = ['confirmed', 'confirmed-focus-moved', 'confirmed-scroll-moved'].includes(scenario);
   const lost = ['lost', 'lost-focus-moved'].includes(scenario);
+  const uncertainReceipt = lost || ['malformed', 'foreign', 'unmarked-unavailable', 'malformed-marker'].includes(scenario);
   const focusMoved = scenario.endsWith('-focus-moved');
   const scrollMoved = scenario === 'confirmed-scroll-moved';
   const context = await browser.newContext({ viewport: { width, height: 900 }, locale: 'es-AR', reducedMotion: 'reduce', serviceWorkers: 'block' });
@@ -267,8 +268,29 @@ async function open(width, theme, scenario, action = 'save') {
       const historyLink = banner.getByRole('link', { name: 'Ver historial de lecturas', exact: true });
       check(await historyLink.getAttribute('href') === '/me/taps', `${width}/${theme}/${scenario}: read-only history review remains available`);
     } else {
-      check((await result.innerText()).includes('revisá tus productos antes de reintentar'), `${width}/${theme}/${scenario}: lost or malformed receipt directs collection review before deliberate retry`);
-      if (['unmarked-unavailable', 'malformed-marker'].includes(scenario)) check(await confirm.isEnabled(), `${width}/${theme}/${scenario}: an unqualified unavailable response retains the existing deliberate-retry behavior`);
+      check(uncertainReceipt && expectedOutcome === 'unconfirmed', `${width}/${theme}/${scenario}: only an unresolved receipt enters the terminal uncertainty checks`);
+      check(await result.getByRole('heading', { name: 'Falta confirmar el resultado', exact: true }).isVisible(), `${width}/${theme}/${scenario}: incomplete evidence has its own result heading`);
+      const guidance = await result.locator('p').innerText();
+      check(guidance.includes('La operación puede haberse registrado, pero no recibimos la confirmación.')
+        && guidance.includes('Revisá tus productos y tu historial.')
+        && guidance.includes('Esta acción no se volverá a enviar desde esta pantalla; si sigue pendiente, hacé un nuevo TAP.'),
+      `${width}/${theme}/${scenario}: uncertainty explains review and no resend from this mounted screen without claiming the save failed`);
+      check(await confirm.isDisabled(), `${width}/${theme}/${scenario}: lost, malformed, foreign and unqualified unavailable receipts keep this action terminal`);
+      check(await reviewLink.getAttribute('href') === `/me/products?focus=${eventId}`, `${width}/${theme}/${scenario}: collection review keeps the exact reading identity`);
+      const historyLink = banner.getByRole('link', { name: 'Ver historial de lecturas', exact: true });
+      check(await historyLink.getAttribute('href') === '/me/taps', `${width}/${theme}/${scenario}: unresolved receipt retains read-only history review`);
+      const forcedDomClicks = await confirm.evaluate(button => {
+        button.click(); button.click();
+        button.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+        return { disabled: button.disabled, connected: button.isConnected };
+      });
+      check(forcedDomClicks.disabled && forcedDomClicks.connected, `${width}/${theme}/${scenario}: exercise the live disabled DOM button with repeated and synthetic click events`);
+      await page.waitForLoadState('networkidle');
+      await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+      check(postCount === 1 && refreshCount === initialRefreshes, `${width}/${theme}/${scenario}: repeated or dispatched DOM clicks cannot repeat the uncertain POST or refresh`);
+      check(await confirm.isDisabled() && await result.isVisible(), `${width}/${theme}/${scenario}: DOM clicks preserve the mounted terminal uncertainty result`);
+      check(await home.getByRole('heading', { name: productName, exact: true }).count() === 0
+        && await banner.locator('[data-outcome="saved"]').count() === 0, `${width}/${theme}/${scenario}: DOM clicks cannot invent a successful save or saved product`);
     }
   }
   check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${width}/${theme}/${scenario}: no horizontal overflow`);

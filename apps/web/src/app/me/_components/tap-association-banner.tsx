@@ -21,6 +21,10 @@ function AssociationCard({ context, destination }: { context: TapAssociationCont
   const [locale, setLocale] = useState<AssociationLocale>("es-AR");
   const [selected, setSelected] = useState<TapAssociationAction | null>(context.preferred);
   const [claimPin, setClaimPin] = useState("");
+  const claimPinInput = useRef<HTMLInputElement>(null);
+  // Intent only, never the submitted secret. Set before dispatch so the runner's
+  // synchronous result notification cannot expose an empty claim retry.
+  const lastClaimSubmittedWithPin = useRef(false);
   const [pinInputInvalid, setPinInputInvalid] = useState(false);
   const [session, setSession] = useState<TapAssociationSession>("checking");
   const [sessionRevision, setSessionRevision] = useState(0);
@@ -121,8 +125,12 @@ function AssociationCard({ context, destination }: { context: TapAssociationCont
     const current = runner.current;
     if (!current || !selected || session !== "active" || current.state().pending || current.state().results[selected]?.retryable === false) return;
     if (selected === "rewards" && (!programMounted.current || !programReader.current?.availableFor(latestProgramContext.current))) return;
-    const submittedPin = selected === "claim" ? normalizeTapAssociationClaimPin(claimPin) : "";
+    if (selected === "claim" && !claimPinInput.current) return;
+    const submittedPin = selected === "claim" ? normalizeTapAssociationClaimPin(claimPinInput.current!.value) : "";
     if (submittedPin === null) { setPinInputInvalid(true); return; }
+    if (selected === "claim" && current.state().results.claim?.outcome === "rate_limited"
+      && lastClaimSubmittedWithPin.current && !submittedPin) return;
+    if (selected === "claim") lastClaimSubmittedWithPin.current = Boolean(submittedPin);
     setPinInputInvalid(false);
     setClaimPin("");
     feedbackFocus.current?.release();
@@ -168,6 +176,8 @@ function AssociationCard({ context, destination }: { context: TapAssociationCont
       void current.read();
     }}>{copy.programRetry}</button> : null;
   const selectedResult = selected ? state.results[selected] : null;
+  const claimPinReentryRequired = state.results.claim?.outcome === "rate_limited" && lastClaimSubmittedWithPin.current;
+  const claimPinReentryBlocked = selected === "claim" && claimPinReentryRequired && !normalizeTapAssociationClaimPin(claimPin);
   const hasResults = Object.keys(state.results).length > 0;
   const enrollmentConfirmed = state.results.rewards?.outcome === "enrolled";
   const loginHref = tapAssociationLoginHref({ ...context, preferred: selected }, destination);
@@ -189,10 +199,10 @@ function AssociationCard({ context, destination }: { context: TapAssociationCont
     </fieldset>
     {selected === "claim" && selectedResult?.retryable !== false ? <div className={styles.pinEntry}>
       <label htmlFor="tap-association-claim-pin">{copy.pinLabel}</label>
-      <input id="tap-association-claim-pin" data-testid="tap-association-claim-pin" type="password" autoComplete="off"
+      <input ref={claimPinInput} id="tap-association-claim-pin" data-testid="tap-association-claim-pin" type="password" autoComplete="off"
         maxLength={128} spellCheck={false} autoCapitalize="none" value={claimPin} disabled={Boolean(state.pending)}
-        aria-describedby={`tap-association-pin-help${pinInputInvalid ? " tap-association-pin-error" : ""}`} aria-invalid={pinInputInvalid || undefined}
-        onChange={event => { setClaimPin(event.target.value); setPinInputInvalid(false); }} />
+        aria-describedby={`tap-association-pin-help${claimPinReentryRequired ? " tap-association-pin-reentry" : ""}${pinInputInvalid ? " tap-association-pin-error" : ""}`} aria-invalid={pinInputInvalid || undefined}
+        onChange={event => { setClaimPin(event.target.value); setPinInputInvalid(claimPinReentryRequired && normalizeTapAssociationClaimPin(event.target.value) === null); }} />
       <p id="tap-association-pin-help">{copy.pinHelp}</p>
       {pinInputInvalid ? <p id="tap-association-pin-error" role="alert">{copy.pinInputError}</p> : null}
     </div> : null}
@@ -200,7 +210,7 @@ function AssociationCard({ context, destination }: { context: TapAssociationCont
       <p role="status">{state.pending ? copy.sending : session === "checking" ? copy.checking : session === "active" ? copy.active : session === "none" ? copy.loginNeeded : copy.checkError}</p>
       {session === "none" ? <Link className={styles.primary} href={loginHref} data-testid="tap-association-login" prefetch={false}>{copy.login}</Link> : null}
       {session === "unavailable" ? <button type="button" className={styles.secondary} onClick={() => setSessionRevision(value => value + 1)}>{copy.checkAgain}</button> : null}
-      {session === "active" && selected ? <button type="button" className={styles.primary} disabled={Boolean(state.pending) || selectedResult?.retryable === false || selected === "rewards" && !programAvailable}
+      {session === "active" && selected ? <button type="button" className={styles.primary} disabled={Boolean(state.pending) || selectedResult?.retryable === false || claimPinReentryBlocked || selected === "rewards" && !programAvailable}
         onClick={event => void confirm(event.currentTarget)} data-testid="tap-association-confirm">
         {state.pending ? copy.sending : selectedResult?.retryable === false ? copy.titles[selectedResult.outcome] : selectedResult ? `${copy.retry}: ${copy.actions[selected].label}` : copy.actions[selected].button}
       </button> : null}
@@ -208,7 +218,7 @@ function AssociationCard({ context, destination }: { context: TapAssociationCont
     {hasResults ? <section className={styles.results} aria-labelledby="tap-association-results">
       <h3 id="tap-association-results" tabIndex={-1} ref={resultFocus}>{copy.results}</h3>
       <ul aria-live="polite">{TAP_ASSOCIATION_ACTIONS.map(action => state.results[action] ? <li key={action} data-testid={`tap-association-result-${action}`} data-outcome={state.results[action]?.outcome}>
-        <span className={styles.resultAction}>{copy.actions[action].label}</span><h4>{copy.titles[state.results[action]!.outcome]}</h4><p>{copy.outcomes[state.results[action]!.outcome]}</p>
+        <span className={styles.resultAction}>{copy.actions[action].label}</span><h4>{copy.titles[state.results[action]!.outcome]}</h4><p id={action === "claim" && claimPinReentryRequired ? "tap-association-pin-reentry" : undefined}>{action === "claim" && claimPinReentryRequired ? copy.claimPinReentryHelp : copy.outcomes[state.results[action]!.outcome]}</p>
       </li> : null)}</ul>
       {enrollmentConfirmed ? <Link href="/me/rewards" className={styles.collectionLink} data-testid="tap-association-benefits" prefetch={false}>{copy.benefits}</Link> : null}
       <Link href={`/me/products?focus=${context.eventId}`} className={enrollmentConfirmed ? styles.historyLink : styles.collectionLink} prefetch={false}>{copy.products}</Link>
