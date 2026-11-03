@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { associationCopy, associationLocale, type AssociationLocale } from "./tap-association-copy";
-import { createTapAssociationRunner, normalizeTapAssociationClaimPin, TAP_ASSOCIATION_ACTIONS, tapAssociationContext, tapAssociationLoginHref, tapAssociationSession,
-  type TapAssociationAction, type TapAssociationContext, type TapAssociationState, type TapAssociationSession } from "./tap-association-model";
+import { createTapAssociationProgramReader, createTapAssociationRunner, normalizeTapAssociationClaimPin, TAP_ASSOCIATION_ACTIONS, tapAssociationContext, tapAssociationLoginHref, tapAssociationSession,
+  type TapAssociationAction, type TapAssociationContext, type TapAssociationState, type TapAssociationSession, type TapProgramState } from "./tap-association-model";
 import styles from "./tap-association-banner.module.css";
 
 async function actionTransport(path: string, body: Record<string, unknown>, signal: AbortSignal) {
@@ -26,6 +26,10 @@ function AssociationCard({ context, destination }: { context: TapAssociationCont
   const [sessionRevision, setSessionRevision] = useState(0);
   const [state, setState] = useState<TapAssociationState>({ pending: null, results: {} });
   const runner = useRef<ReturnType<typeof createTapAssociationRunner> | null>(null);
+  const programReader = useRef<ReturnType<typeof createTapAssociationProgramReader> | null>(null);
+  const programMounted = useRef(false);
+  const latestProgramContext = useRef(context); latestProgramContext.current = context;
+  const [programState, setProgramState] = useState<TapProgramState | null>(null);
   const resultFocus = useRef<HTMLHeadingElement>(null);
   const feedbackFocus = useRef<{ owner: ReturnType<typeof createTapAssociationRunner>; action: TapAssociationAction;
     trigger: HTMLButtonElement; permitted: boolean; release: () => void } | null>(null);
@@ -57,6 +61,20 @@ function AssociationCard({ context, destination }: { context: TapAssociationCont
     };
     // Only event/tenant/lot identify this card and runner; navigation and UI
     // intent changes cannot reset completed actions or enable duplicate writes.
+  }, [context.key]);
+
+  useEffect(() => {
+    programMounted.current = true;
+    const current = createTapAssociationProgramReader(context);
+    programReader.current = current;
+    const unsubscribe = current.subscribe(value => {
+      if (programMounted.current && programReader.current === current && current.currentFor(latestProgramContext.current)) setProgramState(value);
+    });
+    void current.read();
+    return () => {
+      programMounted.current = false; unsubscribe(); current.dispose();
+      if (programReader.current === current) programReader.current = null;
+    };
   }, [context.key]);
 
   const previousIntent = useRef(context.preferred);
@@ -102,6 +120,7 @@ function AssociationCard({ context, destination }: { context: TapAssociationCont
   async function confirm(trigger: HTMLButtonElement) {
     const current = runner.current;
     if (!current || !selected || session !== "active" || current.state().pending || current.state().results[selected]?.retryable === false) return;
+    if (selected === "rewards" && (!programMounted.current || !programReader.current?.availableFor(latestProgramContext.current))) return;
     const submittedPin = selected === "claim" ? normalizeTapAssociationClaimPin(claimPin) : "";
     if (submittedPin === null) { setPinInputInvalid(true); return; }
     setPinInputInvalid(false);
@@ -138,13 +157,23 @@ function AssociationCard({ context, destination }: { context: TapAssociationCont
     if (result.outcome === "session_required") setSession("none");
   }
 
+  const programStatus = programState && programState.key === context.key && programState.eventId === context.eventId
+    && programState.tenant === context.tenant && programReader.current?.currentFor(context) ? programState.status : "loading";
+  const programAvailable = programStatus === "available" && programReader.current?.availableFor(context) === true;
+  const programHelp = programStatus === "loading" ? copy.programChecking : programStatus === "no_program" ? copy.programMissing : copy.programUnavailable;
+  const programRetry = programStatus === "unavailable" || programStatus === "no_program" ? <button type="button" className={styles.secondary}
+    disabled={Boolean(state.pending)} data-testid="tap-association-program-retry" onClick={() => {
+      const current = programReader.current;
+      if (!programMounted.current || !current?.currentFor(latestProgramContext.current) || runner.current?.state().pending) return;
+      void current.read();
+    }}>{copy.programRetry}</button> : null;
   const selectedResult = selected ? state.results[selected] : null;
   const hasResults = Object.keys(state.results).length > 0;
   const enrollmentConfirmed = state.results.rewards?.outcome === "enrolled";
   const loginHref = tapAssociationLoginHref({ ...context, preferred: selected }, destination);
   const renderChoice = (action: TapAssociationAction) => <label key={action} className={styles.choice} data-selected={selected === action} data-primary={action === primaryChoice}>
-    <input type="radio" name="tap-association-action" data-testid={`tap-association-option-${action}`} value={action} checked={selected === action} onChange={() => { setSelected(action); setClaimPin(""); setPinInputInvalid(false); }} />
-    <span><strong>{copy.actions[action].label}</strong><small>{copy.actions[action].detail}</small></span>
+    <input type="radio" name="tap-association-action" data-testid={`tap-association-option-${action}`} value={action} checked={selected === action} disabled={action === "rewards" && !programAvailable} aria-describedby={action === "rewards" && !programAvailable ? "tap-association-program-help" : undefined} onChange={() => { setSelected(action); setClaimPin(""); setPinInputInvalid(false); }} />
+    <span><strong>{copy.actions[action].label}</strong><small id={action === "rewards" && !programAvailable ? "tap-association-program-help" : undefined} role={action === "rewards" && !programAvailable ? "status" : undefined}>{action === "rewards" && !programAvailable ? programHelp : copy.actions[action].detail}</small></span>
   </label>;
   return <section className={styles.panel} data-testid="tap-association" aria-labelledby="tap-association-title" lang={locale}>
     <header><span className={styles.eyebrow}>{copy.eyebrow}</span><h2 id="tap-association-title">{heading}</h2>
@@ -152,9 +181,10 @@ function AssociationCard({ context, destination }: { context: TapAssociationCont
     <fieldset className={styles.choices} disabled={Boolean(state.pending)}>
       <legend>{copy.choose}</legend>
       {renderChoice(primaryChoice)}
+      {primaryChoice === "rewards" ? programRetry : null}
       <details className={styles.alternatives}>
         <summary>{copy.alternatives}</summary>
-        <div className={styles.alternativeChoices}>{TAP_ASSOCIATION_ACTIONS.filter(action => action !== primaryChoice).map(renderChoice)}</div>
+        <div className={styles.alternativeChoices}>{TAP_ASSOCIATION_ACTIONS.filter(action => action !== primaryChoice).map(renderChoice)}{primaryChoice !== "rewards" ? programRetry : null}</div>
       </details>
     </fieldset>
     {selected === "claim" && selectedResult?.retryable !== false ? <div className={styles.pinEntry}>
@@ -170,7 +200,7 @@ function AssociationCard({ context, destination }: { context: TapAssociationCont
       <p role="status">{state.pending ? copy.sending : session === "checking" ? copy.checking : session === "active" ? copy.active : session === "none" ? copy.loginNeeded : copy.checkError}</p>
       {session === "none" ? <Link className={styles.primary} href={loginHref} data-testid="tap-association-login" prefetch={false}>{copy.login}</Link> : null}
       {session === "unavailable" ? <button type="button" className={styles.secondary} onClick={() => setSessionRevision(value => value + 1)}>{copy.checkAgain}</button> : null}
-      {session === "active" && selected ? <button type="button" className={styles.primary} disabled={Boolean(state.pending) || selectedResult?.retryable === false}
+      {session === "active" && selected ? <button type="button" className={styles.primary} disabled={Boolean(state.pending) || selectedResult?.retryable === false || selected === "rewards" && !programAvailable}
         onClick={event => void confirm(event.currentTarget)} data-testid="tap-association-confirm">
         {state.pending ? copy.sending : selectedResult?.retryable === false ? copy.titles[selectedResult.outcome] : selectedResult ? `${copy.retry}: ${copy.actions[selected].label}` : copy.actions[selected].button}
       </button> : null}

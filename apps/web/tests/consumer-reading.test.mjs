@@ -1,3 +1,4 @@
+import * as bounded from "../src/app/me/_components/consumer-bounded-fetch.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -17,6 +18,12 @@ function compile(source, overrides = {}) {
   new Function("require", "module", "exports", js)((name) => Object.hasOwn(overrides, name) ? overrides[name] : require(name), module, module.exports);
   return module.exports;
 }
+const publicReader = compile(readFileSync(new URL("../../lib/public-tenant-configuration.ts", root), "utf8"), {
+  "@product/config": { productUrls: { api: "https://api.example.invalid" } },
+  "../app/me/_components/consumer-bounded-fetch": bounded,
+  "../app/sun/tenant-action-availability": availability,
+  "../app/api/_lib/server-api-transport": { fetchRuntimeApi: () => { throw Error("Unexpected default network read"); } },
+});
 const taps = compile(readFileSync(new URL("_components/consumer-taps-model.ts", root), "utf8"));
 const home = compile(readFileSync(new URL("_components/consumer-home-model.ts", root), "utf8"));
 const styles = new Proxy({}, { get: (_, name) => String(name) });
@@ -33,8 +40,11 @@ function page(payload, denied = false, configuration = publishedConfiguration) {
     "../../../sun/current-editorial-resources-view": editorial,
     "../../../sun/tenant-action-availability": availability,
     "../../../../lib/public-tenant-configuration": { readPublicTenantConfiguration: async eventId => {
-      if (!Number.isSafeInteger(Number(eventId))) return null;
-      calls.push(["configuration", eventId]); return configuration;
+      return publicReader.readPublicTenantConfiguration(eventId, { fetchImpl: async (url, options) => {
+        assert.equal(url, `https://api.example.invalid/public/passport/${eventId}/configuration`);
+        assert.equal(options.credentials, "omit"); calls.push(["configuration", eventId]);
+        return new Response(JSON.stringify({ ok: true, configuration }), { headers: { "content-type": "application/json" } });
+      } });
     } },
     "next/link": { __esModule: true, default: ({ children, ...props }) => React.createElement("a", props, children) },
     "../../_components/consumer-api": { buildConsumerNextPath: (path) => path, readConsumerSession: async (next) => { calls.push(["auth", next]); if (denied) throw new Error("redirect-login"); return { status: "ready" }; }, fetchConsumerPath: async (path) => { calls.push(["fetch", path]); return payload; } },
@@ -63,12 +73,14 @@ test("invalid references never trigger arbitrary backend paths", async () => {
   }
 });
 test("private detail accepts the exact API bigint string contract without losing precision", async () => {
-  for (const id of ["9007199254740992", "9007199254740993", "9223372036854775807"]) {
+  for (const id of ["9007199254740992", "9007199254740993", "9223372036854775806", "9223372036854775807"]) {
     const subject = page({ ...valid, item: { ...valid.item, tap_event_id: id } });
     const html = await subject.render(id);
-    assert.deepEqual(subject.calls, [["auth", `/me/taps/${id}`], ["fetch", `taps/${id}`]]);
+    assert.deepEqual(subject.calls, [["auth", `/me/taps/${id}`], ["fetch", `taps/${id}`], ["configuration", id]]);
     assert.match(html, /Producto de prueba/);
     assert.match(html, new RegExp(`Referencia #${id}`));
+    assert.match(html, /href="\/me\/marketplace\?tenant=qa-local"/);
+    assert.doesNotMatch(html, /No pudimos cargar las opciones de la marca/);
     assert.doesNotMatch(html, /No pudimos abrir esta lectura/);
   }
   const mismatched = page({ ...valid, item: { ...valid.item, tap_event_id: "9007199254740992" } });
