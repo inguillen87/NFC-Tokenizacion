@@ -40,6 +40,59 @@ async function accountContactScenarios(page,width,theme){
   await assessment(page,selector,'account-contact-'+path.split('/').at(-1),width,theme);
  }
 }
+async function experiencePhotoSelectionScenarios(page,width,theme){
+ const observed={width,theme,actualNextForm:true,nativeImageAndCanvas:true,controlledLoadDelivery:true,businessPosts:0,cases:[]};
+ report.experiencePhotoSelection??=[];report.experiencePhotoSelection.push(observed);
+ const observeRequest=request=>{if(request.method()==='POST'&&new URL(request.url()).pathname==='/api/consumer/experiences')observed.businessPosts++;};page.on('request',observeRequest);
+ const experience=page.getByTestId('verified-experience-form'),file=experience.getByLabel('Foto del producto',{exact:true}),title=experience.getByLabel('Titulo corto',{exact:true}),comment=experience.getByLabel('Comentario',{exact:true}),link=experience.getByLabel('Link de la foto (opcional)',{exact:true});
+ const png=Buffer.from(await page.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=2;canvas.height=2;const context=canvas.getContext('2d');if(!context)throw Error('native_canvas_unavailable');context.fillStyle='#23765d';context.fillRect(0,0,2,2);return canvas.toDataURL('image/png').split(',')[1];}),'base64');
+ await page.evaluate(()=>{
+  if(window.__experiencePhotoSelectionGate)throw Error('photo_gate_already_owned');
+  const OriginalImage=window.Image,entries=[];let holdNext=false;
+  // Keep native HTMLImageElement decoding and native canvas. Only the delivery
+  // of this owned image's onload callback is held; no app/React internals or UI
+  // driver is exposed. This lets the user select B after A has really decoded.
+  function ControlledImage(...args){
+   const image=new OriginalImage(...args),entry={id:entries.length,held:holdNext,loaded:false,delivered:false,width:0,height:0};holdNext=false;entries.push(entry);let handler=null;
+   Object.defineProperty(image,'onload',{configurable:true,get:()=>handler,set:value=>{handler=value;}});
+   image.addEventListener('load',event=>{entry.loaded=true;entry.width=image.naturalWidth;entry.height=image.naturalHeight;entry.release=()=>{if(entry.delivered)throw Error('duplicate_owned_image_delivery');if(typeof handler!=='function')throw Error('owned_image_handler_missing');handler.call(image,event);entry.delivered=true;};if(!entry.held)entry.release();},{once:true});
+   return image;
+  }
+  ControlledImage.prototype=OriginalImage.prototype;window.Image=ControlledImage;
+  window.__experiencePhotoSelectionGate={entries,hold(){holdNext=true;},snapshot(){return entries.map(({id,held,loaded,delivered,width,height})=>({id,held,loaded,delivered,width,height}));},release(id){const entry=entries[id];if(!entry?.held||!entry.loaded||entry.delivered)throw Error('owned_image_not_pending');entry.release();},restore(){if(window.Image!==ControlledImage)throw Error('photo_gate_owner_changed');for(const entry of entries)if(entry.loaded&&!entry.delivered)entry.release();window.Image=OriginalImage;delete window.__experiencePhotoSelectionGate;return{restored:true,remaining:entries.filter(entry=>!entry.delivered).length};}};
+ });
+ try{
+  for(const readyBefore of[false,true]){
+   const entry={readyBefore};observed.cases.push(entry);const draftTitle=readyBefore?'Borrador con foto previa':'Borrador sin foto previa',draftComment='Comentario sintético conservado durante la selección de fotos.';
+   await title.fill(draftTitle);await comment.fill(draftComment);
+   if(readyBefore){await file.setInputFiles({name:'lista.png',mimeType:'image/png',buffer:png});await experience.getByText('Foto lista: lista.png optimizada',{exact:true}).waitFor();}
+   const pendingId=await page.evaluate(()=>{const gate=window.__experiencePhotoSelectionGate;const id=gate.entries.length;gate.hold();return id;});
+   const pendingName=readyBefore?'pendiente-con-previa.png':'pendiente-sin-previa.png';await file.setInputFiles({name:pendingName,mimeType:'image/png',buffer:png});
+   await page.waitForFunction(id=>{const entry=window.__experiencePhotoSelectionGate.snapshot()[id];return entry?.loaded&&entry.held&&!entry.delivered&&entry.width===2&&entry.height===2;},pendingId);
+   await experience.getByText('Optimizando '+pendingName+'...',{exact:true}).waitFor();
+   check(await experience.getByRole('status').filter({hasText:'Preparando tu foto antes de enviar'}).count()===1,`${width}/${theme} photo A is pending after native decoding`);
+   if(readyBefore)await file.setInputFiles({name:'rechazada.pdf',mimeType:'application/pdf',buffer:Buffer.from('Archivo sintético no admitido')});
+   else await file.setInputFiles({name:'demasiado-grande.jpg',mimeType:'image/jpeg',buffer:Buffer.alloc(12_000_001)});
+   const error=experience.getByRole('alert').filter({hasText:readyBefore?'Usa una foto JPG, PNG o WEBP.':'La foto pesa demasiado.'});await error.waitFor();
+   check(await title.inputValue()===draftTitle&&await comment.inputValue()===draftComment,`${width}/${theme} invalid B preserves title and comment`);
+   check(await experience.getByRole('status').filter({hasText:'Preparando tu foto antes de enviar'}).count()===0,`${width}/${theme} invalid B ends the pending photo state`);
+   check(!(await experience.innerText()).includes('Foto lista: Optimizando'),`${width}/${theme} pending photo A is never presented as ready`);
+   if(readyBefore){check(await experience.getByText('Foto lista: lista.png optimizada',{exact:true}).count()===1&&(await error.innerText()).includes('La foto anterior se conserva.')&&await link.isDisabled(),`${width}/${theme} previous completed photograph and its correct name remain with explicit feedback`);}
+   else check(!(await experience.innerText()).includes('Foto lista:')&&await link.inputValue()===''&&await link.isEnabled()&&await experience.getByRole('button',{name:'Quitar',exact:true}).count()===0,`${width}/${theme} without a prior completed photograph the attachment is blank`);
+   await page.evaluate(id=>window.__experiencePhotoSelectionGate.release(id),pendingId);
+   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+   entry.nativeDelivery=await page.evaluate(id=>window.__experiencePhotoSelectionGate.snapshot()[id],pendingId);
+   check(entry.nativeDelivery.delivered===true&&entry.nativeDelivery.width===2&&entry.nativeDelivery.height===2,`${width}/${theme} late A callback really completed after invalid B`);
+   check(!(await experience.innerText()).includes(pendingName+' optimizada')&&await error.count()===1,`${width}/${theme} late A cannot replace the invalid-B feedback or attachment`);
+   check(readyBefore?await experience.getByText('Foto lista: lista.png optimizada',{exact:true}).count()===1:!(await experience.innerText()).includes('Foto lista:'),`${width}/${theme} late A keeps the previous ready photograph or the blank state`);
+   await noOverflow(page,`${width}/${theme} invalid photo selection fits viewport`);
+  }
+  await experience.getByRole('button',{name:'Quitar',exact:true}).click();
+  check(await link.inputValue()===''&&await link.isEnabled(),`${width}/${theme} removing the retained photograph clears the attachment`);
+ }finally{page.off('request',observeRequest);observed.cleanup=await page.evaluate(()=>window.__experiencePhotoSelectionGate.restore());}
+ check(observed.cleanup.restored&&observed.cleanup.remaining===0,`${width}/${theme} owned native image delivery gate is fully restored`);
+ check(observed.businessPosts===0,`${width}/${theme} photo selection and late completion send no business request`);
+}
 async function productPhotoRecovery(page,context,width,theme){
  const observed={width,theme,failedRequests:0,updatedRequests:0,sameProductCard:false};
  report.productPhotoRecovery??=[];report.productPhotoRecovery.push(observed);
@@ -130,6 +183,44 @@ try{
   check(await page.getByTestId('product-notices').count()===0,`${width}/${theme} list performs no notice read`);
   await noOverflow(page,`${width}/${theme} products fit viewport`);await assessment(page,'[data-testid="consumer-product-library"]','products',width,theme);
 
+  // These are the 15 existing loaded fixture rows, never an account/database total.
+  const productLibraryStatus=library.getByRole('status'),productLibrarySearch=library.getByRole('searchbox',{name:'Buscar producto, marca o lote'}),productLibraryBrand=library.getByRole('combobox',{name:'Marca',exact:true});
+  const productLibraryMore=library.getByRole('button',{name:'Mostrar más productos',exact:true}),productCounterWritesBefore=report.blockedWrites.length;
+  report.productLibraryCounters??=[];
+  const captureProductCounter=async phase=>{
+   const observed={width,theme,phase,header:await library.getByText('15 productos en esta lista',{exact:true}).innerText(),status:(await productLibraryStatus.innerText()).replace(/\s+/g,' ').trim(),cards:await library.locator('article').count()};
+   report.productLibraryCounters.push(observed);return observed;
+  };
+  check(await productLibraryStatus.count()===1,`${width}/${theme} one scoped live product counter`);
+  const initialCounter=await captureProductCounter('initial');
+  check(initialCounter.status==='Mostrando 12 de 15 productos.'&&initialCounter.cards===12,`${width}/${theme} loaded list starts at 12 of 15 without a database-total claim`);
+  await productLibraryBrand.selectOption('consumer-qa');
+  await productLibraryStatus.filter({hasText:/^Mostrando 12 de 13 coincidencias\.$/}).waitFor();
+  const partialCounter=await captureProductCounter('filtered-page');
+  check(partialCounter.status==='Mostrando 12 de 13 coincidencias.'&&partialCounter.cards===12&&await productLibraryMore.count()===1,`${width}/${theme} a partial filtered page counts matching rows separately`);
+  await productLibrarySearch.fill('reserva');
+  await productLibraryStatus.filter({hasText:/^1 coincidencia\.$/}).waitFor();
+  const oneCounter=await captureProductCounter('one-match');
+  check(oneCounter.status==='1 coincidencia.'&&oneCounter.cards===1&&await productLibraryMore.count()===0,`${width}/${theme} one match keeps the 15-product header and avoids a repeated denominator`);
+  await noOverflow(page,`${width}/${theme} filtered counter fits viewport`);
+  await productLibrarySearch.fill('sin-coincidencias-locales-qa');
+  await library.getByRole('heading',{name:'No hay coincidencias con estos filtros.',exact:true}).waitFor();
+  const zeroCounter=await captureProductCounter('zero-matches'),resetProductFilters=library.getByRole('button',{name:'Restablecer filtros',exact:true});
+  check(zeroCounter.status==='Sin coincidencias.'&&zeroCounter.cards===0&&await resetProductFilters.isEnabled(),`${width}/${theme} no matches do not report an empty loaded collection`);
+  check(await productLibrarySearch.inputValue()==='sin-coincidencias-locales-qa'&&await productLibraryBrand.inputValue()==='consumer-qa',`${width}/${theme} no-match feedback preserves the selected filters`);
+  await noOverflow(page,`${width}/${theme} zero-match counter fits viewport`);
+  await resetProductFilters.focus();await resetProductFilters.press('Enter');
+  await library.locator('article').nth(11).waitFor();
+  const resetCounter=await captureProductCounter('reset');
+  check(resetCounter.status==='Mostrando 12 de 15 productos.'&&resetCounter.cards===12&&await productLibrarySearch.inputValue()===''&&await productLibraryBrand.inputValue()===''&&await productLibraryMore.count()===1,`${width}/${theme} Reset clears search/brand and restores the first loaded page`);
+  await productLibraryMore.focus();await productLibraryMore.press('Enter');
+  await library.locator('article').nth(14).waitFor();
+  const fullCounter=await captureProductCounter('show-more');
+  check(fullCounter.status==='Mostrando toda esta lista.'&&fullCounter.cards===15&&await productLibraryMore.count()===0,`${width}/${theme} Show more reveals all 15 loaded products without repeating counts`);
+  check(await page.getByTestId('product-notices').count()===0&&page.url()===base+'/me/products',`${width}/${theme} list controls do not open a notice or a new reading`);
+  check(report.blockedWrites.length===productCounterWritesBefore,`${width}/${theme} list controls attempt no business writes`);
+
+
   const more=page.getByRole('button',{name:'Más',exact:true});await more.focus();await page.keyboard.press('Enter');
   const menu=page.getByRole('dialog',{name:'Más opciones'});await menu.waitFor();
   for(const label of ['Productos y marcas','Herramientas','Mi cuenta'])check(await menu.getByRole('heading',{name:label,exact:true}).count()===1,`${width}/${theme} More group ${label}`);
@@ -192,6 +283,7 @@ try{
   const explainer=page.getByTestId('experience-explainer');await explainer.waitFor();const explainerContrast=await introContrast(explainer);report.experienceControls.at(-1).explainerContrast=explainerContrast;
   check(explainerContrast.backgroundImage==='none'&&explainerContrast.headingRatio>=explainerContrast.headingMinimum&&explainerContrast.paragraphRatio>=4.5,`${width}/${theme} experience explanation heading and paragraph have readable contrast against solid card background`);
   await noOverflow(page,`${width}/${theme} actual experience page fits viewport`);await assessment(page,'#consumer-portal-content','experience',width,theme);
+  await experiencePhotoSelectionScenarios(page,width,theme);
   await runMarketplaceScenarios({page,base,width,theme,report,check,assessment,noOverflow});
   await runClaimPinScenarios({page,base,width,theme,report,check,assessment,noOverflow});
   await runBenefitConfirmationScenarios({page,base,width,theme,report,check,assessment,noOverflow});

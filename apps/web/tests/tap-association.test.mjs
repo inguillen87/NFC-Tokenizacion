@@ -100,7 +100,7 @@ test("authoritative action-specific response fields are necessary before reporti
   for (const action of model.TAP_ASSOCIATION_ACTIONS) {
     assert.deepEqual(model.tapAssociationResult(action, "715", 200, successPayloads[action]), { outcome: outcome[action], retryable: false });
     for (const payload of [null, [], { ok: true }, { ...successPayloads[action], ok: false }]) {
-      assert.deepEqual(model.tapAssociationResult(action, "715", 200, payload), { outcome: "unconfirmed", retryable: true }, `${action}: ${JSON.stringify(payload)}`);
+      assert.deepEqual(model.tapAssociationResult(action, "715", 200, payload), { outcome: "unconfirmed", retryable: false }, `${action}: ${JSON.stringify(payload)}`);
     }
     assert.equal(model.tapAssociationResult(action, "715", 500, successPayloads[action]).outcome, "unconfirmed");
   }
@@ -179,11 +179,11 @@ test("the consumed-action marker requires an own boolean and only qualifies 409 
   for (const action of model.TAP_ASSOCIATION_ACTIONS) {
     for (const value of malformed) {
       const payload = { ok: false, error: "rights_evidence_unavailable", fresh_tap_required: value };
-      assert.deepEqual(model.tapAssociationResult(action, "715", 503, payload), { outcome: "unconfirmed", retryable: true });
+      assert.deepEqual(model.tapAssociationResult(action, "715", 503, payload), { outcome: "unconfirmed", retryable: false });
     }
-    assert.deepEqual(model.tapAssociationResult(action, "715", 503, Object.create({ fresh_tap_required: true })), { outcome: "unconfirmed", retryable: true });
+    assert.deepEqual(model.tapAssociationResult(action, "715", 503, Object.create({ fresh_tap_required: true })), { outcome: "unconfirmed", retryable: false });
     for (const status of [200, 201, 429, 500, 504]) {
-      assert.deepEqual(model.tapAssociationResult(action, "715", status, { ok: false, fresh_tap_required: true }), { outcome: "unconfirmed", retryable: true });
+      assert.deepEqual(model.tapAssociationResult(action, "715", status, { ok: false, fresh_tap_required: true }), { outcome: "unconfirmed", retryable: false });
     }
     assert.deepEqual(model.tapAssociationResult(action, "715", 401, { fresh_tap_required: true }), { outcome: "session_required", retryable: true });
   }
@@ -371,22 +371,118 @@ test("an unmounted context ignores a late confirmed receipt and cannot refresh t
   assert.equal(refreshes, 0);
 });
 
-test("separate result summary survives a failed action and manual retry sends only that action", async () => {
+test("separate result summary retains an uncertain action without resending it", async () => {
   const calls = [];
-  let rewardAttempts = 0;
   const runner = model.createTapAssociationRunner(context(), async path => {
     calls.push(path);
     if (path.endsWith("save-product")) return { status: 200, payload: successPayloads.save };
-    if (++rewardAttempts === 1) throw new Error("response lost");
-    return { status: 200, payload: successPayloads.rewards };
+    throw new Error("response lost after enrollment may have committed");
   });
   await runner.run("save");
-  assert.deepEqual(await runner.run("rewards"), { outcome: "unconfirmed", retryable: true });
+  assert.deepEqual(await runner.run("rewards"), { outcome: "unconfirmed", retryable: false });
   assert.equal(runner.state().results.save.outcome, "saved");
-  await runner.run("rewards");
-  assert.deepEqual(calls.map(path => path.split("/").at(-1)), ["save-product", "enroll", "enroll"]);
-  assert.deepEqual(runner.state(), { pending: null, results: { save: { outcome: "saved", retryable: false }, rewards: { outcome: "enrolled", retryable: false } } });
+  assert.equal(await runner.run("rewards"), null);
+  assert.deepEqual(calls.map(path => path.split("/").at(-1)), ["save-product", "enroll"]);
+  assert.deepEqual(runner.state(), { pending: null, results: { save: { outcome: "saved", retryable: false }, rewards: { outcome: "unconfirmed", retryable: false } } });
   runner.dispose();
+});
+
+test("lost replies after a simulated server write block a second POST for each action without fabricating success", async () => {
+  for (const action of model.TAP_ASSOCIATION_ACTIONS) {
+    let writes = 0, refreshes = 0;
+    const runner = model.createTapAssociationRunner(context(`action=${action}`), async () => {
+      writes++;
+      throw new Error("connection lost after the server write");
+    }, () => { refreshes++; });
+    assert.deepEqual(await runner.run(action), { outcome: "unconfirmed", retryable: false }, action);
+    assert.equal(await runner.run(action), null);
+    assert.equal(await runner.run(action), null);
+    assert.equal(writes, 1);
+    assert.equal(refreshes, 0);
+    assert.equal(runner.state().pending, null);
+    runner.dispose();
+  }
+});
+
+test("malformed receipts and server failures do not permit an uncertain action to be posted again", async () => {
+  for (const action of model.TAP_ASSOCIATION_ACTIONS) {
+    for (const response of [
+      { status: 200, payload: null },
+      { status: 200, payload: { ok: true } },
+      { status: 500, payload: successPayloads[action] },
+      { status: 503, payload: { ok: false } },
+    ]) {
+      let posts = 0, refreshes = 0;
+      const runner = model.createTapAssociationRunner(context(`action=${action}`), async () => {
+        posts++; return response;
+      }, () => { refreshes++; });
+      assert.deepEqual(await runner.run(action), { outcome: "unconfirmed", retryable: false });
+      assert.equal(await runner.run(action), null);
+      assert.equal(posts, 1); assert.equal(refreshes, 0);
+      runner.dispose();
+    }
+  }
+});
+
+test("request timeout is uncertain and cannot resend the same action", async t => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  for (const action of model.TAP_ASSOCIATION_ACTIONS) {
+    let posts = 0, refreshes = 0, signal;
+    const runner = model.createTapAssociationRunner(context(`action=${action}`), async (_path, _body, active) => {
+      posts++; signal = active;
+      return new Promise((_resolve, reject) => active.addEventListener("abort", () => reject(new Error("timeout after dispatch")), { once: true }));
+    }, () => { refreshes++; });
+    const pending = runner.run(action);
+    t.mock.timers.tick(15000);
+    assert.deepEqual(await pending, { outcome: "unconfirmed", retryable: false });
+    assert.equal(signal.aborted, true);
+    assert.equal(await runner.run(action), null);
+    assert.equal(posts, 1); assert.equal(refreshes, 0);
+    runner.dispose();
+  }
+});
+
+test("an explicit authentication rejection may be retried while another uncertain action stays terminal", async () => {
+  const posts = []; let refreshes = 0, joinAttempts = 0;
+  const runner = model.createTapAssociationRunner(context(), async path => {
+    posts.push(path);
+    if (path.endsWith("save-product")) throw new Error("reply lost");
+    if (++joinAttempts === 1) return { status: 401, payload: { error: "unauthorized" } };
+    return { status: 200, payload: successPayloads.join };
+  }, () => { refreshes++; });
+  await runner.run("save");
+  assert.deepEqual(await runner.run("join"), { outcome: "session_required", retryable: true });
+  assert.deepEqual(await runner.run("join"), { outcome: "linked", retryable: false });
+  assert.equal(await runner.run("save"), null);
+  assert.deepEqual(posts.map(path => path.split("/").at(-1)), ["save-product", "join-tenant", "join-tenant"]);
+  assert.equal(refreshes, 1);
+  runner.dispose();
+});
+
+test("only the exact pre-action rate limit permits a manual retry, never a PIN lock or conflicting receipt", async () => {
+  for (const action of model.TAP_ASSOCIATION_ACTIONS) {
+    let posts = 0, refreshes = 0;
+    const runner = model.createTapAssociationRunner(context(`action=${action}`), async () => {
+      posts++;
+      return posts === 1 ? { status: 429, payload: { ok: false, reason: "rate_limited" } }
+        : { status: 200, payload: successPayloads[action] };
+    }, () => { refreshes++; });
+    assert.deepEqual(await runner.run(action), { outcome: "rate_limited", retryable: true });
+    assert.equal(posts, 1); assert.equal(refreshes, 0);
+    assert.deepEqual(await runner.run(action), { outcome: outcome[action], retryable: false });
+    assert.equal(await runner.run(action), null);
+    assert.equal(posts, 2); assert.equal(refreshes, 1);
+    runner.dispose();
+    for (const payload of [
+      null, { ok: false }, { ok: false, error: "rate_limited" }, { ok: true, reason: "rate_limited" },
+      { ok: false, reason: "rate_limited", fresh_tap_required: true },
+      { ok: false, reason: "rate_limited", retry: true },
+      Object.assign(Object.create({ reason: "rate_limited" }), { ok: false }),
+    ]) assert.deepEqual(model.tapAssociationResult(action, "715", 429, payload), { outcome: "unconfirmed", retryable: false });
+    assert.deepEqual(model.tapAssociationResult(action, "715", 503, { ok: false, reason: "rate_limited" }), { outcome: "unconfirmed", retryable: false });
+    assert.deepEqual(model.tapAssociationResult(action, "715", 429, { ok: false, reason: "rate_limited", operation_committed: true }), { outcome: "committed_unknown", retryable: false });
+  }
+  assert.deepEqual(model.tapAssociationResult("claim", "715", 429, { ok: false, reason: "rate_limited", error: "claim_pin_locked" }), { outcome: "pin_locked", retryable: false });
 });
 
 test("committed claim remains terminal even when another action is subsequently confirmed", async () => {
@@ -551,7 +647,7 @@ test("an existing title has exact claim-only 409 feedback independent of the fre
   }
   for (const status of [400, 403, 404, 422]) assert.deepEqual(model.tapAssociationResult("claim", "715", status, denied), { outcome: "blocked", retryable: false });
   assert.deepEqual(model.tapAssociationResult("claim", "715", 401, denied), { outcome: "session_required", retryable: true });
-  assert.deepEqual(model.tapAssociationResult("claim", "715", 503, denied), { outcome: "unconfirmed", retryable: true });
+  assert.deepEqual(model.tapAssociationResult("claim", "715", 503, denied), { outcome: "unconfirmed", retryable: false });
   assert.deepEqual(model.tapAssociationResult("claim", "715", 503, { ...denied, fresh_tap_required: true }), { outcome: "fresh_required", retryable: false });
   assert.deepEqual(model.tapAssociationResult("claim", "715", 200, { ...successPayloads.claim, error: denied.error, fresh_tap_required: true }), { outcome: "claimed", retryable: false });
   assert.deepEqual(model.tapAssociationResult("claim", "715", 409, { ...denied, operation_committed: true }), { outcome: "committed_unknown", retryable: false });

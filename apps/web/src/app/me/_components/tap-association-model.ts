@@ -8,7 +8,7 @@ export type TapAssociationAction = typeof TAP_ASSOCIATION_ACTIONS[number];
 export type TapAssociationContext = { eventId: string; tenant: string; bid: string; preferred: TapAssociationAction | null; key: string };
 export type TapAssociationOutcome = "saved" | "linked" | "claimed" | "enrolled" | "recorded_pending" | "committed_unknown"
   | "review_required" | "fresh_required" | "fresh_expired" | "fresh_used" | "pin_required" | "pin_invalid" | "pin_locked"
-  | "session_required" | "no_program" | "membership_inactive" | "ownership_conflict" | "blocked" | "unconfirmed";
+  | "session_required" | "rate_limited" | "no_program" | "membership_inactive" | "ownership_conflict" | "blocked" | "unconfirmed";
 export type TapAssociationResult = { outcome: TapAssociationOutcome; retryable: boolean };
 export type TapAssociationState = { pending: TapAssociationAction | null; results: Partial<Record<TapAssociationAction, TapAssociationResult>> };
 export type TapAssociationSession = "checking" | "active" | "none" | "unavailable";
@@ -122,15 +122,22 @@ export function tapAssociationResult(action: TapAssociationAction, eventId: stri
   if (["fresh_tap_capability_required", "fresh_physical_tap_required_for_ownership", "snapshot_blocked"].includes(error)) return { outcome: "fresh_required", retryable: false };
   if (error === "ownership_manual_review_required" || payload.review_required === true) return { outcome: "review_required", retryable: false };
   if (error === "no_active_program") return { outcome: "no_program", retryable: false };
+  // This exact API envelope is returned by the critical rate limiter before
+  // capability consumption or the business action. Unknown 429s stay uncertain;
+  // PIN locks and committed/fresh-reading signals above remain terminal.
+  if (status === 429 && Object.keys(payload).length === 2 && Object.hasOwn(payload, "ok") && payload.ok === false
+    && Object.hasOwn(payload, "reason") && payload.reason === "rate_limited") return { outcome: "rate_limited", retryable: true };
   if ([400, 403, 404, 409, 422].includes(status)) return { outcome: "blocked", retryable: false };
-  return { outcome: "unconfirmed", retryable: true };
+  // A missing or incomplete receipt cannot prove the server did no work.
+  // Keep this action terminal in the mounted reading, including after 5xx.
+  return { outcome: "unconfirmed", retryable: false };
 }
 
 export function tapAssociationConfirmed(result: TapAssociationResult) {
   return ["saved", "linked", "claimed", "enrolled"].includes(result.outcome);
 }
 type Transport = (path: string, body: Record<string, unknown>, signal: AbortSignal) => Promise<{ status: number; payload: unknown }>;
-/** One explicit request at a time; committed actions cannot be resent.
+/** One explicit request at a time; committed or uncertain actions cannot be resent.
  * State belongs to this mounted context, never browser storage or a token.
  * A lost response does not guarantee the server performed no work.
  */
@@ -156,7 +163,7 @@ export function createTapAssociationRunner(context: TapAssociationContext, trans
         const request = tapAssociationRequest(context, action, locale, pin);
         const response = await transport(request.path, request.body, controller.signal);
         result = tapAssociationResult(action, context.eventId, response.status, response.payload);
-      } catch { result = { outcome: "unconfirmed", retryable: true }; }
+      } catch { result = { outcome: "unconfirmed", retryable: false }; }
       finally { clearTimeout(timer); }
       if (disposed) return null;
       state = { pending: null, results: { ...state.results, [action]: result } }; emit();
