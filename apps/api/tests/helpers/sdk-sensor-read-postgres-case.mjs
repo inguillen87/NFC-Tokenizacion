@@ -34,12 +34,17 @@ export async function runSdkSensorReadPostgresQa({connect,dockerAttestation,targ
     assert.equal((await reader.query("SHOW transaction_read_only")).rows[0].transaction_read_only,'on');report.readerTransactionReadOnly=true;
     const query=async(strings,...values)=>{
       const statement=strings.reduce((text,part,index)=>text+(index?'$'+index:'')+part,'');
-      assert.match(statement,/^\s*SELECT\b/);assert.match(statement,/FROM public\.sdk_external_events external_event/);captures.push({statement,values});return(await reader.query(statement,values)).rows;
+      assert.match(statement,/^\s*SELECT\b/);assert.match(statement,/FROM public\.sdk_external_events external_event/);
+      const selected=(await reader.query(statement,values)).rows;
+      const offsetShape=value=>typeof value==='string'&&/(?:Z|[+-]\d{2}:\d{2})$/i.test(value);
+      captures.push({statement,values,selectedRows:selected.length,receivedStrings:selected.filter(row=>typeof row.received_at==='string').length,receivedOffsetShapes:selected.filter(row=>offsetShape(row.received_at)).length,occurredNulls:selected.filter(row=>row.occurred_at===null).length,occurredOffsetShapes:selected.filter(row=>offsetShape(row.occurred_at)).length});
+      return selected;
     };
     for(const[requested,expected]of[[undefined,6],[0,1],[2,2],[1000,24]]){
       const before=captures.length,rows=await listSdkSensorTimeline({tenantId:target.tenantId,bid:target.bid,uidHex:target.uidHex,...(requested===undefined?{}:{limit:requested})},query);
       assert.equal(captures.length,before+1);assert.deepEqual(captures.at(-1).values,[target.tenantId,target.bid,target.uidHex,'product.sensor_reading','sdk_sensor',expected]);
-      assert.equal(rows.length,expected);assert.deepEqual(rows.map(row=>row.deviceId),Array.from({length:expected},(_,index)=>'owned-'+index));
+      const capture=captures.at(-1);
+      assert.equal(rows.length,expected,'sdk_sensor_read_projection_count expected='+expected+' selected='+capture.selectedRows+' received_strings='+capture.receivedStrings+' received_offset_shapes='+capture.receivedOffsetShapes+' occurred_nulls='+capture.occurredNulls+' occurred_offset_shapes='+capture.occurredOffsetShapes);assert.deepEqual(rows.map(row=>row.deviceId),Array.from({length:expected},(_,index)=>'owned-'+index));
       for(const row of rows){assert.deepEqual(Object.keys(row).sort(),['deviceId','humidityPct','lightExposure','measuredAt','occurredAt','receivedAt','source','stage','temperatureC','transitShock']);assert.equal(row.source,'Owned PG sensor fixture');assert.equal(row.humidityPct,50);assert(!JSON.stringify(row).includes('private'));}
       checks.push({name:'actual readonly scoped SQL and limit '+String(requested??'default'),ok:true,rows:rows.length});
     }
