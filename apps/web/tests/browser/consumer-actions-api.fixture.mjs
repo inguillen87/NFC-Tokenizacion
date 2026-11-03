@@ -4,6 +4,7 @@ import http from 'node:http';
 import { randomBytes, createHmac, randomUUID } from 'node:crypto';
 if (process.argv[2] !== '--local-qa') throw Error('Explicit local QA required');
 const key = randomBytes(32), calls = [], consumed = new Set();
+const issuedEventIds = new Set(['900001']);
 const supportTickets = new Map();
 let mode = 'normal', sequence = 900100;
 const port = 4288, origin = `http://127.0.0.1:${port}`;
@@ -56,8 +57,14 @@ const server = http.createServer(async (req, res) => {
   let body = {}; try { if (text) body = JSON.parse(text); } catch { return reply(400, { ok: false }); }
   if (u.pathname === '/qa-state') return reply(200, { localOnly: true, syntheticApi: true, calls, mode });
   if (u.pathname === '/qa-mode') { mode = u.searchParams.get('value') || 'normal'; return reply(200, { ok: true }); }
-  if (u.pathname === '/qa-issue') { const eventId = String(++sequence); return reply(200, { eventId, token: capability(eventId) }); }
+  if (u.pathname === '/qa-issue') { const eventId = String(++sequence); issuedEventIds.add(eventId); return reply(200, { eventId, token: capability(eventId) }); }
   calls.push({ method: req.method, path: u.pathname, hasCapability: Boolean(body.fresh_token), leakedCookie: String(req.headers.cookie || '').includes('nexid_tap_'), keys: Object.keys(body), ...(u.pathname.endsWith('/report-problem') ? { requestId: body.request_id, eventId: body.event_id, hasSupport: Boolean(body.support_token), hasShare: u.searchParams.has('share'), forwardedSession: Boolean(req.headers.cookie || req.headers.authorization) } : {}) });
+  const configurationEvent=/^\/public\/passport\/([1-9][0-9]*)\/configuration$/.exec(u.pathname)?.[1];
+  if(configurationEvent){
+    if(req.method!=='GET'||!issuedEventIds.has(configurationEvent)||req.headers.cookie||req.headers.authorization||text)return reply(403,{ok:false,error:'configuration_fixture_scope_denied'});
+    return reply(200,{ok:true,configuration:{version:'nexid.tenant-actions.v1',status:'published',allowedActions:[],catalogAvailable:false,tenantSlug:'qa-brand',trivia:null,
+      program:{id:'20000000-0000-4000-8000-000000000001',name:'Programa sintético de acciones',pointsName:'Puntos de ensayo',pointsPerValidTap:0}}});
+  }
   if (u.pathname === '/sun') return reply(200, contract(u));
   if (u.pathname.startsWith('/sun/snapshot/')) return reply(200, { ok: true, contract: contract(u) });
   if (u.pathname === '/public/product-notices/v2') return reply(200, { ok: true, protocol: 'nexid.product-notices.v2', scope: { tenant: 'qa-brand', bid: 'QA-ONLY' }, observedAt: new Date().toISOString(), notices: [], total: 0, hasMore: false, doesNotDetermineNfcAuthenticity: true, closureDoesNotReleaseProduct: true, liftingNoticeDoesNotReleaseProduct: true });

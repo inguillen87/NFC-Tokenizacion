@@ -18,6 +18,7 @@ const {chromium}=await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href)
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const sourcePaths=['apps/web/src/app/me/_components/tap-association-banner.tsx','apps/web/src/app/me/_components/tap-association-banner.module.css',
   'apps/web/src/app/me/_components/tap-association-model.ts','apps/web/src/app/me/_components/tap-association-copy.ts',
+  'apps/web/src/app/me/_components/consumer-bounded-fetch.ts','apps/web/src/app/sun/tenant-action-availability.ts',
   'apps/web/src/app/me/_components/portal-shell.module.css','apps/web/src/app/login/consumer-login-continuation.ts','packages/config/src/safe-return-path.ts'];
 async function sourceHashes(){return Object.fromEntries(await Promise.all(sourcePaths.map(async path=>[path,hash(await readFile(join(root,path)))])));}
 const sourceBefore=await sourceHashes();
@@ -57,10 +58,14 @@ let browser,origin;const contexts=new Set();
 function check(value,description){report.checks.push({description,passed:Boolean(value)});assert.ok(value,description);}
 const settle=page=>page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
 async function choose(page,action){const choice=page.getByTestId('tap-association-option-'+action);if(!await choice.isVisible())await page.getByTestId('tap-association').locator('fieldset details > summary').click();await choice.check();return choice;}
-async function open(width,theme,scenario,{active=false,status=200,held=false,locale='es-AR'}={}){
+const programFixtureIds=new Set(['715','716','9007199254740992','9007199254740993','9223372036854775806','9223372036854775807']);
+const programFixture=(tenant='brand.a',program=true,publication='published')=>({ok:true,configuration:{version:'nexid.tenant-actions.v1',status:publication,allowedActions:[],catalogAvailable:false,tenantSlug:tenant,trivia:null,
+  program:program?{id:'30000000-0000-4000-8000-000000000001',name:'Programa local configurado',pointsName:'Puntos de ensayo',pointsPerValidTap:0}:null}});
+async function open(width,theme,scenario,{active=false,status=200,held=false,locale='es-AR',program='active',eventId='715',preferred=null,postReply=null}={}){
+  assert(programFixtureIds.has(eventId));assert(['active','active-unpublished','none','unavailable','wrong-tenant','malformed'].includes(program));
   const context=await browser.newContext({viewport:{width,height:1000},locale:'es-AR',reducedMotion:'reduce',serviceWorkers:'block'});contexts.add(context);
   const page=await context.newPage();page.setDefaultTimeout(10000);
-  const row={width,theme,locale,scenario,posts:[],sessions:[],passed:false};report.cases.push(row);let releasePost;
+  const row={width,theme,locale,scenario,posts:[],sessions:[],programReads:[],passed:false};report.cases.push(row);let releasePost,programMode=program;
   const postGate=new Promise(done=>{releasePost=done;});
   page.on('pageerror',error=>report.errors.push({width,theme,scenario,message:error.message}));
   await context.exposeBinding('__tapQaLocation',()=>{report.geolocationCalls++;});
@@ -70,17 +75,24 @@ async function open(width,theme,scenario,{active=false,status=200,held=false,loc
     if(url.origin===origin && request.method()==='GET' && url.pathname==='/api/consumer/session'){
       row.sessions.push({method:'GET',path:url.pathname,status:active?200:401});return route.fulfill({status:active?200:401,json:active?{ok:true,authenticated:true}:{ok:false}});
     }
-    if(url.origin===origin && request.method()==='POST' && /^\/api\/mobile\/passport\/715\/(consumer\/(save-product|join-tenant|claim)|loyalty\/enroll)$/.test(url.pathname)){
+    const configurationId=/^\/api\/public\/passport\/([1-9][0-9]*)\/configuration$/.exec(url.pathname)?.[1];
+    if(url.origin===origin && request.method()==='GET' && configurationId && programFixtureIds.has(configurationId) && !url.search){
+      const mode=programMode,responseStatus=mode==='unavailable'?503:200;
+      row.programReads.push({method:'GET',path:url.pathname,eventId:configurationId,mode,status:responseStatus});
+      return route.fulfill({status:responseStatus,json:mode==='unavailable'?{ok:false}:mode==='malformed'?{ok:true,configuration:{}}:programFixture(mode==='wrong-tenant'?'foreign-brand':'brand.a',mode!=='none',mode==='active-unpublished'?'unpublished':'published')});
+    }
+    const actionMatch=/^\/api\/mobile\/passport\/([1-9][0-9]*)\/(consumer\/(save-product|join-tenant|claim)|loyalty\/enroll)$/.exec(url.pathname);
+    if(url.origin===origin && request.method()==='POST' && actionMatch && programFixtureIds.has(actionMatch[1])){
       row.posts.push({method:'POST',path:url.pathname,body:request.postDataJSON()});if(held)await postGate;
-      return route.fulfill({status,json:status===401?{ok:false,error:'unauthorized'}:{ok:true,saved:true,eventId:715}});
+      return route.fulfill({status,json:postReply??(status===401?{ok:false,error:'unauthorized'}:{ok:true,saved:true,eventId:actionMatch[1]==='715'?715:actionMatch[1]})});
     }
     if(url.origin===origin && request.method()==='GET' && ['/me/marketplace','/me/products','/fixture.js','/favicon.ico'].includes(url.pathname))return route.continue();
     report.blockedRequests.push({scenario,method:request.method(),origin:url.origin,path:url.pathname});return route.abort();
   });
   // Theme is test-only metadata and is deliberately stripped from reauth next.
-  await page.goto(origin+target+'&theme='+theme+'&locale='+locale,{waitUntil:'networkidle'});await page.getByTestId('tap-association').waitFor();
-  await (active?page.getByTestId('tap-association-option-save'):page.getByTestId('tap-association-login')).waitFor();await settle(page);
-  return{context,page,row,releasePost,async close(){releasePost();await context.close();contexts.delete(context);}};
+  await page.goto(origin+target.replace('eventId=715','eventId='+eventId)+(preferred?'&tapAction='+preferred:'')+'&theme='+theme+'&locale='+locale,{waitUntil:'networkidle'});await page.getByTestId('tap-association').waitFor();
+  await (active?page.getByTestId(preferred?'tap-association-confirm':'tap-association-option-save'):page.getByTestId('tap-association-login')).waitFor();await settle(page);
+  return{context,page,row,releasePost,setProgram(mode){assert(['active','active-unpublished','none','unavailable','wrong-tenant','malformed'].includes(mode));programMode=mode;},async close(){releasePost();await context.close();contexts.delete(context);}};
 }
 try{
   await new Promise(done=>server.listen(0,'127.0.0.1',done));origin='http://127.0.0.1:'+server.address().port;
@@ -127,8 +139,51 @@ try{
     if(guarded)check(completed.row.sessions.length===1,`${width}/${theme}: UI intent changes do not reset the session effect`);
     completed.row.passed=true;await completed.close();
   }
+  // Same real association component, native inputs and CSS; no Next server or live capability is claimed.
+  if(guarded)for(const width of [320,390])for(const theme of ['light','dark']){
+    const missing=await open(width,theme,'program-known-missing',{active:true,program:'none',preferred:'rewards'}),p=missing.page;
+    check(missing.row.programReads.length===1,`${theme}: programme availability requires one exact event GET`);
+    check(await p.getByTestId('tap-association-option-rewards').isChecked()&&await p.getByTestId('tap-association-option-rewards').isDisabled(),`${theme}: missing programme retains intent without enabling enrollment`);
+    check(await p.getByTestId('tap-association-confirm').isDisabled()&&missing.row.posts.length===0,`${theme}: known missing programme sends no POST`);
+    check((await p.getByTestId('tap-association').innerText()).includes('no tiene un programa de beneficios activo'),`${theme}: known absence is distinguished from a failed read`);
+    await p.addScriptTag({content:axe});missing.row.violations=await p.evaluate(async()=>(await axe.run('[data-testid="tap-association"]',{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map(v=>({id:v.id,impact:v.impact})));
+    check(missing.row.violations.every(v=>!['critical','serious'].includes(v.impact)),`${theme}: unavailable programme controls retain accessibility`);
+    check(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${width}/${theme}: programme absence fits the mobile viewport`);
+    missing.row.screenshot=`programme-missing-${width}-${theme}.png`;await p.screenshot({path:join(output,missing.row.screenshot),fullPage:true});
+    missing.row.passed=true;await missing.close();
+    const failed=await open(width,theme,'program-failure-explicit-retry',{active:true,program:'unavailable',preferred:'rewards',status:404,postReply:{ok:false,error:'no_active_program'}}),q=failed.page;
+    check(failed.row.programReads.length===1&&await q.getByTestId('tap-association-confirm').isDisabled(),`${theme}: failed configuration stays unavailable`);
+    check((await q.getByTestId('tap-association').innerText()).includes('No pudimos consultar los beneficios')&&!(await q.getByTestId('tap-association').innerText()).includes('no tiene un programa de beneficios activo'),`${theme}: failed GET never becomes no-programme`);
+    check(await q.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${width}/${theme}: retry feedback fits the mobile viewport`);
+    failed.row.screenshot=`programme-unavailable-${width}-${theme}.png`;await q.screenshot({path:join(output,failed.row.screenshot),fullPage:true});
+    failed.setProgram('active-unpublished');await q.getByTestId('tap-association-program-retry').evaluate(button=>{button.click();button.click();});
+    await q.waitForFunction(()=>!document.querySelector('[data-testid="tap-association-confirm"]')?.disabled);
+    check(failed.row.programReads.length===2&&failed.row.posts.length===0,`${theme}: same-turn explicit recheck is singleflight and never enrolls`);
+    await q.getByTestId('tap-association-confirm').click();await q.getByTestId('tap-association-result-rewards').waitFor();
+    check(failed.row.posts.length===1&&await q.getByTestId('tap-association-result-rewards').getAttribute('data-outcome')==='no_program',`${theme}: active programme advisory cannot overrule a later authoritative denial`);
+    await q.getByTestId('tap-association-confirm').evaluate(button=>button.click());await settle(q);
+    check(failed.row.posts.length===1&&await q.getByTestId('tap-association-confirm').isDisabled(),`${theme}: terminal result cannot be reposted`);
+    await q.evaluate(path=>window.__tapQaNavigate(path),target+'&tapAction=claim');await settle(q);
+    await q.getByTestId('tap-association-claim-pin').fill('Transient-Product-PIN');
+    check(await q.getByTestId('tap-association-result-rewards').getAttribute('data-outcome')==='no_program'&&failed.row.programReads.length===2,`${theme}: same event intent change retains authoritative result and does not reread or repost`);
+    failed.setProgram('none');
+    await q.evaluate(path=>window.__tapQaNavigate(path),target.replace('eventId=715','eventId=716')+'&tapAction=claim');
+    await q.waitForFunction(()=>document.querySelector('[data-testid="tap-association"]')?.textContent.includes('no tiene un programa de beneficios activo'));
+    check(failed.row.programReads.length===3&&failed.row.programReads[2].eventId==='716',`${theme}: a distinct event gets its own advisory read`);
+    check(await q.getByTestId('tap-association-claim-pin').inputValue()===''&&await q.getByTestId('tap-association-result-rewards').count()===0,`${theme}: new event remount clears old PIN and results without transferring their authority`);
+    check(failed.row.posts.length===1&&await q.getByTestId('tap-association-option-rewards').isDisabled(),`${theme}: new reference and GET alone do not enroll or certify a fresh capability`);
+    failed.row.passed=true;await failed.close();
+    for(const eventId of ['9007199254740992','9007199254740993','9223372036854775806','9223372036854775807']){
+      const large=await open(width,theme,'program-exact-bigint-'+eventId,{active:true,program:'active',eventId,preferred:'rewards',status:409,postReply:{ok:false,error:'fresh_tap_capability_required',fresh_token_status:'fresh_token_already_used'}}),r=large.page;
+      check(large.row.programReads.length===1&&large.row.programReads[0].eventId===eventId,`${theme}/${eventId}: browser GET retains exact adjacent bigint identity`);
+      await r.getByTestId('tap-association-confirm').click();await r.getByTestId('tap-association-result-rewards').waitFor();
+      check(large.row.posts.length===1&&large.row.posts[0].path===`/api/mobile/passport/${eventId}/loyalty/enroll`,`${theme}/${eventId}: deliberate POST retains original identity`);
+      check(await r.getByTestId('tap-association-result-rewards').getAttribute('data-outcome')==='fresh_used'&&await r.getByTestId('tap-association-confirm').isDisabled(),`${theme}/${eventId}: public GET cannot issue or renew a fresh capability`);
+      await settle(r);check(large.row.posts.length===1,`${theme}/${eventId}: no automatic rePOST`);large.row.passed=true;await large.close();
+    }
+  }
   report.sourceAfter=await sourceHashes();assert.deepEqual(report.sourceAfter,sourceBefore,'source remains unchanged');
-  check(report.cases.length===60 && report.cases.every(row=>row.passed),'all planned native fixture scenarios completed');
+  check(report.cases.length===(guarded?84:60) && report.cases.every(row=>row.passed),'all planned native fixture scenarios completed');
   check(report.errors.length===0 && report.blockedRequests.length===0 && report.geolocationCalls===0,'no client exceptions, unexpected requests or GPS');
   check(report.serverRequests.every(row=>row.method==='GET'),'every API request was intercepted before the local server');
   report.passed=true;report.regressionPassed=guarded;report.baselineDefectReproduced=!guarded && report.cases.every(row=>row.returnPreserved===false || row.resultRetained===false);

@@ -16,6 +16,7 @@ export async function marketplaceBinding(repo,web){
   'apps/web/src/app/me/_components/portal-shell.module.css','apps/web/src/app/me/_components/tap-association-banner.tsx',
   'apps/web/src/app/me/_components/tap-association-model.ts','apps/web/src/app/login/consumer-login-continuation.ts',
   'apps/web/src/app/me/_components/tap-association-copy.ts','apps/web/src/app/me/_components/tap-association-banner.module.css',
+  'apps/web/src/app/me/_components/consumer-bounded-fetch.ts','apps/web/src/app/sun/tenant-action-availability.ts','apps/web/src/lib/public-tenant-configuration.ts',
   'apps/web/tests/consumer-portal-experience.browser.mjs','apps/web/tests/consumer-portal-local-fetch.mjs',
   'apps/web/tests/consumer-claim-pin.browser.mjs',
   'apps/web/tests/consumer-marketplace.browser.mjs','apps/web/tests/consumer-marketplace-fixture.mjs',

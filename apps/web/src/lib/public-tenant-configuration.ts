@@ -4,7 +4,11 @@ import { parseTenantActionConfiguration } from "../app/sun/tenant-action-availab
 import { fetchRuntimeApi } from "../app/api/_lib/server-api-transport";
 
 export function configurationEventId(value: unknown): value is string {
-  return typeof value === "string" && /^[1-9]\d{0,15}$/.test(value) && Number.isSafeInteger(Number(value));
+  if (typeof value !== "string" || value.length < 1 || value.length > 19 || value[0] === "0") return false;
+  for (const digit of value) {
+    if (digit < "0" || digit > "9") return false;
+  }
+  return value.length < 19 || value <= "9223372036854775807";
 }
 
 /** Public settings only. The destination is trusted configuration, never a caller URL.

@@ -51,3 +51,33 @@ test("explicit demo simulation stays separate from missing real configuration", 
   assert.equal(resolve({ configuration: null }).trivia, false);
   assert.equal(resolve({ configuration: null, verifiedTenant: false, isDemoPreview: true }).trivia, true);
 });
+
+test("configuration status requires an exact primitive enum without coercing arrays or objects", () => {
+  for (const status of ["published", "unpublished", "unavailable"]) {
+    const parsed = parseTenantActionConfiguration({ ...configuration, status });
+    assert.ok(parsed); assert.equal(typeof parsed.status, "string"); assert.equal(parsed.status, status);
+  }
+  for (const status of [["published"], ["unpublished"], ["unavailable"], [], ["published", "unavailable"],
+    new String("published"), new String("unavailable"), {}, null, undefined, 0, false, "Published", "published\n", ""]) {
+    assert.equal(parseTenantActionConfiguration({ ...configuration, status }), null, "nonprimitive or noncanonical status must be rejected");
+  }
+  let coercions = 0;
+  const hostile = { [Symbol.toPrimitive]() { coercions++; throw Error("Status coercion must never run"); } };
+  assert.equal(parseTenantActionConfiguration({ ...configuration, status: hostile }), null);
+  assert.equal(coercions, 0, "validation never executes a caller-provided conversion hook");
+});
+
+test("JSON status arrays remain unavailable with either an active programme or a null programme", () => {
+  for (const status of [["published"], ["unpublished"], ["unavailable"]]) for (const hasProgram of [false, true]) {
+    const body = JSON.parse(JSON.stringify({ ...configuration, tenantSlug: "tenant-qa", status,
+      program: hasProgram ? program : null, trivia: hasProgram ? trivia : null }));
+    assert.equal(parseTenantActionConfiguration(body), null, "JSON-representable malformed status is not a configuration");
+    const result = resolve({ configuration: body });
+    assert.equal(result.state, "unavailable"); assert.equal(result.configuration, null);
+    for (const action of ["lead", "feedback", "sommelier", "marketplace", "loyalty", "trivia"]) assert.equal(result[action], false, action);
+  }
+  // A valid unpublished profile and independently active programme still retain
+  // the existing TAP/reward policy; the parser fix must not change that rule.
+  const valid = resolve({ configuration: { ...configuration, status: "unpublished", allowedActions: [] } });
+  assert.equal(valid.state, "unpublished"); assert.equal(valid.loyalty, true); assert.equal(valid.trivia, true);
+});

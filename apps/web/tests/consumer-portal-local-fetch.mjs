@@ -25,7 +25,11 @@ globalThis.fetch=async(input,init)=>{
   if(url.pathname==='/consumer/session')return reply({ok:true,authenticated:authorized});
   if(/^\/public\/passport\/90000[123]\/configuration$/.test(url.pathname)){
    if(headers.has('cookie')||headers.has('authorization'))throw Error('public_configuration_must_not_forward_account_credentials');
-   return reply({ok:true,configuration:{version:'nexid.tenant-actions.v1',status:'published',allowedActions:['marketplace'],program:null,trivia:null,catalogAvailable:true,tenantSlug:items.find(item=>item.latest_tap_event_id===url.pathname.split('/')[3])?.tenant_slug||null}});
+   const eventId=url.pathname.split('/')[3];
+   // The existing explicit benefit-enrollment scenarios belong only to900001.
+   // Other catalogue fixtures retain an absent programme and fail closed.
+   const program=eventId==='900001'?{id:'10000000-0000-4000-8000-000000000001',name:'Programa sintético configurado',pointsName:'Puntos de ensayo',pointsPerValidTap:0}:null;
+   return reply({ok:true,configuration:{version:'nexid.tenant-actions.v1',status:'published',allowedActions:['marketplace'],program,trivia:null,catalogAvailable:true,tenantSlug:items.find(item=>item.latest_tap_event_id===eventId)?.tenant_slug||null}});
   }
   if(url.pathname==='/marketplace/products'){
    if(!authorized)return reply({ok:false},401);
