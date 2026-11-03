@@ -269,7 +269,7 @@ function SunUpdatesForm({ contextKey, locale, brandName, productName, tenantSlug
             <>
               <form id="sun-updates-form" className="mt-3 v3-space-y-3" aria-busy={pending} onSubmit={submit}>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Nombre <span className="normal-case tracking-normal text-slate-500">(opcional)</span>
+                  Nombre <span className="normal-case tracking-normal text-slate-400">(opcional)</span>
                   <input
                     value={name}
                     onChange={(event) => changeName(event.target.value)}

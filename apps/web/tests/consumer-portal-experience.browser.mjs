@@ -31,10 +31,44 @@ async function assessment(page,selector,name,width,theme){
 }
 async function noOverflow(page,label){check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label);}
 
+async function waitForPortalNavigationLayout(page,width,height,theme,phase){
+ try{
+  const settled=await page.waitForFunction(async({width,height})=>{
+   const sample=()=>{
+    const nav=document.querySelector('nav.consumer-bottom-nav'),root=nav?.closest('.consumer-portal-root'),main=document.querySelector('#consumer-portal-content'),header=nav?.closest('header');
+    if(!nav||!root||!main||!header)return null;
+    const dock=nav.getBoundingClientRect(),head=header.getBoundingClientRect(),style=getComputedStyle(nav);
+    return{innerWidth,innerHeight,clientWidth:document.documentElement.clientWidth,documentScrollWidth:document.documentElement.scrollWidth,
+     dock:{left:dock.left,right:dock.right,top:dock.top,bottom:dock.bottom,width:dock.width,height:dock.height},
+     position:style.position,maxBlockSize:style.maxBlockSize,scrollHeight:nav.scrollHeight,clientHeight:nav.clientHeight,
+     reservedHeight:parseFloat(root.style.getPropertyValue('--portal-navigation-block-size')),mainBottomPadding:parseFloat(getComputedStyle(main).paddingBottom),
+     header:{top:head.top,bottom:head.bottom,height:head.height,position:getComputedStyle(header).position}};
+   };
+   const before=sample();
+   // Two rendering opportunities let CSS viewport units and the observer's
+   // scheduled measurement advance; matching old reservation/dock alone is insufficient.
+   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+   const after=sample();
+   if(!before||!after||JSON.stringify(before)!==JSON.stringify(after))return false;
+   const currentViewport=after.innerWidth===width&&after.innerHeight===height;
+   const currentReservation=Number.isFinite(after.reservedHeight)&&Math.abs(after.reservedHeight-Math.ceil(after.dock.height))<=1;
+   const maxBlockSize=parseFloat(after.maxBlockSize);
+   const responsiveCap=after.position!=='fixed'||Number.isFinite(maxBlockSize)&&Math.abs(maxBlockSize-height*.4)<=1;
+   return currentViewport&&currentReservation&&responsiveCap?after:false;
+  },{width,height},{polling:'raf',timeout:10000});
+  const geometry=await settled.jsonValue();await settled.dispose();
+  report.portalNavigationSettlement??=[];report.portalNavigationSettlement.push({requested:{width,height},theme,phase,settled:true,geometry});
+ }catch(error){
+  const diagnostic=await page.evaluate(()=>{const nav=document.querySelector('nav.consumer-bottom-nav'),root=nav?.closest('.consumer-portal-root'),r=nav?.getBoundingClientRect();return{innerWidth,innerHeight,maxBlockSize:nav?getComputedStyle(nav).maxBlockSize:null,dock:r?{width:r.width,height:r.height,top:r.top,bottom:r.bottom}:null,reservedHeight:root?.style.getPropertyValue('--portal-navigation-block-size')||null};}).catch(()=>null);
+  report.portalNavigationSettlement??=[];report.portalNavigationSettlement.push({requested:{width,height},theme,phase,settled:false,diagnostic});
+  throw error;
+ }
+}
+
 async function portalNavigationGeometry(page,width,height,theme,phase,{largeText=false}={}){
  const nav=page.getByRole('navigation',{name:'Navegación del portal',exact:true});
  await page.evaluate(()=>document.fonts.ready.then(()=>undefined));
- await page.waitForFunction(()=>{const nav=document.querySelector('nav.consumer-bottom-nav'),root=nav?.closest('.consumer-portal-root');return nav&&root&&Math.abs(parseFloat(root.style.getPropertyValue('--portal-navigation-block-size'))-Math.ceil(nav.getBoundingClientRect().height))<=1;},{},{timeout:10000});
+ await waitForPortalNavigationLayout(page,width,height,theme,phase);
  const measured=await nav.evaluate(nav=>{
   const rect=node=>{const r=node.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
   const contains=(r,b)=>r.left>=b.left-1&&r.right<=b.right+1&&r.top>=b.top-1&&r.bottom<=b.bottom+1;
