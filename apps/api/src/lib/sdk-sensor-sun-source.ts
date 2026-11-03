@@ -73,8 +73,9 @@ export async function listSdkSensorTimeline(input: {
   const limit = Math.max(1, Math.min(24, Math.trunc(input.limit ?? 6)));
   const rows = await query/*sql*/`
     SELECT
-      external_event.created_at::text AS received_at,
-      external_event.occurred_at::text AS occurred_at,
+      to_char(external_event.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS received_at,
+      CASE WHEN external_event.occurred_at IS NULL THEN NULL
+        ELSE to_char(external_event.occurred_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') END AS occurred_at,
       external_event.data #>> '{sensors,measuredAt}' AS measured_at,
       external_event.data #>> '{sensors,temperatureC}' AS temperature_c,
       external_event.data #>> '{sensors,humidityPct}' AS humidity_pct,
