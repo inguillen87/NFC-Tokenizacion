@@ -150,9 +150,9 @@ async function runOwnershipConflictScenarios({page,base,width,theme,report,check
 export async function runBenefitConfirmationScenarios({page,base,width,theme,report,check,assessment,noOverflow}){
  if(![320,390,1280].includes(width))return;
  const cases=[
-  {locale:'es-AR',heading:'Solicitá la inscripción en beneficios',savedHeading:'Guardá tu producto en tu cuenta',confirmed:'Inscripción confirmada',benefits:'Ver mis beneficios'},
-  {locale:'en',heading:'Request benefits enrollment',savedHeading:'Save your product to your account',confirmed:'Enrollment confirmed',benefits:'View my benefits'},
-  {locale:'pt-BR',heading:'Solicite a inscrição em benefícios',savedHeading:'Guarde seu produto na sua conta',confirmed:'Inscrição confirmada',benefits:'Ver meus benefícios'},
+  {locale:'es-AR',heading:'Solicitá la inscripción en beneficios',savedHeading:'Guardá tu producto en tu cuenta',confirmed:'Inscripción confirmada',benefits:'Ver mis beneficios',uncertain:'no se volverá a enviar desde esta pantalla'},
+  {locale:'en',heading:'Request benefits enrollment',savedHeading:'Save your product to your account',confirmed:'Enrollment confirmed',benefits:'View my benefits',uncertain:'will not be sent again from this screen'},
+  {locale:'pt-BR',heading:'Solicite a inscrição em benefícios',savedHeading:'Guarde seu produto na sua conta',confirmed:'Inscrição confirmada',benefits:'Ver meus benefícios',uncertain:'não será enviada novamente nesta tela'},
  ];
  const endpoint='**/api/mobile/passport/900001/loyalty/enroll';let current=null;
  const handler=async route=>{
@@ -188,7 +188,18 @@ export async function runBenefitConfirmationScenarios({page,base,width,theme,rep
     await selectVisibleChoice(panel,'save',check,label);await radio.click();await page.keyboard.press('Enter');
     check(await confirm.isDisabled()&&current.requests===1&&await result.getAttribute('data-outcome')==='enrolled',`${label}: locale and choice changes preserve the receipt without a second POST`);
     await page.evaluate(locale=>{document.documentElement.lang=locale;},scenario.locale);await panel.getByRole('heading',{name:scenario.heading,exact:true}).waitFor();
-   }else check(await panel.getByTestId('tap-association-benefits').count()===0&&!await confirm.isDisabled(),`${label}: inactive member cannot receive a confirmed benefits CTA`);
+   }else{
+    check(await panel.getByTestId('tap-association-benefits').count()===0&&await confirm.isDisabled(),`${label}: incomplete member receipt has no benefits CTA and cannot be resubmitted`);
+    check((await result.innerText()).includes(scenario.uncertain),`${label}: visible guidance preserves uncertainty without inviting another POST`);
+    await confirm.evaluate(button=>button.click());await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
+    check(current.requests===1&&await result.getAttribute('data-outcome')==='unconfirmed'&&await confirm.isDisabled(),`${label}: disabled confirmation preserves the incomplete result and one POST`);
+    await selectVisibleChoice(panel,'save',check,label);
+    check(await confirm.isEnabled()&&current.requests===1&&await result.getAttribute('data-outcome')==='unconfirmed',`${label}: selecting another action remains explicit and does not erase the incomplete enrollment`);
+    await radio.click();await panel.getByRole('heading',{name:scenario.heading,exact:true}).waitFor();
+    check(await confirm.isDisabled()&&await panel.getByTestId('tap-association-benefits').count()===0,`${label}: returning to rewards cannot unlock the uncertain action or invent its CTA`);
+    await confirm.evaluate(button=>button.click());await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
+    check(current.requests===1&&await result.getAttribute('data-outcome')==='unconfirmed'&&(await result.innerText()).includes(scenario.uncertain),`${label}: same-event choice changes retain translated uncertainty and never rePOST`);
+   }
    check(await panel.getByRole('link',{name:/./}).filter({hasText:scenario.benefits}).count()===(verified?1:0),`${label}: benefits navigation is tied to the confirmed outcome only`);
    await noOverflow(page,`${label}: action and feedback fit viewport`);
    await assessment(page,'[data-testid="tap-association"]',`benefits-${status}-${scenario.locale}`,width,theme);

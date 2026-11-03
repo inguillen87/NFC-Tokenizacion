@@ -61,8 +61,9 @@ async function choose(page,action){const choice=page.getByTestId('tap-associatio
 const programFixtureIds=new Set(['715','716','9007199254740992','9007199254740993','9223372036854775806','9223372036854775807']);
 const programFixture=(tenant='brand.a',program=true,publication='published')=>({ok:true,configuration:{version:'nexid.tenant-actions.v1',status:publication,allowedActions:[],catalogAvailable:false,tenantSlug:tenant,trivia:null,
   program:program?{id:'30000000-0000-4000-8000-000000000001',name:'Programa local configurado',pointsName:'Puntos de ensayo',pointsPerValidTap:0}:null}});
-async function open(width,theme,scenario,{active=false,status=200,held=false,locale='es-AR',program='active',eventId='715',preferred=null,postReply=null}={}){
+async function open(width,theme,scenario,{active=false,status=200,held=false,locale='es-AR',program='active',eventId='715',preferred=null,postReply=null,postMode='json'}={}){
   assert(programFixtureIds.has(eventId));assert(['active','active-unpublished','none','unavailable','wrong-tenant','malformed'].includes(program));
+  assert(['json','lost','malformed','rate-limit-sequence'].includes(postMode));
   const context=await browser.newContext({viewport:{width,height:1000},locale:'es-AR',reducedMotion:'reduce',serviceWorkers:'block'});contexts.add(context);
   const page=await context.newPage();page.setDefaultTimeout(10000);
   const row={width,theme,locale,scenario,posts:[],sessions:[],programReads:[],passed:false};report.cases.push(row);let releasePost,programMode=program;
@@ -84,6 +85,17 @@ async function open(width,theme,scenario,{active=false,status=200,held=false,loc
     const actionMatch=/^\/api\/mobile\/passport\/([1-9][0-9]*)\/(consumer\/(save-product|join-tenant|claim)|loyalty\/enroll)$/.exec(url.pathname);
     if(url.origin===origin && request.method()==='POST' && actionMatch && programFixtureIds.has(actionMatch[1])){
       row.posts.push({method:'POST',path:url.pathname,body:request.postDataJSON()});if(held)await postGate;
+      if(postMode==='lost'){row.ownedTransportFailure='aborted';return route.abort('aborted');}
+      if(postMode==='malformed'){row.ownedTransportFailure='invalid-json';return route.fulfill({status,contentType:'application/json',body:'{'});}
+      if(postMode==='rate-limit-sequence'){
+        assert.equal(actionMatch[2],'consumer/save-product');assert(['715','716'].includes(actionMatch[1]));
+        const attempt=row.posts.filter(post=>post.path===url.pathname).length;
+        assert(attempt<=(actionMatch[1]==='715'?2:1),'bounded explicit rate-limit sequence');
+        const response=actionMatch[1]==='716'?{status:429,payload:{ok:false,reason:'upstream_busy'}}:
+          attempt===1?{status:429,payload:{ok:false,reason:'rate_limited'}}:{status:200,payload:{ok:true,saved:true,eventId:715}};
+        (row.rateLimitReplies??=[]).push({eventId:actionMatch[1],attempt,...response});
+        return route.fulfill({status:response.status,json:response.payload});
+      }
       return route.fulfill({status,json:postReply??(status===401?{ok:false,error:'unauthorized'}:{ok:true,saved:true,eventId:actionMatch[1]==='715'?715:actionMatch[1]})});
     }
     if(url.origin===origin && request.method()==='GET' && ['/me/marketplace','/me/products','/fixture.js','/favicon.ico'].includes(url.pathname))return route.continue();
@@ -182,8 +194,79 @@ try{
       await settle(r);check(large.row.posts.length===1,`${theme}/${eventId}: no automatic rePOST`);large.row.passed=true;await large.close();
     }
   }
+  // Browser/component evidence only: these synthetic uncertain replies never
+  // certify an API write. Timed aborts are covered separately by the runner unit.
+  if(guarded)for(const width of [360,390])for(const theme of ['light','dark']){
+    for(const scenario of [
+      {action:'save',name:'lost-reply',postMode:'lost'},
+      {action:'join',name:'generic-503',status:503,postReply:{ok:false}},
+      {action:'claim',name:'invalid-json',postMode:'malformed'},
+      {action:'rewards',name:'incomplete-200',postReply:{ok:true}},
+    ]){
+      const f=await open(width,theme,'uncertain-terminal-'+scenario.action+'-'+scenario.name,{active:true,preferred:scenario.action,...scenario}),{page,row}=f;
+      const panel=page.getByTestId('tap-association'),confirm=panel.getByTestId('tap-association-confirm');
+      await page.waitForFunction(()=>{const button=document.querySelector('[data-testid="tap-association-confirm"]');return button&&!button.disabled;});
+      await confirm.evaluate(button=>{button.click();button.click();});
+      const result=panel.getByTestId('tap-association-result-'+scenario.action);await result.waitFor();
+      check(await result.getAttribute('data-outcome')==='unconfirmed'&&row.posts.length===1,`${width}/${theme}/${scenario.name}: an uncertain reply never fabricates success or sends a second same-turn POST`);
+      const suffix={save:'consumer/save-product',join:'consumer/join-tenant',claim:'consumer/claim',rewards:'loyalty/enroll'}[scenario.action];
+      check(row.posts[0].path==='/api/mobile/passport/715/'+suffix,`${width}/${theme}/${scenario.name}: the one POST belongs only to the selected action and event`);
+      assert.deepEqual(row.posts[0].body,{tenantSlug:'brand.a',bid:'LOT-QA',...(scenario.action==='rewards'?{locale:'es-AR'}:{})});
+      check(await confirm.isDisabled()&&!(await confirm.innerText()).includes('Reintentar'),`${width}/${theme}/${scenario.name}: uncertain action is terminal in the mounted reading`);
+      const guidance=await result.innerText();
+      check(guidance.includes('puede haberse registrado')&&guidance.includes('Revisá tus productos y tu historial')&&guidance.includes('no se volverá a enviar desde esta pantalla'),`${width}/${theme}/${scenario.name}: visible copy explains uncertainty and read-only review`);
+      check(await panel.locator('[data-outcome="saved"],[data-outcome="linked"],[data-outcome="claimed"],[data-outcome="enrolled"]').count()===0&&await panel.getByTestId('tap-association-benefits').count()===0,`${width}/${theme}/${scenario.name}: no product, title, membership or benefits confirmation is invented`);
+      check(await page.evaluate(()=>window.__tapQaRefreshes)===0,`${width}/${theme}/${scenario.name}: uncertainty does not refresh the portal as a confirmed receipt`);
+      check(await panel.locator('a[href="/me/products?focus=715"]').count()===1&&await panel.locator('a[href="/me/taps"]').count()===1,`${width}/${theme}/${scenario.name}: products and reading-history review remain available`);
+      const other=scenario.action==='save'?'join':'save';await choose(page,other);
+      check(await confirm.isEnabled()&&row.posts.length===1,`${width}/${theme}/${scenario.name}: another explicit action remains independent without being sent`);
+      await choose(page,scenario.action);check(await confirm.isDisabled()&&await result.getAttribute('data-outcome')==='unconfirmed',`${width}/${theme}/${scenario.name}: returning to the uncertain action retains its result`);
+      await confirm.evaluate(button=>button.click());await settle(page);
+      check(row.posts.length===1&&row.sessions.length===1&&row.programReads.length===1&&await page.evaluate(()=>window.__tapQaRefreshes)===0,`${width}/${theme}/${scenario.name}: disabled click and selection changes neither rePOST nor refresh session/programme reads`);
+      await page.addScriptTag({content:axe});row.violations=await page.evaluate(async()=>(await axe.run('[data-testid="tap-association"]',{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map(v=>({id:v.id,impact:v.impact})));
+      check(row.violations.every(v=>!['critical','serious'].includes(v.impact)),`${width}/${theme}/${scenario.name}: uncertain feedback keeps native accessibility`);
+      check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${width}/${theme}/${scenario.name}: uncertainty and review actions fit the mobile viewport`);
+      row.screenshot=`uncertain-${scenario.action}-${width}-${theme}.png`;await page.screenshot({path:join(output,row.screenshot),fullPage:true});row.passed=true;await f.close();
+    }
+    const limited=await open(width,theme,'known-rate-limit-explicit-retry-unknown-terminal',{active:true,preferred:'save',postMode:'rate-limit-sequence'}),limitedPage=limited.page;
+    const limitedPanel=limitedPage.getByTestId('tap-association'),limitedConfirm=limitedPanel.getByTestId('tap-association-confirm'),limitedResult=limitedPanel.getByTestId('tap-association-result-save');
+    await limitedPage.waitForFunction(()=>{const button=document.querySelector('[data-testid="tap-association-confirm"]');return button&&!button.disabled;});
+    await limitedConfirm.evaluate(button=>{button.click();button.click();});await limitedResult.waitFor();
+    check(await limitedResult.getAttribute('data-outcome')==='rate_limited'&&limited.row.posts.length===1,`${width}/${theme}: the exact pre-consume limiter envelope is distinct from an uncertain result`);
+    assert.deepEqual(limited.row.rateLimitReplies,[{eventId:'715',attempt:1,status:429,payload:{ok:false,reason:'rate_limited'}}]);
+    check(await limitedConfirm.isEnabled()&&(await limitedConfirm.innerText()).includes('Reintentar')&&(await limitedResult.innerText()).includes('No la enviaremos automáticamente'),`${width}/${theme}: the known limiter offers an explicit manual retry without claiming a retry time`);
+    await settle(limitedPage);
+    check(limited.row.posts.length===1&&await limitedPage.evaluate(()=>window.__tapQaRefreshes)===0&&await limitedPanel.locator('[data-outcome="saved"]').count()===0,`${width}/${theme}: the limiter does not retry, refresh or invent success automatically`);
+    await limitedConfirm.click();
+    await limitedPage.waitForFunction(()=>document.querySelector('[data-testid="tap-association-result-save"]')?.getAttribute('data-outcome')==='saved');
+    check(limited.row.posts.length===2&&await limitedConfirm.isDisabled()&&await limitedPage.evaluate(()=>window.__tapQaRefreshes)===1,`${width}/${theme}: one deliberate retry can accept the exact saved receipt and then becomes terminal`);
+    check(limited.row.posts.every(post=>post.path==='/api/mobile/passport/715/consumer/save-product'),`${width}/${theme}: the known limiter retries only the same chosen action and event`);
+    for(const post of limited.row.posts)assert.deepEqual(post.body,{tenantSlug:'brand.a',bid:'LOT-QA'});
+    await limitedConfirm.evaluate(button=>button.click());await settle(limitedPage);
+    check(limited.row.posts.length===2,`${width}/${theme}: a disabled confirmed action never sends a third request`);
+    await limitedPage.evaluate(path=>window.__tapQaNavigate(path),target.replace('eventId=715','eventId=716')+'&tapAction=save');
+    await limitedPage.waitForFunction(()=>!document.querySelector('[data-testid="tap-association-result-save"]')&&document.querySelector('[data-testid="tap-association-confirm"]')?.disabled===false);
+    check(limited.row.posts.length===2&&limited.row.programReads.length===2&&limited.row.programReads[1].eventId==='716',`${width}/${theme}: another synthetic reference resets only its own UI and waits for an explicit action`);
+    await limitedConfirm.click();await limitedResult.waitFor();
+    check(limited.row.posts.length===3&&limited.row.posts[2].path==='/api/mobile/passport/716/consumer/save-product'&&await limitedResult.getAttribute('data-outcome')==='unconfirmed'&&await limitedConfirm.isDisabled(),`${width}/${theme}: an unknown 429 cannot borrow the known pre-consume retry exception`);
+    assert.deepEqual(limited.row.rateLimitReplies[2],{eventId:'716',attempt:1,status:429,payload:{ok:false,reason:'upstream_busy'}});
+    check(await limitedPanel.locator('[data-outcome="saved"],[data-outcome="enrolled"]').count()===0&&await limitedPanel.getByTestId('tap-association-benefits').count()===0&&(await limitedResult.innerText()).includes('no se volverá a enviar desde esta pantalla'),`${width}/${theme}: the unknown 429 retains uncertainty without transferring the previous receipt or benefits`);
+    await limitedConfirm.evaluate(button=>button.click());await settle(limitedPage);
+    check(limited.row.posts.length===3&&limited.row.sessions.length===2&&await limitedPage.evaluate(()=>window.__tapQaRefreshes)===1,`${width}/${theme}: the unknown 429 stays terminal without retrying or refreshing as a new success`);
+    await limitedPage.addScriptTag({content:axe});limited.row.violations=await limitedPage.evaluate(async()=>(await axe.run('[data-testid="tap-association"]',{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map(v=>({id:v.id,impact:v.impact})));
+    check(limited.row.violations.every(v=>!['critical','serious'].includes(v.impact)),`${width}/${theme}: limiter and uncertainty controls retain native accessibility`);
+    check(await limitedPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${width}/${theme}: limiter and uncertain feedback fit the mobile viewport`);
+    limited.row.screenshot=`rate-limit-${width}-${theme}.png`;await limitedPage.screenshot({path:join(output,limited.row.screenshot),fullPage:true});limited.row.passed=true;await limited.close();
+    const rejected=await open(width,theme,'explicit-401-still-relogin',{active:true,preferred:'claim',status:401}),{page,row}=rejected;
+    await page.getByTestId('tap-association-confirm').click();await page.getByTestId('tap-association-login').waitFor();
+    const result=page.getByTestId('tap-association-result-claim');await result.waitFor();
+    const next=new URL(await page.getByTestId('tap-association-login').getAttribute('href'),origin).searchParams.get('next');
+    check(await result.getAttribute('data-outcome')==='session_required'&&next===target+'&tapAction=claim',`${width}/${theme}: an explicit 401 offers reauthentication with the same destination and action`);
+    check(await page.getByTestId('tap-association-confirm').count()===0&&row.posts.length===1,`${width}/${theme}: reauthentication causes no automatic retry or fabricated ownership`);
+    await settle(page);check(row.posts.length===1,`${width}/${theme}: 401 keeps one explicit POST while waiting for sign-in`);row.passed=true;await rejected.close();
+  }
   report.sourceAfter=await sourceHashes();assert.deepEqual(report.sourceAfter,sourceBefore,'source remains unchanged');
-  check(report.cases.length===(guarded?84:60) && report.cases.every(row=>row.passed),'all planned native fixture scenarios completed');
+  check(report.cases.length===(guarded?108:60) && report.cases.every(row=>row.passed),'all planned native fixture scenarios completed');
   check(report.errors.length===0 && report.blockedRequests.length===0 && report.geolocationCalls===0,'no client exceptions, unexpected requests or GPS');
   check(report.serverRequests.every(row=>row.method==='GET'),'every API request was intercepted before the local server');
   report.passed=true;report.regressionPassed=guarded;report.baselineDefectReproduced=!guarded && report.cases.every(row=>row.returnPreserved===false || row.resultRetained===false);

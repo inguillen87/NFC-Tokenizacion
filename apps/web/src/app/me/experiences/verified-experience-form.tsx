@@ -97,6 +97,7 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, bra
   const [photoFileName, setPhotoFileName] = useState("");
   const [photoError, setPhotoError] = useState("");
   const [preparingPhoto, setPreparingPhoto] = useState(false);
+  const [preparingPhotoName, setPreparingPhotoName] = useState("");
   const [state, setState] = useState<SubmitState>("idle");
   const [message, setMessage] = useState("");
   const [createdTrust, setCreatedTrust] = useState<number | null>(null);
@@ -116,6 +117,7 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, bra
   function clearPhoto() {
     photoRevision.current += 1;
     setPreparingPhoto(false);
+    setPreparingPhotoName("");
     setPhotoUrl("");
     setPhotoFileName("");
     setPhotoError("");
@@ -126,14 +128,13 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, bra
     const revision = ++photoRevision.current;
     setPreparingPhoto(true);
     setPhotoError("");
-    setPhotoFileName(`Optimizando ${file.name}...`);
+    setPreparingPhotoName(`Optimizando ${file.name}...`);
 
     try {
       const result = await compressPhotoFile(file);
       if (!mounted.current || revision !== photoRevision.current) return;
       if (!result.startsWith("data:image/")) {
-        setPhotoError("No pudimos leer esa foto.");
-        setPhotoFileName("");
+        setPhotoError("No pudimos leer esa foto." + (photoUrl.trim() ? " La foto anterior se conserva." : ""));
         return;
       }
 
@@ -142,10 +143,12 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, bra
       setPhotoError("");
     } catch {
       if (!mounted.current || revision !== photoRevision.current) return;
-      setPhotoFileName("");
-      setPhotoError("No pudimos optimizar esa foto. Proba con otra imagen o pegá un link.");
+      setPhotoError("No pudimos optimizar esa foto. Proba con otra imagen o pegá un link." + (photoUrl.trim() ? " La foto anterior se conserva." : ""));
     } finally {
-      if (mounted.current && revision === photoRevision.current) setPreparingPhoto(false);
+      if (mounted.current && revision === photoRevision.current) {
+        setPreparingPhoto(false);
+        setPreparingPhotoName("");
+      }
     }
   }
 
@@ -154,14 +157,15 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, bra
     if (!file) return;
     photoRevision.current += 1;
     setPreparingPhoto(false);
+    setPreparingPhotoName("");
 
     if (!acceptedPhotoTypes.has(file.type)) {
-      setPhotoError("Usa una foto JPG, PNG o WEBP.");
+      setPhotoError("Usa una foto JPG, PNG o WEBP." + (photoUrl.trim() ? " La foto anterior se conserva." : ""));
       return;
     }
 
     if (file.size > MAX_ORIGINAL_PHOTO_BYTES) {
-      setPhotoError("La foto pesa demasiado. Usa una imagen de hasta 12 MB; la optimizamos antes de subir.");
+      setPhotoError("La foto pesa demasiado. Usa una imagen de hasta 12 MB; la optimizamos antes de subir." + (photoUrl.trim() ? " La foto anterior se conserva." : ""));
       return;
     }
 
@@ -330,7 +334,7 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, bra
                 ) : null}
               </div>
               <p className={styles.muted}>
-                {preparingPhoto ? photoFileName : photoFileName ? `Foto lista: ${photoFileName}` : "Tambien podes pegar un link de imagen si ya la tenes subida."}
+                {preparingPhoto ? preparingPhotoName : photoFileName ? `Foto lista: ${photoFileName}` : "Tambien podes pegar un link de imagen si ya la tenes subida."}
               </p>
               <div className={styles.linkLabel}>
                 <Link2 className={styles.icon} aria-hidden="true" />
@@ -343,6 +347,7 @@ export function VerifiedExperienceForm({ initialEventId, initialProductName, bra
                 onChange={(event) => {
                   photoRevision.current += 1;
                   setPreparingPhoto(false);
+                  setPreparingPhotoName("");
                   setPhotoFileName("");
                   setPhotoError("");
                   setPhotoUrl(event.target.value);
