@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import styles from "./security-panel.module.css";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Lock, Mail, Phone } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Lock, Mail, Phone } from "lucide-react";
 import {
   ConsumerContactInput,
   consumerContactDraftIsValid,
@@ -12,6 +12,35 @@ import {
   type ConsumerContactDraft,
 } from "../../../components/consumer-contact-input";
 
+// Public NexID contacts already published on the landing; independent of the
+// signed-in consumer and separate from the outbound authentication sender.
+const NEXID_CONTACT = {
+  email: "info@nexid.lat",
+  argentina: "https://api.whatsapp.com/send?phone=5492613168608",
+  chile: "https://api.whatsapp.com/send?phone=56988689095",
+} as const;
+
+function NexidContactCard() {
+  return (
+    <section className={`${styles.card} ${styles.supportCard}`} aria-labelledby="security-nexid-contact-title">
+      <h2 id="security-nexid-contact-title">Contactar a NexID</h2>
+      <p>Consultas sobre tu cuenta y la plataforma.</p>
+      <a href={`mailto:${NEXID_CONTACT.email}`} className={styles.supportPrimary}>
+        <Mail aria-hidden="true" className="h-4 w-4 shrink-0" />
+        <span>{NEXID_CONTACT.email}</span>
+      </a>
+      <div className={styles.supportChannels}>
+        <a href={NEXID_CONTACT.argentina} target="_blank" rel="noopener noreferrer" aria-label="Contactar a NexID por WhatsApp Argentina (abre una pestaña nueva)">
+          <Phone aria-hidden="true" className="h-4 w-4 shrink-0" /><span>WhatsApp Argentina</span>
+        </a>
+        <a href={NEXID_CONTACT.chile} target="_blank" rel="noopener noreferrer" aria-label="Contactar a NexID por WhatsApp Chile (abre una pestaña nueva)">
+          <Phone aria-hidden="true" className="h-4 w-4 shrink-0" /><span>WhatsApp Chile</span>
+        </a>
+      </div>
+      <p className={styles.supportHint}>Tus códigos de acceso son personales. No los compartas.</p>
+    </section>
+  );
+}
 type Consumer = {
   id: string;
   email?: string | null;
@@ -46,16 +75,16 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
 
   if (!consumer) {
     return (
-      <div className={`${styles.root} ${styles.card} rounded-3xl border p-6 text-center`}>
-        <p role="alert">No pudimos consultar tus contactos. Reintentá para revisar tu cuenta.</p>
-        <button type="button" className={styles.recovery} onClick={() => window.location.reload()}>
-          Reintentar consulta
-        </button>
-        <Link href="/me" prefetch={false} className={`${styles.back} mt-3 inline-flex items-center`}>Volver a mi espacio</Link>
+      <div className={`${styles.root} mx-auto max-w-xl v3-space-y-6`}>
+        <section className={`${styles.card} rounded-3xl border p-6 text-center`} aria-label="Tus medios de acceso">
+          <p role="alert">No pudimos consultar tus medios de acceso. Reintentá para revisar tu cuenta.</p>
+          <button type="button" className={styles.recovery} onClick={() => window.location.reload()}>Reintentar consulta</button>
+          <Link href="/me" prefetch={false} className={`${styles.back} mt-3 inline-flex items-center`}>Volver a mi espacio</Link>
+        </section>
+        <NexidContactCard />
       </div>
     );
   }
-
   async function startAssociation() {
     const payload = consumerContactPayload(effectiveContactDraft);
     if (!payload) {
@@ -141,42 +170,34 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
   return (
     <div className={`${styles.root} mx-auto max-w-xl v3-space-y-6`}>
       <Link href="/me" prefetch={false} className={`${styles.back} inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider`}>
-        <ArrowLeft className="h-4 w-4" /> Volver al Pasaporte
+        <ArrowLeft className="h-4 w-4" /> Volver a mi espacio
       </Link>
 
-      {hasBothLinkedChannels ? (
-        <div className={`${styles.card} v3-space-y-4 rounded-3xl border p-6 text-center shadow-xl`}>
-          <div className={`${styles.successIcon} mx-auto grid h-16 w-16 place-items-center rounded-2xl border shadow-inner`}>
-            <CheckCircle2 className="h-8 w-8" />
+      <section className={`${styles.card} ${styles.accessCard}`} aria-labelledby="security-access-title">
+        <h2 id="security-access-title">Tus medios de acceso</h2>
+        <p>Estos son tus datos personales para recibir códigos al entrar a tu cuenta.</p>
+        <dl className={`${styles.contacts} mt-4 divide-y rounded-2xl border text-left`}>
+          <div className={`${styles.contactRow} flex items-center justify-between p-3.5`}>
+            <dt className={styles.contactLabel}><Mail aria-hidden="true" className="h-4 w-4 shrink-0" />Tu email</dt>
+            <dd className={styles.contactValue}>{hasEmail ? consumer.email : "Sin agregar"}</dd>
           </div>
-          <div className="v3-space-y-1">
-            <h2 className="text-xl font-black tracking-tight text-white">Canales de contacto vinculados</h2>
-            <p className="mx-auto max-w-sm text-xs leading-relaxed text-slate-400">
-              Tenés email y WhatsApp vinculados a tu cuenta. Un solo código alcanza para entrar; podés usar cualquiera de los canales disponibles.
-            </p>
+          <div className={`${styles.contactRow} flex items-center justify-between p-3.5`}>
+            <dt className={styles.contactLabel}><Phone aria-hidden="true" className="h-4 w-4 shrink-0" />Tu WhatsApp</dt>
+            <dd className={styles.contactValue}>{hasPhone ? consumer.phone : "Sin agregar"}</dd>
           </div>
+        </dl>
+        <p className={styles.accessHint}>Al ingresar, elegís uno de tus medios vinculados para recibir el código.</p>
+      </section>
 
-          <div className={`${styles.contacts} mt-4 divide-y rounded-2xl border text-left text-xs`}>
-            <div className={`${styles.contactRow} flex items-center justify-between p-3.5`}>
-              <span className="flex items-center gap-2 text-slate-400"><Mail className="h-4 w-4" /> Correo electrónico</span>
-              <span className={`${styles.contactValue} font-mono`}>{consumer.email}</span>
-            </div>
-            <div className={`${styles.contactRow} flex items-center justify-between p-3.5`}>
-              <span className="flex items-center gap-2 text-slate-400"><Phone className="h-4 w-4" /> WhatsApp</span>
-              <span className={`${styles.contactValue} font-mono`}>{consumer.phone}</span>
-            </div>
-
-          </div>
-        </div>
-      ) : (
-        <div className={`${styles.card} v3-space-y-5 rounded-3xl border p-6 shadow-lg`}>
+      {!hasBothLinkedChannels ? (
+        <section className={`${styles.card} v3-space-y-5 rounded-3xl border p-6 shadow-lg`} aria-labelledby="security-add-access-title">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400">
               <Lock className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-sm font-black tracking-tight text-white">Vincular canal de contacto</h3>
-              <p className="text-[11px] text-slate-400">Agregá el contacto faltante para tener otra opción de acceso y recuperación.</p>
+              <h2 id="security-add-access-title" className="text-sm font-black tracking-tight text-white">Agregá otra opción de acceso</h2>
+              <p className="text-[11px] text-slate-400">Sumá otro medio para recibir un código cuando ingresás a tu cuenta.</p>
             </div>
           </div>
 
@@ -184,7 +205,7 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
             <div className="v3-space-y-4">
               <div className="v3-space-y-2">
                 <p className="block text-[11px] font-black uppercase tracking-wider text-slate-400">
-                  {missingType === "email" ? "Vincular correo electrónico" : "Vincular WhatsApp"}
+                  {missingType === "email" ? "Tu nuevo email" : "Tu nuevo WhatsApp"}
                 </p>
                 <ConsumerContactInput
                   draft={effectiveContactDraft}
@@ -252,8 +273,9 @@ export function SecurityPanel({ initialConsumer }: { initialConsumer: Consumer |
               <span>{errorMsg}</span>
             </div>
           ) : null}
-        </div>
-      )}
+        </section>
+      ) : null}
+      <NexidContactCard />
       <Link href="/me/rewards" prefetch={false} className={styles.benefits}>Ver mis beneficios</Link>
     </div>
   );

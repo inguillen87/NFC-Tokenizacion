@@ -59,7 +59,7 @@
 .portal .logoutControl button > span { display: none; }
 .portal .accountControls button:hover { border-color: var(--portal-accent); }
 
-.main { width: min(100%, 88rem); min-width: 0; margin-inline: auto; padding: 1.5rem max(1rem, env(safe-area-inset-right)) calc(6rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); }
+.main { scroll-margin-block-start: calc(var(--portal-header-block-size, 6rem) + 0.75rem); width: min(100%, 88rem); min-width: 0; margin-inline: auto; padding: 1.5rem max(1rem, env(safe-area-inset-right)) calc(6rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); }
 .pageHeading { max-width: 60rem; margin-bottom: 1.4rem; }
 .pageHeading h1 { margin: 0; color: var(--portal-text); font-size: clamp(1.7rem, 3.5vw, 2.7rem); font-weight: 800; line-height: 1.12; letter-spacing: -.035em; overflow-wrap: anywhere; }
 .pageHeading p { margin: .65rem 0 0; color: var(--portal-muted); font-size: .95rem; line-height: 1.65; }
@@ -112,7 +112,7 @@
   .navigationItems { display: flex; justify-content: flex-start; gap: .4rem; max-width: 85rem; }
   .navigationItem { flex-direction: row; gap: .5rem; min-height: 2.75rem; padding: .55rem 1rem; font-size: .85rem; }
   .navigationPlaceholder { min-height: 3.5rem; }
-  .main { padding-bottom: 3rem; }
+  .main { padding-bottom: 3rem; scroll-margin-block-start: calc(var(--portal-header-block-size, 10rem) + 0.75rem); }
 }
 
 @media (prefers-reduced-motion: reduce) {

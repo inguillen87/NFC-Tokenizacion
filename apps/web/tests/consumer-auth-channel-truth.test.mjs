@@ -22,13 +22,10 @@ test("consumer login describes same-code multi-channel delivery without claiming
   assert.doesNotMatch(loginPage, /MFA-ready/);
 });
 
-test("consumer security treats linked contacts as recovery channels, not two factors", () => {
+test("consumer security describes access channels without claiming MFA or account recovery", () => {
   assert.match(securityPanel, /const hasBothLinkedChannels = hasEmail && hasPhone/);
-  assert.match(securityPanel, /Canales de contacto vinculados/);
-  assert.match(securityPanel, /Un solo código alcanza para entrar/);
-  assert.match(securityPage, /Un solo código alcanza para entrar/);
-  assert.doesNotMatch(securityPanel, /isVerified2FA|Doble factor activo|Bono 2FA/);
-  assert.doesNotMatch(securityPage, /estatus Verificado \(2FA\)/);
+  assert.doesNotMatch(securityPanel, /isVerified2FA|Doble factor activo|Bono 2FA|recuperación/);
+  assert.doesNotMatch(securityPage, /estatus Verificado \(2FA\)|recuperación/);
 });
 
 test("Clerk bridge delegates identity resolution to the API-verified Clerk token", () => {
