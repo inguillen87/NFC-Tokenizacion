@@ -63,7 +63,7 @@ const programFixture=(tenant='brand.a',program=true,publication='published')=>({
   program:program?{id:'30000000-0000-4000-8000-000000000001',name:'Programa local configurado',pointsName:'Puntos de ensayo',pointsPerValidTap:0}:null}});
 async function open(width,theme,scenario,{active=false,status=200,held=false,locale='es-AR',program='active',eventId='715',preferred=null,postReply=null,postMode='json'}={}){
   assert(programFixtureIds.has(eventId));assert(['active','active-unpublished','none','unavailable','wrong-tenant','malformed'].includes(program));
-  assert(['json','lost','malformed','rate-limit-sequence'].includes(postMode));
+  assert(['json','lost','malformed','rate-limit-sequence','claim-pin-reentry-sequence'].includes(postMode));
   const context=await browser.newContext({viewport:{width,height:1000},locale:'es-AR',reducedMotion:'reduce',serviceWorkers:'block'});contexts.add(context);
   const page=await context.newPage();page.setDefaultTimeout(10000);
   const row={width,theme,locale,scenario,posts:[],sessions:[],programReads:[],passed:false};report.cases.push(row);let releasePost,programMode=program;
@@ -84,9 +84,16 @@ async function open(width,theme,scenario,{active=false,status=200,held=false,loc
     }
     const actionMatch=/^\/api\/mobile\/passport\/([1-9][0-9]*)\/(consumer\/(save-product|join-tenant|claim)|loyalty\/enroll)$/.exec(url.pathname);
     if(url.origin===origin && request.method()==='POST' && actionMatch && programFixtureIds.has(actionMatch[1])){
-      row.posts.push({method:'POST',path:url.pathname,body:request.postDataJSON()});if(held)await postGate;
+      const actionBody=request.postDataJSON();
+      row.posts.push({method:'POST',path:url.pathname,body:postMode==='claim-pin-reentry-sequence'?{tenantSlug:actionBody.tenantSlug,bid:actionBody.bid,pinProvided:Object.hasOwn(actionBody,'pin')}:actionBody});if(held)await postGate;
       if(postMode==='lost'){row.ownedTransportFailure='aborted';return route.abort('aborted');}
       if(postMode==='malformed'){row.ownedTransportFailure='invalid-json';return route.fulfill({status,contentType:'application/json',body:'{'});}
+      if(postMode==='claim-pin-reentry-sequence'){
+        assert.equal(actionMatch[2],'consumer/claim');assert(['715','716'].includes(actionMatch[1]));
+        const attempt=row.posts.filter(post=>post.path===url.pathname).length;assert(attempt<=2);
+        assert.deepEqual(actionBody,{tenantSlug:'brand.a',bid:'LOT-QA',...(actionMatch[1]==='715'?{pin:attempt===1?'SYNTHETIC-FIRST-PIN!2026':'SYNTHETIC-NEW-PIN!2026'}:{})});
+        return route.fulfill({status:attempt===1?429:200,json:attempt===1?{ok:false,reason:'rate_limited'}:{ok:true,eventId:actionMatch[1],ownership_scope:'nexid_off_chain_digital_title',ownership:{status:'claimed'}}});
+      }
       if(postMode==='rate-limit-sequence'){
         assert.equal(actionMatch[2],'consumer/save-product');assert(['715','716'].includes(actionMatch[1]));
         const attempt=row.posts.filter(post=>post.path===url.pathname).length;
@@ -265,8 +272,41 @@ try{
     check(await page.getByTestId('tap-association-confirm').count()===0&&row.posts.length===1,`${width}/${theme}: reauthentication causes no automatic retry or fabricated ownership`);
     await settle(page);check(row.posts.length===1,`${width}/${theme}: 401 keeps one explicit POST while waiting for sign-in`);row.passed=true;await rejected.close();
   }
+
+  // New source-only definition:12 native component fixture cases, not real
+  // sessions, PIN verification, physical taps, tenant writes or claim evidence.
+  if(guarded)for(const width of [360,390])for(const theme of ['light','dark'])for(const locale of ['es-AR','en','pt-BR']){
+    const f=await open(width,theme,'claim-pin-reentry-'+locale,{active:true,preferred:'claim',locale,postMode:'claim-pin-reentry-sequence'}),{page,row}=f;
+    const panel=page.getByTestId('tap-association'),pin=panel.getByTestId('tap-association-claim-pin'),confirm=panel.getByTestId('tap-association-confirm'),result=panel.getByTestId('tap-association-result-claim');
+    const first='SYNTHETIC-FIRST-PIN!2026',again='SYNTHETIC-NEW-PIN!2026',words={'es-AR':'Volvé a ingresarlo','en':'Enter it again','pt-BR':'Digite-o novamente'};
+    const label=`${width}/${theme}/${locale} claim PIN reentry`;
+    await page.waitForFunction(()=>document.querySelector('[data-testid="tap-association-confirm"]')?.disabled===false);
+    await pin.fill(first);await confirm.evaluate(button=>{button.click();button.click();});await result.waitFor();
+    check(row.posts.length===1&&await result.getAttribute('data-outcome')==='rate_limited'&&await pin.inputValue()===''&&await confirm.isDisabled(),label+': known limiter clears the supplied PIN and blocks an empty retry');
+    check((await result.innerText()).includes(words[locale])&&(await pin.getAttribute('aria-describedby')).split(' ').includes('tap-association-pin-reentry')&&await panel.locator('#tap-association-pin-reentry').count()===1,label+': localized reentry guidance is associated with the PIN input');
+    check(await pin.getAttribute('type')==='password'&&await pin.getAttribute('autocomplete')==='off',label+': password and autocomplete restrictions are preserved');
+    await confirm.evaluate(button=>button.click());await settle(page);check(row.posts.length===1,label+': empty disabled confirmation sends nothing');
+    await pin.fill(again);check(await confirm.isEnabled(),label+': new explicit entry enables a manual retry');
+    await pin.evaluate(node=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(node,'');node.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('[data-testid="tap-association-confirm"]').click();});
+    await settle(page);check(row.posts.length===1,label+': same-turn deletion cannot submit a stale state value');
+    await pin.fill(' ');check(await confirm.isDisabled(),label+': whitespace cannot satisfy reentry');await pin.fill('BAD CODE');check(await confirm.isDisabled()&&await panel.locator('#tap-association-pin-error').count()===1,label+': malformed reentry explains the local restriction');await pin.fill('');
+    await choose(page,'save');check(await confirm.isEnabled()&&row.posts.length===1,label+': another selected action stays independent');await choose(page,'claim');check(await confirm.isDisabled()&&await pin.inputValue()==='',label+': returning to claim keeps the requirement');
+    await page.evaluate(path=>window.__tapQaNavigate(path),target+'&tapAction=save');await page.waitForFunction(()=>document.querySelector('[data-testid="tap-association-option-save"]')?.checked===true);
+    await page.evaluate(path=>window.__tapQaNavigate(path),target+'&tapAction=claim');await page.waitForFunction(()=>document.querySelector('[data-testid="tap-association-option-claim"]')?.checked===true);
+    check(await confirm.isDisabled()&&await pin.inputValue()===''&&row.posts.length===1,label+': same-key URL intent changes do not discard reentry');
+    check(await page.evaluate(secrets=>!secrets.some(secret=>location.href.includes(secret)||document.documentElement.outerHTML.includes(secret)||[localStorage,sessionStorage].some(storage=>Array.from({length:storage.length},(_,index)=>storage.getItem(storage.key(index))).some(value=>value?.includes(secret)))),[first,again]),label+': no cleared PIN is restored or stored in URL, storage or markup');
+    await page.addScriptTag({content:axe});row.violations=await page.evaluate(async()=>(await axe.run('[data-testid="tap-association"]',{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map(v=>({id:v.id,impact:v.impact})));check(row.violations.every(v=>!['critical','serious'].includes(v.impact)),label+': reentry keeps native accessibility');check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label+': reentry fits the mobile viewport');
+    await pin.fill(again);await confirm.click();await page.waitForFunction(()=>document.querySelector('[data-testid="tap-association-result-claim"]')?.getAttribute('data-outcome')==='claimed');
+    check(row.posts.length===2&&await confirm.isDisabled()&&await pin.count()===0&&await page.evaluate(()=>window.__tapQaRefreshes)===1,label+': one deliberate reentered PIN obtains only the synthetic exact receipt');
+    await page.evaluate(path=>window.__tapQaNavigate(path),target.replace('eventId=715','eventId=716')+'&tapAction=claim');await page.waitForFunction(()=>!document.querySelector('[data-testid="tap-association-result-claim"]')&&document.querySelector('[data-testid="tap-association-confirm"]')?.disabled===false);
+    check(await pin.inputValue()===''&&row.posts.length===2,label+': new reading context starts with no restored PIN or prior result');
+    await confirm.click();await result.waitFor();check(row.posts.length===3&&await result.getAttribute('data-outcome')==='rate_limited'&&await confirm.isEnabled()&&await panel.locator('#tap-association-pin-reentry').count()===0,label+': a no-PIN attempt does not create a general PIN requirement');
+    await confirm.click();await page.waitForFunction(()=>document.querySelector('[data-testid="tap-association-result-claim"]')?.getAttribute('data-outcome')==='claimed');check(row.posts.length===4&&await confirm.isDisabled()&&await page.evaluate(()=>window.__tapQaRefreshes)===2,label+': optional PIN remains optional on a manual retry');
+    check(row.posts.every(post=>post.path.endsWith('/consumer/claim'))&&row.posts.slice(0,2).every(post=>post.body.pinProvided===true)&&row.posts.slice(2).every(post=>post.body.pinProvided===false),label+': only four selected synthetic claim requests, with PIN presence recorded but no PIN bytes');
+    row.claimPinReentry={explicitReentry:true,optionalNoPinRetry:true,secretsRetainedInReport:false,realOwnershipAccepted:false};row.passed=true;await f.close();
+  }
   report.sourceAfter=await sourceHashes();assert.deepEqual(report.sourceAfter,sourceBefore,'source remains unchanged');
-  check(report.cases.length===(guarded?108:60) && report.cases.every(row=>row.passed),'all planned native fixture scenarios completed');
+  check(report.cases.length===(guarded?120:60) && report.cases.every(row=>row.passed),'all planned native fixture scenarios completed');
   check(report.errors.length===0 && report.blockedRequests.length===0 && report.geolocationCalls===0,'no client exceptions, unexpected requests or GPS');
   check(report.serverRequests.every(row=>row.method==='GET'),'every API request was intercepted before the local server');
   report.passed=true;report.regressionPassed=guarded;report.baselineDefectReproduced=!guarded && report.cases.every(row=>row.returnPreserved===false || row.resultRetained===false);

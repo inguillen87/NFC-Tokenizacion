@@ -96,8 +96,59 @@ export async function runClaimPinScenarios({page,base,width,theme,report,check,a
   }
  }finally{release?.();await page.unroute(endpoint,handler);}
  await runOwnershipConflictScenarios({page,base,width,theme,report,check,assessment,noOverflow});
+ if([320,390].includes(width))await runClaimPinRateLimitScenarios({page,base,width,theme,report,check,assessment,noOverflow});
 }
 
+
+
+// The limiter replies and claim receipts here are explicit synthetic loopback
+// fixtures. No PIN bytes are retained in the report and no real claim is made.
+async function runClaimPinRateLimitScenarios({page,base,width,theme,report,check,assessment,noOverflow}){
+ const first='SYNTHETIC-FIRST-PIN!2026',again='SYNTHETIC-NEW-PIN!2026';
+ const words={'es-AR':'Volvé a ingresarlo','en':'Enter it again','pt-BR':'Digite-o novamente'};
+ const endpoint='**/api/mobile/passport/900001/consumer/claim';let current=null;
+ const handler=async route=>{
+  const req=route.request();assert.equal(new URL(req.url()).origin,base);assert.equal(req.method(),'POST');
+  assert.ok(current);const attempt=++current.requests;assert(attempt<=2);
+  assert.deepEqual(req.postDataJSON(),{tenantSlug:'consumer-qa',bid:'LOT-WINE-QA',...(current.withPin?{pin:attempt===1?first:again}:{})});
+  return route.fulfill({status:attempt===1?429:200,json:attempt===1?{ok:false,reason:'rate_limited'}:{ok:true,eventId:'900001',ownership_scope:'nexid_off_chain_digital_title',ownership:{status:'claimed'}}});
+ };
+ await page.route(endpoint,handler);
+ const target='/me/products?fromTap=1&eventId=900001&tenant=consumer-qa&bid=LOT-WINE-QA&action=claim';
+ try{
+  for(const scenario of scenarios){
+   const label=`${width}/${theme}/${scenario.locale} claim PIN reentry`;current={withPin:true,requests:0};
+   await page.goto(base+target,{waitUntil:'networkidle'});await page.evaluate(locale=>{document.documentElement.lang=locale;},scenario.locale);
+   const panel=page.getByTestId('tap-association'),pin=panel.getByTestId('tap-association-claim-pin'),confirm=panel.getByTestId('tap-association-confirm'),result=panel.getByTestId('tap-association-result-claim');
+   await panel.getByLabel(scenario.label,{exact:true}).waitFor();await page.waitForFunction(()=>document.querySelector('[data-testid="tap-association-confirm"]')?.disabled===false);
+   await pin.fill(first);await confirm.evaluate(button=>{button.click();button.click();});await result.waitFor();
+   await page.waitForFunction(()=>document.querySelector('[data-testid="tap-association-confirm"]')?.disabled===true);
+   check(current.requests===1&&await result.getAttribute('data-outcome')==='rate_limited'&&await pin.inputValue()==='',label+': exact limiter reply clears the submitted PIN and blocks an empty retry');
+   check((await result.innerText()).includes(words[scenario.locale])&&(await pin.getAttribute('aria-describedby')).split(' ').includes('tap-association-pin-reentry')&&await panel.locator('#tap-association-pin-reentry').count()===1,label+': localized reentry guidance describes the password field');
+   check(await pin.getAttribute('type')==='password'&&await pin.getAttribute('autocomplete')==='off',label+': secret handling remains password and autocomplete off');
+   await confirm.evaluate(button=>button.click());await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));check(current.requests===1,label+': disabled click cannot resend the empty claim');
+   await pin.fill(again);check(await confirm.isEnabled(),label+': a new explicit PIN enables manual confirmation');
+   await pin.evaluate(node=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(node,'');node.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('[data-testid="tap-association-confirm"]').click();});
+   await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));check(current.requests===1,label+': deleting then clicking in the same turn cannot borrow a stale PIN closure');
+   await pin.fill(' ');check(await confirm.isDisabled(),label+': whitespace is not a new PIN');await pin.fill('BAD CODE');check(await confirm.isDisabled()&&await panel.locator('#tap-association-pin-error').count()===1,label+': invalid reentry is explained without sending');await pin.fill('');
+   await selectVisibleChoice(panel,'save',check,label);check(await confirm.isEnabled()&&current.requests===1,label+': a different explicit action is independent');await panel.getByTestId('tap-association-option-claim').click();check(await confirm.isDisabled()&&await pin.inputValue()==='',label+': returning locally retains the reentry requirement');
+   await page.evaluate(path=>window.history.pushState(null,'',path),target+'&tapAction=save');await panel.getByTestId('tap-association-option-save').waitFor();await page.waitForFunction(()=>document.querySelector('[data-testid="tap-association-option-save"]')?.checked===true);
+   await page.evaluate(path=>window.history.pushState(null,'',path),target+'&tapAction=claim');await page.waitForFunction(()=>document.querySelector('[data-testid="tap-association-option-claim"]')?.checked===true);
+   check(await confirm.isDisabled()&&await pin.inputValue()===''&&current.requests===1,label+': same-reading URL intent changes do not clear the non-secret requirement');
+   check(await page.evaluate(secrets=>!secrets.some(secret=>location.href.includes(secret)||document.documentElement.outerHTML.includes(secret)||[localStorage,sessionStorage].some(storage=>Array.from({length:storage.length},(_,index)=>storage.getItem(storage.key(index))).some(value=>value?.includes(secret)))),[first,again]),label+': cleared PINs never appear in URL, storage or rendered markup');
+   await noOverflow(page,label+': reentry fits the viewport');await assessment(page,'[data-testid="tap-association"]',`claim-pin-reentry-${scenario.locale}`,width,theme);
+   await pin.fill(again);await confirm.click();await page.waitForFunction(()=>document.querySelector('[data-testid="tap-association-result-claim"]')?.getAttribute('data-outcome')==='claimed');
+   check(current.requests===2&&await confirm.isDisabled()&&await pin.count()===0,label+': one deliberate reentered request accepts only the exact synthetic claim receipt');
+   // A fresh mounted fixture without a supplied PIN must not become a general
+   // PIN requirement for brands whose claim flow does not ask for one.
+   current={withPin:false,requests:0};await page.goto(base+target,{waitUntil:'networkidle'});await page.evaluate(locale=>{document.documentElement.lang=locale;},scenario.locale);
+   await page.waitForFunction(()=>document.querySelector('[data-testid="tap-association-confirm"]')?.disabled===false);check(await pin.inputValue()==='',label+': a new mount starts without a restored secret');await confirm.click();await result.waitFor();
+   check(current.requests===1&&await result.getAttribute('data-outcome')==='rate_limited'&&await confirm.isEnabled()&&await panel.locator('#tap-association-pin-reentry').count()===0,label+': a no-PIN first request keeps an explicit no-PIN retry');
+   await confirm.click();await page.waitForFunction(()=>document.querySelector('[data-testid="tap-association-result-claim"]')?.getAttribute('data-outcome')==='claimed');check(current.requests===2&&await confirm.isDisabled(),label+': optional PIN is not made mandatory by the recovery UI');
+   report.claimPinRateLimit??=[];report.claimPinRateLimit.push({width,theme,locale:scenario.locale,withPinPosts:2,withoutPinPosts:2,explicitReentry:true,actualNextComponent:true,syntheticOnly:true,realOwnershipAccepted:false,secretsRetainedInReport:false});
+  }
+ }finally{await page.unroute(endpoint,handler);}
+}
 
 // Known title conflict in the same actual Next component; synthetic receipts
 // do not prove a real ownership record, transfer or customer operation.

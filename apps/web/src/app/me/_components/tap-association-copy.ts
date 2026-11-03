@@ -5,7 +5,7 @@ type Copy = {
   loginNeeded: string; login: string; checkError: string; checkAgain: string; sending: string; retry: string;
   results: string; done: string; products: string; benefits: string; freshHelp: string;
   alternatives: string; readingDetails: string; history: string; subtitle: string;
-  pinLabel: string; pinHelp: string; pinInputError: string;
+  pinLabel: string; pinHelp: string; pinInputError: string; claimPinReentryHelp: string;
   programChecking: string; programMissing: string; programUnavailable: string; programRetry: string;
   titles: Record<TapAssociationOutcome, string>;
   actions: Record<TapAssociationAction, { label: string; detail: string; button: string; title: string; subtitle: string }>;
@@ -24,6 +24,7 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
     programRetry: "Volver a consultar beneficios",
     pinLabel: "PIN del producto, si la marca lo pide",
     pinHelp: "Usá el PIN que te entregó la marca. Es distinto al código de acceso por email o WhatsApp.",
+    claimPinReentryHelp: "Por seguridad, borramos el PIN de este formulario. Volvé a ingresarlo antes de confirmar otra vez. Esperá un momento; no enviaremos la solicitud automáticamente.",
     pinInputError: "Revisá el PIN e ingresalo tal como te lo entregó la marca, sin espacios. No enviamos la solicitud.",
     titles: {
       saved: "Producto guardado", linked: "Vínculo confirmado", claimed: "Titularidad registrada", enrolled: "Inscripción confirmada",
@@ -76,6 +77,7 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
     programRetry: "Check benefits again",
     pinLabel: "Product PIN, if required by the brand",
     pinHelp: "Use the PIN the brand gave you. It is different from your email or WhatsApp sign-in code.",
+    claimPinReentryHelp: "For your security, we cleared the PIN from this form. Enter it again before confirming another attempt. Wait a moment; we will not send the request automatically.",
     pinInputError: "Check the PIN and enter it exactly as the brand gave it to you, without spaces. No request was sent.",
     titles: {
       saved: "Product saved", linked: "Connection confirmed", claimed: "Digital title registered", enrolled: "Enrollment confirmed",
@@ -121,6 +123,7 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
     programRetry: "Consultar benefícios novamente",
     pinLabel: "PIN do produto, se a marca exigir",
     pinHelp: "Use o PIN que a marca forneceu. Ele é diferente do código de acesso por email ou WhatsApp.",
+    claimPinReentryHelp: "Por segurança, apagamos o PIN deste formulário. Digite-o novamente antes de confirmar outra tentativa. Aguarde um momento; a solicitação não será enviada automaticamente.",
     pinInputError: "Confira o PIN e digite exatamente como a marca forneceu, sem espaços. Nenhuma solicitação foi enviada.",
     titles: {
       saved: "Produto guardado", linked: "Vínculo confirmado", claimed: "Titularidade registrada", enrolled: "Inscrição confirmada",
