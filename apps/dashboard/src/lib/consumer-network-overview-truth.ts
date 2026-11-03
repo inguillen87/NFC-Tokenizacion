@@ -564,3 +564,131 @@ export function withTenantScope(path: string, tenantSlug: string) {
   else url.searchParams.delete("tenant");
   return `${url.pathname}${url.search}${url.hash}`;
 }
+
+/** Internal dashboard view states, never a change to the API wire contract. */
+export type ConsumerOverviewMetricField =
+  | { state: "ready"; value: number }
+  | { state: "missing" | "invalid" | "unavailable"; value: null };
+export type ConsumerOverviewRateField = ConsumerOverviewMetricField | { state: "no_base"; value: null };
+const OVERVIEW_COUNT_KEYS = [
+  "totalActivity", "totalTaps", "customerActions", "activityWithKnownActor", "activityWithoutActor",
+  "recognizedUnits", "knownActors", "verifiedIdentityActors", "activeTenantMembers", "savedProducts", "riskBlockedClaims",
+] as const;
+type OverviewCountKey = (typeof OVERVIEW_COUNT_KEYS)[number];
+type OverviewChannel = "email" | "whatsapp" | "phone";
+export type ConsumerOverviewProjection = {
+  availability: "ready" | "partial";
+  tenant: string | null;
+  provenance: ConsumerNetworkProvenance;
+  counts: Record<OverviewCountKey, ConsumerOverviewMetricField>;
+  channels: Record<OverviewChannel, ConsumerOverviewMetricField>;
+  rate: ConsumerOverviewRateField;
+};
+
+function overviewMetricField(record: JsonRecord, key: string): ConsumerOverviewMetricField {
+  if (!owns(record, key)) return { state: "missing", value: null };
+  const value = nonNegativeInteger(record[key]);
+  return value !== null && Number.isSafeInteger(value)
+    ? { state: "ready", value }
+    : { state: "invalid", value: null };
+}
+
+/** Shares the established envelope/provenance validators with the full parser.
+ * A rejected identity/provenance boundary is never recovered from raw metrics.
+ * Numeric failures withhold their dependency group, leaving independent fields.
+ * parseConsumerNetworkOverview and its existing consumers remain unchanged. */
+export function projectConsumerNetworkOverview(
+  payload: unknown,
+  expectedTenant: string,
+): ConsumerOverviewProjection | null {
+  const envelope = parseEnvelope(payload, expectedTenant);
+  if (!envelope || !["ok", "overview", "provenance", "identityBoundary", "topProductsByClaims"].every(key => owns(envelope.payload, key)) || !isRecord(envelope.payload.overview)) return null;
+  const rawProvenance = isRecord(envelope.payload.provenance) ? envelope.payload.provenance : null;
+  if (!rawProvenance || !["contractVersion", "state", "primaryScope", "timezone", "physicalPresenceClaim", "counts", "hasIsolatedRecords", "latestOperationalAt", "observedAt", "evidenceBasis"].every(key => owns(rawProvenance, key))) return null;
+  const provenanceCounts = isRecord(rawProvenance.counts) ? rawProvenance.counts : null;
+  const evidence = isRecord(rawProvenance.evidenceBasis) ? rawProvenance.evidenceBasis : null;
+  if (!provenanceCounts || !["operationalTap", "declaredDemo", "imported", "legacyUnclassified", "mixed"].every(key => owns(provenanceCounts, key))
+    || !evidence || !["operationalTap", "declaredDemo", "legacyUnclassified"].every(key => owns(evidence, key))) return null;
+  const provenance = parseProvenance(envelope.payload);
+  if (!provenance || Object.values(provenance.counts).some(value => !Number.isSafeInteger(value))) return null;
+  if (!requiredText(envelope.payload.identityBoundary, 600) || !Array.isArray(envelope.payload.topProductsByClaims)) return null;
+  for (const item of envelope.payload.topProductsByClaims) {
+    if (!isRecord(item) || !["product_name", "bid", "claims"].every(key => owns(item, key)) || !requiredText(item.product_name, 240) || !requiredText(item.bid, 160)) return null;
+    const claims = nonNegativeInteger(item.claims);
+    if (claims === null || !Number.isSafeInteger(claims) || claims === 0) return null;
+  }
+
+  const raw = envelope.payload.overview;
+  const counts = Object.fromEntries(OVERVIEW_COUNT_KEYS.map(key => [key, overviewMetricField(raw, key)])) as Record<OverviewCountKey, ConsumerOverviewMetricField>;
+  const consents = owns(raw, "consentedActorsByChannel") && isRecord(raw.consentedActorsByChannel) ? raw.consentedActorsByChannel : null;
+  const absentConsents: ConsumerOverviewMetricField = { state: owns(raw, "consentedActorsByChannel") ? "invalid" : "missing", value: null };
+  const channels = Object.fromEntries((["email", "whatsapp", "phone"] as const).map(key => [key, consents ? overviewMetricField(consents, key) : { ...absentConsents }])) as Record<OverviewChannel, ConsumerOverviewMetricField>;
+
+  // No operational records cannot coexist with any positive operational metric.
+  // This is a source contradiction, not an invitation to salvage other fields.
+  const rawOperationalNumbers = [
+    ...OVERVIEW_COUNT_KEYS.map(key => raw[key]), raw.actorLinkedActivityRate,
+    ...(["email", "whatsapp", "phone"] as const).map(key => consents?.[key]),
+  ];
+  if (provenance.counts.operationalTap === 0 && (
+    rawOperationalNumbers.some(value => typeof value === "number" && value > 0)
+    || envelope.payload.topProductsByClaims.length > 0
+  )) return null;
+  if (counts.totalTaps.state === "ready" && counts.totalTaps.value !== provenance.counts.operationalTap) return null;
+
+  const dependencyState = (fields: ConsumerOverviewMetricField[]): "missing" | "invalid" => fields.some(field => field.state === "invalid") ? "invalid" : "missing";
+  const block = (keys: OverviewCountKey[], state: "missing" | "invalid") => {
+    for (const key of keys) counts[key] = { state, value: null };
+  };
+  const activity = [counts.totalActivity, counts.totalTaps, counts.customerActions];
+  if (activity.every(field => field.state === "ready")) {
+    const [total, taps, actions] = activity.map(field => field.value!);
+    if (!Number.isSafeInteger(taps + actions) || total !== taps + actions) block(["totalActivity", "totalTaps", "customerActions"], "invalid");
+  } else block(["totalActivity"], dependencyState(activity));
+
+  const actorActivity = [counts.totalActivity, counts.activityWithKnownActor, counts.activityWithoutActor];
+  if (actorActivity.every(field => field.state === "ready")) {
+    const [total, linked, unlinked] = actorActivity.map(field => field.value!);
+    if (!Number.isSafeInteger(linked + unlinked) || linked + unlinked !== total || linked > total) block(["totalActivity", "activityWithKnownActor", "activityWithoutActor"], "invalid");
+  } else block(["activityWithKnownActor", "activityWithoutActor"], dependencyState(actorActivity));
+
+  const memberBase = counts.activeTenantMembers;
+  if (counts.verifiedIdentityActors.state === "ready") {
+    if (memberBase.state !== "ready") counts.verifiedIdentityActors = { state: memberBase.state, value: null };
+    else if (counts.verifiedIdentityActors.value > memberBase.value) counts.verifiedIdentityActors = { state: "invalid", value: null };
+  }
+  for (const key of ["email", "whatsapp", "phone"] as const) {
+    const current = channels[key];
+    if (!owns(raw, "consentPurpose") || raw.consentPurpose !== "marketing") {
+      channels[key] = { state: owns(raw, "consentPurpose") ? "invalid" : "missing", value: null };
+    } else if (current.state === "ready") {
+      if (memberBase.state !== "ready") channels[key] = { state: memberBase.state, value: null };
+      else if (current.value > memberBase.value) channels[key] = { state: "invalid", value: null };
+    }
+  }
+
+  let rate: ConsumerOverviewRateField;
+  const rawRate = nonNegativeNumber(raw.actorLinkedActivityRate);
+  if (!owns(raw, "actorLinkedActivityRate")) rate = { state: "missing", value: null };
+  else if (rawRate === null || rawRate > 100) rate = { state: "invalid", value: null };
+  else {
+    const total = counts.totalActivity, linked = counts.activityWithKnownActor;
+    if (total.state !== "ready" || linked.state !== "ready") rate = { state: dependencyState([total, linked]), value: null };
+    else {
+      const expected = total.value > 0 ? Number(((linked.value / total.value) * 100).toFixed(1)) : 0;
+      rate = rawRate !== expected ? { state: "invalid", value: null }
+        : total.value === 0 ? { state: "no_base", value: null }
+          : { state: "ready", value: rawRate };
+    }
+  }
+  return {
+    availability: Object.values(counts).every(field => field.state === "ready")
+      && Object.values(channels).every(field => field.state === "ready")
+      && (rate.state === "ready" || rate.state === "no_base") ? "ready" : "partial",
+    tenant: envelope.tenant,
+    provenance,
+    counts,
+    channels,
+    rate,
+  };
+}
