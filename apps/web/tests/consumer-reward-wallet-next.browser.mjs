@@ -65,7 +65,7 @@ export async function runRewardWalletNextScenarios({browser,origin,fixture,repor
    Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){deliver(window.__walletNextLocation());throw Error('Unexpected GPS');},watchPosition(){deliver(window.__walletNextLocation());throw Error('Unexpected GPS watch');}}});
   });
   const page=await context.newPage();page.setDefaultTimeout(12000);
-  const entry={width,theme,phase,posts:[],rewardsReads:0,walletReads:0,rscReads:0,passed:false,syntheticOnly:true};report.rewardWalletNext.cases.push(entry);
+  const entry={width,theme,phase,posts:[],rewardsReads:0,walletReads:0,rscReads:0,ownedTeardownAborts:[],passed:false,syntheticOnly:true};report.rewardWalletNext.cases.push(entry);
   const gates=[],tasks=new Set();let closing=false;
   page.on('pageerror',error=>report.clientErrors.push({source:'wallet-next',width,theme,phase,message:error.message}));
   page.on('console',message=>{
@@ -81,10 +81,10 @@ export async function runRewardWalletNextScenarios({browser,origin,fixture,repor
    if(url.origin===origin&&url.pathname==='/api/consumer/rewards/'+REWARD+'/claim'&&request.method()==='POST'){
     assert.equal(url.search,'');assert.deepEqual(request.postDataJSON(),{claimIntent:'portal-first-reservation.v1',expectedPointsCost:40,locale:'es-AR'});
     entry.posts.push({path:url.pathname,expectedPointsCost:40,intercepted:true});assert.equal(entry.posts.length,1);postGate=held();await postGate.promise;
-    if(closing)return route.abort();return route.fulfill({status:phase==='uncertain'?409:200,contentType:'application/json',body:JSON.stringify(phase==='uncertain'?{ok:false,error:'synthetic_conflict'}:{ok:true,duplicate:false,claim:{id:CLAIM,reward_id:REWARD,redemption_code:'SYNTHETIC-ACK-NOT-A-RECEIPT'}})});
+    if(closing){const cancellation={method:request.method(),path:url.pathname,errorCode:'aborted',completed:false};entry.ownedTeardownAborts.push(cancellation);await route.abort('aborted');cancellation.completed=true;return;}return route.fulfill({status:phase==='uncertain'?409:200,contentType:'application/json',body:JSON.stringify(phase==='uncertain'?{ok:false,error:'synthetic_conflict'}:{ok:true,duplicate:false,claim:{id:CLAIM,reward_id:REWARD,redemption_code:'SYNTHETIC-ACK-NOT-A-RECEIPT'}})});
    }
    if(url.origin===origin&&url.pathname==='/api/consumer/rewards'&&request.method()==='GET'){
-    entry.rewardsReads++;rewardGate=held();await rewardGate.promise;if(closing)return route.abort();return route.fulfill({status:503,contentType:'application/json',body:'{"ok":false}'});
+    entry.rewardsReads++;rewardGate=held();await rewardGate.promise;if(closing){const cancellation={method:request.method(),path:url.pathname,errorCode:'aborted',completed:false};entry.ownedTeardownAborts.push(cancellation);await route.abort('aborted');cancellation.completed=true;return;}return route.fulfill({status:503,contentType:'application/json',body:'{"ok":false}'});
    }
    if(url.origin===origin&&url.pathname==='/api/consumer/wallet'&&request.method()==='GET'){
     assert.equal(url.search,'');assert.equal(request.postData(),null);entry.walletReads++;
@@ -142,6 +142,8 @@ export async function runRewardWalletNextScenarios({browser,origin,fixture,repor
   }finally{
    closing=true;for(const release of gates)release();await Promise.allSettled([...tasks]);
    try{
+    const expectedAbort=phase==='pending'?{method:'POST',path:'/api/consumer/rewards/'+REWARD+'/claim'}:phase==='checking'?{method:'GET',path:'/api/consumer/rewards'}:null;
+    check(entry.ownedTeardownAborts.length===(expectedAbort?1:0)&&entry.ownedTeardownAborts.every(abort=>abort.completed===true&&abort.errorCode==='aborted'&&abort.method===expectedAbort?.method&&abort.path===expectedAbort?.path),label+': exact owned held-request cancellation during teardown');
     const deliveryErrors=await page.evaluate(async()=>{await Promise.all(window.__walletNextDeliveries||[]);return window.__walletNextDeliveryErrors||0;});
     entry.nativeDeliveriesDrained=true;check(deliveryErrors===0,label+': native error/GPS observation bindings delivered before context close');
    }finally{await context.close();}
