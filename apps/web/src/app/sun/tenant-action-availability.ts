@@ -26,7 +26,7 @@ function amount(value: unknown): value is number {
 }
 export function parseTenantActionConfiguration(value: unknown): TenantActionConfiguration | null {
   const raw = record(value);
-  if (!raw || raw.version !== TENANT_ACTIONS_VERSION || !["published", "unpublished", "unavailable"].includes(String(raw.status))
+  if (!raw || raw.version !== TENANT_ACTIONS_VERSION || typeof raw.status !== "string" || !["published", "unpublished", "unavailable"].includes(raw.status)
     || !Array.isArray(raw.allowedActions) || raw.allowedActions.some(action => !["lead", "feedback", "sommelier", "marketplace"].includes(action))
     || typeof raw.catalogAvailable !== "boolean") return null;
   if (raw.tenantSlug !== undefined && raw.tenantSlug !== null && (!text(raw.tenantSlug, 120) || !/^[a-z0-9][a-z0-9._-]{0,119}$/.test(raw.tenantSlug))) return null;

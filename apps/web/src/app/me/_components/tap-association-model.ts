@@ -1,3 +1,5 @@
+import { fetchConsumerJson } from "./consumer-bounded-fetch";
+import { parseTenantActionConfiguration } from "../../sun/tenant-action-availability";
 import { normalizeSafeReturnPath } from "@product/config/safe-return-path";
 import { normalizeConsumerAuthReturnPath } from "../../login/consumer-login-continuation";
 
@@ -163,5 +165,56 @@ export function createTapAssociationRunner(context: TapAssociationContext, trans
       if (!disposed && tapAssociationConfirmed(result)) onConfirmed?.();
       return result;
     },
+  };
+}
+
+export type TapProgramStatus = "loading" | "available" | "no_program" | "unavailable";
+export type TapProgramState = { key: string; eventId: string; tenant: string; canonicalTenant: string | null; status: TapProgramStatus };
+
+/** Advisory current-program read only. This does not grant enrollment, override
+ * tap policy, reserve a capability, or replace the authoritative POST. */
+export function createTapAssociationProgramReader(context: TapAssociationContext, options: { fetchImpl?: typeof fetch } = {}) {
+  const source = { key: context.key, eventId: context.eventId, tenant: context.tenant };
+  let value: TapProgramState = { ...source, canonicalTenant: null, status: "loading" };
+  let disposed = false, reading = false;
+  let controller: AbortController | null = null;
+  let pending: Promise<TapProgramState | null> | null = null;
+  const listeners = new Set<(state: TapProgramState) => void>();
+  const snapshot = () => ({ ...value });
+  const currentFor = (candidate: TapAssociationContext) => !disposed && candidate.key === source.key
+    && candidate.eventId === source.eventId && candidate.tenant === source.tenant;
+  const publish = () => { for (const listener of listeners) listener(snapshot()); };
+  const read = (): Promise<TapProgramState | null> => {
+    if (disposed) return Promise.resolve(null);
+    if (reading) return pending ?? Promise.resolve(null);
+    reading = true; const active = new AbortController(); controller = active;
+    value = { ...source, canonicalTenant: null, status: "loading" }; publish();
+    pending = (async (): Promise<TapProgramState | null> => {
+      const response = await fetchConsumerJson(`/api/public/passport/${encodeURIComponent(source.eventId)}/configuration`, {
+        method: "GET", credentials: "same-origin", cache: "no-store", redirect: "error", headers: { accept: "application/json" },
+      }, { signal: active.signal, fetchImpl: options.fetchImpl });
+      if (disposed || controller !== active || active.signal.aborted) return null;
+      const body = response.status === "ready" ? record(response.data) : {};
+      const configuration = body.ok === true ? parseTenantActionConfiguration(body.configuration) : null;
+      // The API derives tenant/program from the persisted event. A supplied UI
+      // tenant hint must agree; names/UUIDs/query values cannot substitute it.
+      const canonicalTenant = configuration?.tenantSlug || null;
+      const known = configuration && configuration.status !== "unavailable" && canonicalTenant
+        && (!source.tenant || canonicalTenant === source.tenant);
+      value = { ...source, canonicalTenant: known ? canonicalTenant : null,
+        status: !known ? "unavailable" : configuration?.program ? "available" : "no_program" };
+      publish(); return snapshot();
+    })().catch(() => {
+      if (disposed || controller !== active || active.signal.aborted) return null;
+      value = { ...source, canonicalTenant: null, status: "unavailable" }; publish(); return snapshot();
+    }).finally(() => { if (controller === active) { controller = null; reading = false; pending = null; } });
+    return pending;
+  };
+  return {
+    state: snapshot, currentFor,
+    availableFor: (candidate: TapAssociationContext) => currentFor(candidate) && value.status === "available",
+    subscribe(listener: (state: TapProgramState) => void) { listeners.add(listener); listener(snapshot()); return () => { listeners.delete(listener); }; },
+    read,
+    dispose() { disposed = true; controller?.abort(); controller = null; reading = false; pending = null; listeners.clear(); },
   };
 }

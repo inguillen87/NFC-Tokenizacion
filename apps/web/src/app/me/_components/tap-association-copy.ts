@@ -6,6 +6,7 @@ type Copy = {
   results: string; done: string; products: string; benefits: string; freshHelp: string;
   alternatives: string; readingDetails: string; history: string; subtitle: string;
   pinLabel: string; pinHelp: string; pinInputError: string;
+  programChecking: string; programMissing: string; programUnavailable: string; programRetry: string;
   titles: Record<TapAssociationOutcome, string>;
   actions: Record<TapAssociationAction, { label: string; detail: string; button: string; title: string; subtitle: string }>;
   outcomes: Record<TapAssociationOutcome, string>;
@@ -17,6 +18,10 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
   "es-AR": {
     eyebrow: "Después de tu TAP", title: "¿Qué querés hacer con este producto?", reference: "Referencia de lectura",
     subtitle: "Elegí una opción y confirmala para continuar.", alternatives: "Otras opciones", readingDetails: "Sobre esta lectura", history: "Ver historial de lecturas", benefits: "Ver mis beneficios",
+    programChecking: "Comprobando si la marca tiene un programa de beneficios para esta lectura…",
+    programMissing: "La marca no tiene un programa de beneficios activo para esta lectura.",
+    programUnavailable: "No pudimos consultar los beneficios de esta lectura. Podés volver a consultar sin perder tu selección.",
+    programRetry: "Volver a consultar beneficios",
     pinLabel: "PIN del producto, si la marca lo pide",
     pinHelp: "Usá el PIN que te entregó la marca. Es distinto al código de acceso por email o WhatsApp.",
     pinInputError: "Revisá el PIN e ingresalo tal como te lo entregó la marca, sin espacios. No enviamos la solicitud.",
@@ -63,6 +68,10 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
   en: {
     eyebrow: "After your tap", title: "What would you like to do with this product?", reference: "Reading reference",
     subtitle: "Choose an option and confirm it to continue.", alternatives: "Other options", readingDetails: "About this reading", history: "View reading history", benefits: "View my benefits",
+    programChecking: "Checking whether the brand has a benefits programme for this reading…",
+    programMissing: "The brand has no active benefits programme for this reading.",
+    programUnavailable: "We could not check benefits for this reading. You can check again without losing your selection.",
+    programRetry: "Check benefits again",
     pinLabel: "Product PIN, if required by the brand",
     pinHelp: "Use the PIN the brand gave you. It is different from your email or WhatsApp sign-in code.",
     pinInputError: "Check the PIN and enter it exactly as the brand gave it to you, without spaces. No request was sent.",
@@ -102,6 +111,10 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
   "pt-BR": {
     eyebrow: "Depois do seu toque", title: "O que você quer fazer com este produto?", reference: "Referência da leitura",
     subtitle: "Escolha uma opção e confirme para continuar.", alternatives: "Outras opções", readingDetails: "Sobre esta leitura", history: "Ver histórico de leituras", benefits: "Ver meus benefícios",
+    programChecking: "Verificando se a marca tem um programa de benefícios para esta leitura…",
+    programMissing: "A marca não tem um programa de benefícios ativo para esta leitura.",
+    programUnavailable: "Não foi possível consultar os benefícios desta leitura. Você pode consultar novamente sem perder sua seleção.",
+    programRetry: "Consultar benefícios novamente",
     pinLabel: "PIN do produto, se a marca exigir",
     pinHelp: "Use o PIN que a marca forneceu. Ele é diferente do código de acesso por email ou WhatsApp.",
     pinInputError: "Confira o PIN e digite exatamente como a marca forneceu, sem espaços. Nenhuma solicitação foi enviada.",

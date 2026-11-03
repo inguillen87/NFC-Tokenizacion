@@ -1,3 +1,4 @@
+import * as bounded from "../src/app/me/_components/consumer-bounded-fetch.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -22,6 +23,12 @@ function compile(path, overrides) {
   new Function("require", "module", "exports", js)(name => Object.hasOwn(overrides, name) ? overrides[name] : require(name), loaded, loaded.exports);
   return loaded.exports;
 }
+const configurationReader = compile("../../lib/public-tenant-configuration.ts", {
+  "@product/config": { productUrls: { api: "https://api.example.invalid" } },
+  "../app/me/_components/consumer-bounded-fetch": bounded,
+  "../app/sun/tenant-action-availability": availability,
+  "../app/api/_lib/server-api-transport": { fetchRuntimeApi: () => { throw Error("Unexpected default network read"); } },
+});
 const api = compile("_components/consumer-api.ts", {
   "next/headers": { headers: () => { throw new Error("Unexpected network read"); } },
   "next/navigation": { redirect: () => { throw new Error("Unexpected redirect"); } },
@@ -57,7 +64,7 @@ function setup(destination, options = {}) {
     "./brands-voting-client": { BrandsVotingClient: () => React.createElement("div", { "data-testid": "voting" }) },
     "./marketplace.module.css": css,
     "./marketplace-grid-client": { MarketplaceGridClient: props => { grids.push(props); return React.createElement("div", { "data-testid": "catalog-grid" }, props.items.map(entry => entry.title).join(", ")); } },
-    "../../../lib/public-tenant-configuration": { configurationEventId: value => typeof value === "string" && /^[1-9]\d{0,15}$/.test(value) && Number.isSafeInteger(Number(value)), readPublicTenantConfiguration: async id => { calls.push(["public-configuration", id]); return Object.hasOwn(options, "configuration") ? options.configuration : configuration; } },
+    "../../../lib/public-tenant-configuration": { configurationEventId: configurationReader.configurationEventId, readPublicTenantConfiguration: async id => { calls.push(["public-configuration", id]); return Object.hasOwn(options, "configuration") ? options.configuration : configuration; } },
     "../../sun/tenant-action-availability": availability,
   }).default;
   return { calls, grids, render: async (params = {}) => renderToStaticMarkup(await Page({ searchParams: Promise.resolve(params) })) };
@@ -155,4 +162,14 @@ test("contextual catalog remains bound to server tenant and original event throu
   assert.match(html, /consumer-catalog-unavailable/); assert.doesNotMatch(html, /Consultar el catálogo general|Volver al catálogo|Todavía no hay productos publicados/);
   const ready = setup("marketplace"); await ready.render(params);
   assert.equal(ready.grids[0].postTapEventId, "715"); assert.equal(ready.grids[0].items[0], item);
+});
+
+test("bigint contextual recovery retains exact event and server tenant instead of a general-catalog fallback", async () => {
+  for (const id of ["9007199254740992", "9007199254740993", "9223372036854775806", "9223372036854775807"]) {
+    const params = { fromTap: "1", action: "marketplace", eventId: id, tenant: "untrusted-url-brand" };
+    const failed = setup("marketplace", { catalog: null }), html = await failed.render(params);
+    assert.deepEqual(failed.calls, [["session", api.buildConsumerNextPath("/me/marketplace", params)], ["public-configuration", id], ["catalog", "products?tenant=brand-qa"]]);
+    assert.match(html, /consumer-catalog-unavailable/); assert.doesNotMatch(html, /Volver al catálogo|catálogo general/);
+    const ready = setup("marketplace"); await ready.render(params); assert.equal(ready.grids[0].postTapEventId, id); assert.equal(typeof ready.grids[0].postTapEventId, "string");
+  }
 });

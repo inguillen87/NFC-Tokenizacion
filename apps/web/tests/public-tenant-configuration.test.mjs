@@ -30,7 +30,7 @@ test("public configuration only reads a canonical durable event and strips priva
   assert.equal(calls[0][0], "https://api.example.invalid/public/passport/715/configuration");
   const options = calls[0][1]; assert.equal(options.method, "GET"); assert.equal(options.credentials, "omit"); assert.equal(options.redirect, "error"); assert.equal(options.cache, "no-store");
   assert.deepEqual(options.headers, { accept: "application/json" });
-  for (const value of ["0", "01", "../715", "715?tenant=other", "9007199254740993", "715\n"]) assert.equal(await reader.readPublicTenantConfiguration(value, { fetchImpl }), null);
+  for (const value of ["0", "01", "../715", "715?tenant=other", "9223372036854775808", "715\n"]) assert.equal(await reader.readPublicTenantConfiguration(value, { fetchImpl }), null);
   assert.equal(calls.length, 1);
 });
 test("failed or incomplete configuration responses fail closed within a bounded read", async () => {
@@ -71,4 +71,59 @@ test("BFF only fetches configuration after a private reading has been authorized
   assert.ok(sessionRead >= 0 && unavailableGuard > sessionRead && privateRead > unavailableGuard && publicRead > privateRead);
   assert.match(page, /const configuration = reading \? await readPublicTenantConfiguration\(eventId\) : null/);
   assert.match(page, /reading\.tenantSlug && contextualActions\.marketplace/);
+});
+
+const canonicalEventIds = ["1", "42", "715", "9007199254740991", "9007199254740992", "9007199254740993", "9223372036854775806", "9223372036854775807"];
+const invalidEventIds = ["", "0", "00", "01", "+1", "-1", "1.0", "1e3", "0x1", " 1", "1 ", "1\n", "1\r\n", "1\t", "\n1", "1\u2028", "١", "１２", "1/2", "1?tenant=other", "1#private", "9223372036854775808", "9999999999999999999", "10000000000000000000", null, undefined, 1, 9007199254740992, true, false, [], ["1"], {}, { toString() { throw Error("Must not coerce an event id"); } }];
+
+test("configuration IDs use independent literal bigint boundaries and never coerce non-strings", () => {
+  for (const id of canonicalEventIds) assert.equal(reader.configurationEventId(id), true, id);
+  for (const [index, id] of invalidEventIds.entries()) assert.equal(reader.configurationEventId(id), false, `negative ${index}`);
+});
+
+test("public reader preserves adjacent large ids and max boundary in exact fixed-origin GET paths", async () => {
+  const calls = [];
+  const fetchImpl = async (url, options) => { calls.push({ url, options }); return new Response(JSON.stringify({ ok: true, configuration })); };
+  for (const id of canonicalEventIds) assert.deepEqual(await reader.readPublicTenantConfiguration(id, { fetchImpl }), configuration);
+  assert.deepEqual(calls.map(call => call.url), canonicalEventIds.map(id => `https://api.example.invalid/public/passport/${id}/configuration`));
+  for (const { options } of calls) {
+    assert.equal(options.method, "GET"); assert.equal(options.cache, "no-store"); assert.equal(options.credentials, "omit"); assert.equal(options.redirect, "error");
+    assert.deepEqual(options.headers, { accept: "application/json" }); assert.equal(options.body, undefined);
+  }
+  for (const id of invalidEventIds) assert.equal(await reader.readPublicTenantConfiguration(id, { fetchImpl }), null);
+  assert.equal(calls.length, canonicalEventIds.length, "invalid values perform zero upstream reads");
+});
+
+test("same-origin configuration BFF preserves bigint strings and rejects invalid ids before its reader", async () => {
+  const calls = [], route = load("../src/app/api/public/passport/[eventId]/configuration/route.ts", {
+    "next/server": next,
+    "../../../../../../lib/public-tenant-configuration": { configurationEventId: reader.configurationEventId, readPublicTenantConfiguration: async id => { calls.push(id); return configuration; } },
+  });
+  for (const id of canonicalEventIds) {
+    const response = await route.GET(new Request("https://web.example.invalid/api/public/passport/fixture/configuration"), { params: Promise.resolve({ eventId: id }) });
+    assert.equal(response.status, 200); assert.match(response.headers.get("cache-control"), /private.*no-store/); assert.deepEqual((await response.json()).configuration, configuration);
+  }
+  assert.deepEqual(calls, canonicalEventIds); assert(calls.every(id => typeof id === "string"));
+  for (const id of invalidEventIds) {
+    const response = await route.GET(new Request("https://web.example.invalid/api/public/passport/fixture/configuration"), { params: Promise.resolve({ eventId: id }) });
+    assert.equal(response.status, 400);
+  }
+  assert.equal(calls.length, canonicalEventIds.length);
+});
+
+test("bigint cognitive context stays scoped and publication-gated without a provider call", async t => {
+  let network = 0; t.mock.method(globalThis, "fetch", async () => { network++; throw Error("Unexpected network/provider request"); });
+  for (const id of ["9007199254740992", "9007199254740993", "9223372036854775806", "9223372036854775807"]) {
+    const allowed = cognitive(configuration), response = await allowed.post({ postTapEventId: id });
+    assert.equal(response.status, 200); const body = await response.json(); assert.equal(body.reason, "provider_requires_distributed_authorization"); assert.equal(body.fallback, true);
+    assert.deepEqual(allowed.reads, [id]); assert.equal(typeof allowed.reads[0], "string");
+    for (const [config, status] of [[null, 503], [{ ...configuration, status: "unpublished" }, 403], [{ ...configuration, allowedActions: [] }, 403]]) {
+      const denied = cognitive(config), deniedResponse = await denied.post({ postTapEventId: id });
+      assert.equal(deniedResponse.status, status); assert.equal((await deniedResponse.json()).optimizedText, undefined); assert.deepEqual(denied.reads, [id]);
+    }
+  }
+  for (const id of invalidEventIds.filter(id => id !== undefined)) {
+    const denied = cognitive(configuration), response = await denied.post({ postTapEventId: id }); assert.equal(response.status, 400); assert.deepEqual(denied.reads, []);
+  }
+  assert.equal(network, 0, "all transports and provider paths stay controlled");
 });
