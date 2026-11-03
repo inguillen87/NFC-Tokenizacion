@@ -233,7 +233,11 @@ test("CRM overview renders an interactive, source-separated engagement surface",
   ]);
 
   assert.match(page, /<TenantEngagementPanel[\s\S]*?tenantSlug=\{tenantScope\}[\s\S]*?tenantName=\{tenantName\}[\s\S]*?canRead=\{canReadEngagement\}[\s\S]*?streamEnabled=\{canStreamEngagement\}/);
-  assert.match(page, /Workspace activo:[\s\S]*?\{tenantName\}/);
+  assert.match(page, /const adminContext = await createAdminPageContext\(session, query\.tenant\);/);
+  assert.match(page, /const tenantScope = adminContext\.tenantSlug;/);
+  assert.match(page, /const tenantName = tenantDisplayName\(tenantScope\);/);
+  assert.match(page, /\{tenantScope \? "Empresa actual: " : "Vista de empresas: "\}<b\b[^>]*>\{tenantName\}<\/b>/);
+  assert.doesNotMatch(page, /Workspace activo:/);
   assert.match(component, /Inteligencia post-tap · \{tenantName \|\| tenantSlug\}/);
   assert.match(page, /dashboardPermissionMatches\([\s\S]*?"crm:read"/);
   assert.match(page, /dashboardHighImpactPermissionMatches\([\s\S]*?"events\.read_sensitive"/);
