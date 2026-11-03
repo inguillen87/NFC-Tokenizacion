@@ -43,6 +43,7 @@ export function PortalNavigation() {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const previousPathname = useRef(pathname);
+  const navigationRef = useRef<HTMLElement>(null);
   const dialogId = useId();
   const headingId = useId();
   const currentMore = PORTAL_MORE_DESTINATIONS.find((item) => isPortalDestinationActive(pathname, item.href));
@@ -60,6 +61,83 @@ export function PortalNavigation() {
     }
   }, [pathname, closeMenu]);
 
+  useEffect(() => {
+    const navigation = navigationRef.current;
+    const header = navigation?.closest("header");
+    const portal = navigation?.closest(".consumer-portal-root");
+    if (!(header instanceof HTMLElement) || !(portal instanceof HTMLElement)) return;
+    const property = "--portal-header-block-size";
+    const previous = portal.style.getPropertyValue(property);
+    const previousPriority = portal.style.getPropertyPriority(property);
+    let ownedValue: string | null = null;
+    let disposed = false;
+    let frame = 0;
+    const measure = () => {
+      if (disposed) return;
+      const height = header.getBoundingClientRect().height;
+      if (!Number.isFinite(height) || height <= 0) return;
+      const value = `${Math.ceil(height)}px`;
+      if (value === ownedValue) return;
+      portal.style.setProperty(property, value);
+      ownedValue = value;
+    };
+    const schedule = () => {
+      if (disposed || frame) return;
+      frame = window.requestAnimationFrame(() => { frame = 0; measure(); });
+    };
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(schedule) : null;
+    observer?.observe(header);
+    if (!observer) window.addEventListener("resize", schedule);
+    measure();
+    return () => {
+      disposed = true;
+      observer?.disconnect();
+      if (!observer) window.removeEventListener("resize", schedule);
+      if (frame) window.cancelAnimationFrame(frame);
+      if (ownedValue !== null && portal.style.getPropertyValue(property) === ownedValue && portal.style.getPropertyPriority(property) === "") {
+        if (previous) portal.style.setProperty(property, previous, previousPriority);
+        else portal.style.removeProperty(property);
+      }
+    };
+  }, [pathname]);
+  useEffect(() => {
+    const navigation = navigationRef.current;
+    const portal = navigation?.closest(".consumer-portal-root");
+    if (!(navigation instanceof HTMLElement) || !(portal instanceof HTMLElement)) return;
+    const property = "--portal-navigation-block-size";
+    const previous = portal.style.getPropertyValue(property);
+    const previousPriority = portal.style.getPropertyPriority(property);
+    let ownedValue: string | null = null;
+    let disposed = false;
+    let frame = 0;
+    const measure = () => {
+      if (disposed) return;
+      const height = navigation.getBoundingClientRect().height;
+      if (!Number.isFinite(height) || height <= 0) return;
+      const value = `${Math.ceil(height)}px`;
+      if (value === ownedValue) return;
+      portal.style.setProperty(property, value);
+      ownedValue = value;
+    };
+    const schedule = () => {
+      if (disposed || frame) return;
+      frame = window.requestAnimationFrame(() => { frame = 0; measure(); });
+    };
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(schedule) : null;
+    observer?.observe(navigation);
+    if (!observer) window.addEventListener("resize", schedule);
+    measure();
+    return () => {
+      disposed = true;
+      observer?.disconnect();
+      if (!observer) window.removeEventListener("resize", schedule);
+      if (frame) window.cancelAnimationFrame(frame);
+      if (ownedValue !== null && portal.style.getPropertyValue(property) === ownedValue && portal.style.getPropertyPriority(property) === "") {
+        if (previous) portal.style.setProperty(property, previous, previousPriority);
+        else portal.style.removeProperty(property);
+      }
+    };
+  }, [pathname]);
   function openMenu() {
     if (!dialogRef.current || dialogRef.current.open) return;
     dialogRef.current.showModal();
@@ -68,7 +146,7 @@ export function PortalNavigation() {
 
   return (
     <>
-      <nav className={`consumer-bottom-nav ${styles.navigation}`} aria-label="Navegación del portal">
+      <nav ref={navigationRef} className={`consumer-bottom-nav ${styles.navigation}`} aria-label="Navegación del portal">
         <div className={styles.navigationItems}>
           {PORTAL_PRIMARY_DESTINATIONS.map((item) => {
             const Icon = item.icon;

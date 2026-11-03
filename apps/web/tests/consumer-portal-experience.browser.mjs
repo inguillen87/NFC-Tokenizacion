@@ -30,6 +30,55 @@ async function assessment(page,selector,name,width,theme){
  await page.screenshot({path:join(output,`${name}-${width}-${theme}.png`),fullPage:name==='products'||name==='experience'||name==='marketplace'});
 }
 async function noOverflow(page,label){check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label);}
+
+async function portalNavigationGeometry(page,width,height,theme,phase,{largeText=false}={}){
+ const nav=page.getByRole('navigation',{name:'Navegación del portal',exact:true});
+ await page.evaluate(()=>document.fonts.ready.then(()=>undefined));
+ await page.waitForFunction(()=>{const nav=document.querySelector('nav.consumer-bottom-nav'),root=nav?.closest('.consumer-portal-root');return nav&&root&&Math.abs(parseFloat(root.style.getPropertyValue('--portal-navigation-block-size'))-Math.ceil(nav.getBoundingClientRect().height))<=1;},{},{timeout:10000});
+ const measured=await nav.evaluate(nav=>{
+  const rect=node=>{const r=node.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
+  const contains=(r,b)=>r.left>=b.left-1&&r.right<=b.right+1&&r.top>=b.top-1&&r.bottom<=b.bottom+1;
+  const style=getComputedStyle(nav),dock=rect(nav),root=nav.closest('.consumer-portal-root'),main=document.querySelector('#consumer-portal-content');
+  const controls=[...nav.querySelector(':scope > div').children].filter(node=>node.matches('a,button'));
+  const header=nav.closest('header'),brand=header?.querySelector('[data-brand-home-link]'),graphics=brand?[...brand.querySelectorAll('svg')]:[];
+  const headerInventory={position:getComputedStyle(header).position,bounds:rect(header),compactFlowExpected:matchMedia('(max-width: 63.999rem) and (max-height: 35rem)').matches,brand:brand?{bounds:rect(brand),accessibleLabel:brand.getAttribute('aria-label'),svg:graphics.map(node=>({classes:node.getAttribute('class'),bounds:rect(node)})),staticIdentity:Boolean(brand.querySelector('[data-identity-variant="static"]')),legacyWordmark:brand.querySelectorAll('.brand-wordmark-svg').length}:null};
+  return{viewport:{innerWidth,innerHeight,clientWidth:document.documentElement.clientWidth,documentScrollWidth:document.documentElement.scrollWidth},header:headerInventory,dock,position:style.position,overflowY:style.overflowY,scrollWidth:nav.scrollWidth,clientWidth:nav.clientWidth,scrollHeight:nav.scrollHeight,clientHeight:nav.clientHeight,background:style.backgroundColor,mainBottomPadding:parseFloat(getComputedStyle(main).paddingBottom),reservedHeight:parseFloat(root.style.getPropertyValue('--portal-navigation-block-size')),labels:controls.map(node=>{const span=node.querySelector(':scope > span:not([class*="srOnly"])'),range=document.createRange();range.selectNodeContents(span);const boxes=[...range.getClientRects()].filter(r=>r.width>0&&r.height>0).map(r=>({left:r.left,right:r.right,top:r.top,bottom:r.bottom}));range.detach();const item=rect(node),textStyle=getComputedStyle(span);return{text:span.textContent.trim(),href:node.getAttribute('href'),type:node.tagName,item,textBoxes:boxes,textInsideItem:boxes.length>0&&boxes.every(r=>contains(r,item)),fontSize:parseFloat(textStyle.fontSize),visible:textStyle.display!=='none'&&textStyle.visibility!=='hidden'&&Number(textStyle.opacity)>0};})};
+ });
+ const record={requested:{width,height},theme,phase,largeText,...measured,focusTargets:[]};report.portalNavigationGeometry??=[];report.portalNavigationGeometry.push(record);
+ check(measured.viewport.innerWidth===width&&measured.viewport.innerHeight===height,`${phase}/${theme}: actual CSS viewport recorded`);
+ check(measured.viewport.documentScrollWidth<=measured.viewport.innerWidth+1,`${phase}/${theme}: entire document including header fits the current text/viewport stress`);
+ check(measured.header.brand&&measured.header.brand.accessibleLabel&&measured.header.brand.bounds.left>=-1&&measured.header.brand.bounds.right<=measured.viewport.clientWidth+1,`${phase}/${theme}: actual mounted brand remains within the viewport`);
+ if(measured.header.compactFlowExpected)check(measured.header.position==='static',`${phase}/${theme}: short mobile header scrolls with the document rather than covering content`);
+ check(JSON.stringify(measured.labels.map(item=>item.text))===JSON.stringify(['Inicio','Productos','Historial','Beneficios','Más'])&&JSON.stringify(measured.labels.map(item=>item.href))===JSON.stringify(['/me','/me/products','/me/taps','/me/rewards',null]),`${phase}/${theme}: all five original actions and complete labels remain`);
+ check(measured.labels.every(item=>item.visible&&item.textInsideItem&&item.item.width>=44&&item.item.height>=44),`${phase}/${theme}: every readable label fits its own 44px target without truncation`);
+ if(largeText)check(measured.labels.every(item=>item.fontSize>=31.9),`${phase}/${theme}: stress text remains32px without shrinking`);
+ check(measured.dock.left>=-1&&measured.dock.right<=Math.min(width,measured.viewport.clientWidth)+1&&measured.scrollWidth<=measured.clientWidth+1,`${phase}/${theme}: dock and its content do not overflow horizontally`);
+ check(/^rgb\(/.test(measured.background)||/^rgba\([^,]+,[^,]+,[^,]+,\s*1\)/.test(measured.background),`${phase}/${theme}: dock has a solid theme background`);
+ const mobile=measured.position==='fixed';
+ if(mobile){check(measured.dock.height<=height*.4+1&&measured.dock.bottom<=height+1,`${phase}/${theme}: dock stays within40percent of viewport, leaving content space`);check(Math.abs(measured.reservedHeight-Math.ceil(measured.dock.height))<=1&&measured.mainBottomPadding>=measured.dock.height,`${phase}/${theme}: main reserves the actual dock height`);if(measured.scrollHeight>measured.clientHeight+1)check(['auto','scroll'].includes(measured.overflowY),`${phase}/${theme}: excess rows use an accessible vertical scrollport`);}
+ const controls=nav.locator(':scope > div > a, :scope > div > button');
+ await controls.first().focus();await page.keyboard.press('Shift+Tab');await page.keyboard.press('Tab');
+ for(let index=0;index<5;index++){
+  const control=controls.nth(index);await control.evaluate(node=>node.scrollIntoView({block:'nearest',inline:'nearest'}));
+  const focused=await control.evaluate(node=>{const nav=node.closest('nav'),style=getComputedStyle(nav),r=node.getBoundingClientRect(),d=nav.getBoundingClientRect(),usable={left:d.left+nav.clientLeft,right:d.left+nav.clientLeft+nav.clientWidth,top:d.top+nav.clientTop+parseFloat(style.paddingTop),bottom:d.top+nav.clientTop+nav.clientHeight-parseFloat(style.paddingBottom)};return{focused:document.activeElement===node,top:r.top,bottom:r.bottom,left:r.left,right:r.right,usable,navScrollTop:nav.scrollTop,outlineStyle:getComputedStyle(node).outlineStyle,outlineWidth:parseFloat(getComputedStyle(node).outlineWidth)};});record.focusTargets.push(focused);
+  check(focused.focused&&focused.left>=focused.usable.left-1&&focused.right<=focused.usable.right+1&&focused.top>=focused.usable.top-1&&focused.bottom<=focused.usable.bottom+1,`${phase}/${theme}: action${index+1} can be focused and scrolled fully into its dock`);
+  check(focused.outlineStyle!=='none'&&focused.outlineWidth>=2,`${phase}/${theme}: keyboard focus on action${index+1} has a visible outline`);
+  if(index<4)await page.keyboard.press('Tab');
+ }
+ const target=page.locator('#consumer-portal-content').locator('button:not([disabled]):visible, a[href]:visible, input:not([disabled]):visible, select:not([disabled]):visible, textarea:not([disabled]):visible').first();
+ await target.focus();await target.evaluate(node=>node.scrollIntoView({block:'nearest',inline:'nearest'}));
+ const contentFocus=await target.evaluate(node=>{const r=node.getBoundingClientRect(),header=document.querySelector('.consumer-portal-root > header').getBoundingClientRect(),nav=document.querySelector('nav.consumer-bottom-nav'),dock=nav.getBoundingClientRect(),fixed=getComputedStyle(nav).position==='fixed',band={top:Math.max(0,header.bottom),bottom:fixed?Math.min(innerHeight,dock.top):innerHeight};return{focused:document.activeElement===node,target:{top:r.top,bottom:r.bottom,height:r.height},band,visibleHeight:Math.max(0,Math.min(r.bottom,band.bottom)-Math.max(r.top,band.top)),fullTargetCanFit:band.bottom-band.top>=r.height};});record.contentFocus=contentFocus;
+ check(contentFocus.band.bottom-contentFocus.band.top>=44&&contentFocus.focused&&contentFocus.visibleHeight>=Math.min(44,contentFocus.target.height)-1,`${phase}/${theme}: focused product control has at least a44px usable visible band behind portal chrome`);
+ if(contentFocus.fullTargetCanFit)check(contentFocus.target.top>=contentFocus.band.top-1&&contentFocus.target.bottom<=contentFocus.band.bottom+1,`${phase}/${theme}: content focus fits the available band when its height permits`);
+ return record;
+}
+async function portalNavigationStress(page,theme){
+ const saved=await page.evaluate(()=>{const root=document.querySelector('.consumer-portal-root'),read=(style,key)=>({value:style.getPropertyValue(key),priority:style.getPropertyPriority(key)});return{font:read(document.documentElement.style,'font-size'),safe:Object.fromEntries(['--portal-safe-area-left','--portal-safe-area-right','--portal-safe-area-bottom'].map(key=>[key,read(root.style,key)])),items:[...document.querySelectorAll('nav.consumer-bottom-nav > div > a,nav.consumer-bottom-nav > div > button')].map(node=>read(node.style,'font-size'))};});
+ const cases=[{width:277,height:900,large:false,insets:false},{width:277,height:900,large:true,insets:false},{width:277,height:568,large:true,insets:false},{width:277,height:360,large:true,insets:false},{width:277,height:360,large:true,insets:true}];
+ try{for(const sample of cases){await page.setViewportSize({width:sample.width,height:sample.height});await page.evaluate(({sample,saved})=>{const root=document.querySelector('.consumer-portal-root'),restore=(style,key,entry)=>entry.value?style.setProperty(key,entry.value,entry.priority):style.removeProperty(key);if(sample.large)document.documentElement.style.setProperty('font-size','32px');else restore(document.documentElement.style,'font-size',saved.font);for(const[key,entry]of Object.entries(saved.safe)){if(sample.insets)root.style.setProperty(key,'20px');else restore(root.style,key,entry);}[...root.querySelectorAll('nav.consumer-bottom-nav > div > a,nav.consumer-bottom-nav > div > button')].forEach((node,index)=>{if(sample.large)node.style.setProperty('font-size','32px');else restore(node.style,'font-size',saved.items[index]);});},{sample,saved});await portalNavigationGeometry(page,sample.width,sample.height,theme,`reflow-${sample.width}x${sample.height}-${sample.large?'text32':'default'}-${sample.insets?'safe20':'safe0'}`,{largeText:sample.large});}}
+ finally{await page.evaluate(saved=>{const root=document.querySelector('.consumer-portal-root'),restore=(style,key,entry)=>entry.value?style.setProperty(key,entry.value,entry.priority):style.removeProperty(key);restore(document.documentElement.style,'font-size',saved.font);for(const[key,entry]of Object.entries(saved.safe))restore(root.style,key,entry);[...root.querySelectorAll('nav.consumer-bottom-nav > div > a,nav.consumer-bottom-nav > div > button')].forEach((node,index)=>restore(node.style,'font-size',saved.items[index]));},saved);await page.setViewportSize({width:320,height:900});await page.evaluate(()=>window.scrollTo(0,0));}
+}
+
 async function accountContactScenarios(page,width,theme){
  for(const [path,selector] of [['/me','[aria-labelledby="home-account-title"]'],['/me/passport','#consumer-portal-content'],['/me/privacy','[aria-labelledby="privacy-account-title"]']]){
   await page.goto(base+path,{waitUntil:'networkidle'});const surface=page.locator(selector);await surface.waitFor();
@@ -124,6 +173,8 @@ try{
   await productPhotoRecovery(page,context,width,theme);
   await page.goto(base+'/me/products',{waitUntil:'networkidle',timeout:90000});
   const library=page.getByTestId('consumer-product-library');await library.waitFor();
+  await portalNavigationGeometry(page,width,900,theme,'matrix');
+  if(width===320)await portalNavigationStress(page,theme);
   check(await library.getByRole('button',{name:/Abrir ficha y avisos de /}).count()===12,`${width}/${theme} first page has 12 product actions`);
   check(await library.locator('article').evaluateAll(cards=>cards.every(card=>card.querySelectorAll('button').length===1&&card.querySelectorAll('a,details').length===0)),`${width}/${theme} each card has one action`);
   check(await library.locator('article button').evaluateAll(buttons=>buttons.every(button=>button.getBoundingClientRect().height>=44&&parseFloat(getComputedStyle(button).fontSize)>=14)),`${width}/${theme} product actions are legible touch targets`);

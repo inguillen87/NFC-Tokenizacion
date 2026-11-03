@@ -38,8 +38,8 @@
 .root .back { min-height: 44px; color: var(--security-muted); }
 .contacts { border-color: var(--security-border) !important; background: var(--security-field) !important; }
 .contactRow { gap: 0.75rem; min-width: 0; border-color: var(--security-border) !important; }
-.contactRow > span:first-child { flex-shrink: 0; color: var(--security-muted) !important; }
-.root .contactValue { min-width: 0; overflow-wrap: anywhere; text-align: right; color: var(--security-text); }
+.contactLabel { display: flex; flex-shrink: 0; align-items: center; gap: 0.5rem; color: var(--security-muted) !important; }
+.root .contactValue { margin: 0; min-width: 0; overflow-wrap: anywhere; text-align: right; color: var(--security-text); }
 .successIcon { border-color: var(--security-border) !important; background: var(--security-success-bg) !important; color: var(--security-success) !important; }
 .root :global(input), .root :global(select) {
   min-width: 0; min-height: 44px; border-color: var(--security-border) !important;
@@ -64,3 +64,17 @@
   .contactRow { flex-wrap: wrap; }
   .root .contactValue { flex-basis: 100%; text-align: left; }
 }
+.accessCard { padding: 1.5rem; border-radius: 1.5rem; }
+.accessCard h2 { margin: 0; font-size: 1.25rem; font-weight: 750; }
+.accessCard > p { margin: 0.65rem 0 0; font-size: 0.875rem; line-height: 1.6; }
+.contacts { font-size: 0.875rem; }
+.contactValue { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.accessCard > .accessHint { font-size: 0.8125rem; }
+.supportCard { padding: 1.25rem; border-radius: 1.25rem; box-shadow: none; }
+.supportCard h2 { margin: 0; font-size: 1rem; font-weight: 700; }
+.supportCard > p { margin: 0.5rem 0 0; font-size: 0.875rem; line-height: 1.6; }
+.supportPrimary { display: flex; min-width: 0; min-height: 44px; align-items: center; gap: 0.65rem; margin-top: 0.75rem; padding: 0.75rem; border: 1px solid var(--security-border); border-radius: 0.75rem; background: var(--security-field); color: var(--security-text); font-weight: 700; text-decoration: none; }
+.supportPrimary span { min-width: 0; overflow-wrap: anywhere; }
+.supportChannels { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.65rem; }
+.supportChannels a { display: inline-flex; min-height: 44px; align-items: center; gap: 0.5rem; padding: 0.6rem 0.75rem; border: 1px solid var(--security-border); border-radius: 0.75rem; color: var(--security-muted); font-size: 0.8125rem; font-weight: 600; text-decoration: none; }
+.supportCard > .supportHint { font-size: 0.75rem; }
