@@ -110,6 +110,7 @@ export function ConsumerContactInput({
   channelLocked,
   invalid = false,
   describedBy,
+  purpose = "access",
 }: {
   draft: ConsumerContactDraft;
   onChange: (draft: ConsumerContactDraft) => void;
@@ -119,6 +120,7 @@ export function ConsumerContactInput({
   channelLocked?: ConsumerContactDraft["channel"];
   invalid?: boolean;
   describedBy?: string;
+  purpose?: "access" | "updates";
 }) {
   const activeDraft = channelLocked && draft.channel !== channelLocked ? { ...draft, channel: channelLocked } : draft;
   const selectedOption = COUNTRY_OPTIONS.find((option) => option.code === activeDraft.countryCode) || COUNTRY_OPTIONS[0];
@@ -142,7 +144,9 @@ export function ConsumerContactInput({
             disabled={disabled}
             aria-pressed={draft.channel === channel}
             onClick={() => onChange({ ...draft, channel: channel as ConsumerContactDraft["channel"] })}
-            title={channel === "whatsapp" ? "Solicitar un código en el teléfono con prefijo de país." : "Solicitar un código por email."}
+            title={purpose === "updates"
+              ? channel === "whatsapp" ? "Recibir novedades por WhatsApp en este número." : "Recibir novedades por email."
+              : channel === "whatsapp" ? "Solicitar un código en el teléfono con prefijo de país." : "Solicitar un código por email."}
             className={`min-h-11 rounded-lg px-3 py-2 text-sm font-semibold transition ${
               draft.channel === channel
                 ? "bg-cyan-300 text-slate-950"
@@ -170,7 +174,7 @@ export function ConsumerContactInput({
           autoComplete="email"
           inputMode="email"
           disabled={disabled}
-          title="Email donde recibis el codigo de acceso."
+          title={purpose === "updates" ? "Correo donde recibir novedades de la marca." : "Email donde recibis el codigo de acceso."}
           className={inputClass}
         />
         </div>

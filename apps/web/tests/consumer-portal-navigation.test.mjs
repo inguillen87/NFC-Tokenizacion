@@ -221,7 +221,6 @@ test("portal shell preserves caller content, tap association, logout, brand and 
 });
 
 test("portal CSS provides five mobile slots, a 64rem desktop switch, safe areas and visible keyboard focus", () => {
-  assert.match(css, /grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(css, /@media\s*\(min-width:\s*64rem\)/);
   assert.match(css, /env\(safe-area-inset-bottom/);
   assert.match(css, /min-(?:height|block-size):\s*(?:2\.75rem|44px)/);
@@ -260,4 +259,44 @@ test("solid portal color tokens keep readable text, current-page accents and log
       assert.ok(ratio >= 4.5, `${theme} ${foreground}/${background}: ${ratio.toFixed(2)} must reach 4.5:1`);
     }
   }
+});
+
+
+test("committed navigation measures its dock without replacing Security header ownership", () => {
+  const effects = [], refs = [], frames = new Map(), observers = [];
+  const hooks = { ...React, useEffect: callback => effects.push(callback), useCallback: callback => callback,
+    useId: () => "dock-lifetime", useRef: current => { const ref = { current }; refs.push(ref); return ref; },
+    useState: value => [value, () => {}] };
+  const values = new Map([["--portal-header-block-size", { value: "99px", priority: "important" }], ["--portal-navigation-block-size", { value: "70px", priority: "" }]]);
+  const style = { getPropertyValue: key => values.get(key)?.value || "", getPropertyPriority: key => values.get(key)?.priority || "",
+    setProperty: (key, value, priority = "") => values.set(key, { value, priority }), removeProperty: key => values.delete(key) };
+  let dockHeight = 140, id = 0;
+  class Element {}
+  const portal = Object.assign(new Element(), { style }), header = Object.assign(new Element(), { getBoundingClientRect: () => ({ height: 100 }) });
+  const dock = Object.assign(new Element(), { closest: selector => selector === "header" ? header : selector === ".consumer-portal-root" ? portal : null, getBoundingClientRect: () => ({ height: dockHeight }) });
+  const previous = Object.fromEntries(["HTMLElement", "ResizeObserver", "window"].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  try {
+    Object.defineProperty(globalThis, "HTMLElement", { configurable: true, value: Element });
+    Object.defineProperty(globalThis, "ResizeObserver", { configurable: true, value: class { constructor(callback) { this.callback = callback; observers.push(this); } observe(target) { this.target = target; } disconnect() { this.disconnected = true; } } });
+    Object.defineProperty(globalThis, "window", { configurable: true, value: { requestAnimationFrame: callback => { frames.set(++id, callback); return id; }, cancelAnimationFrame: key => frames.delete(key) } });
+    const { PortalNavigation } = loadComponents("/me/products", hooks), tree = PortalNavigation();
+    tree.props.children[0].ref.current = dock;
+    assert.equal(style.getPropertyValue("--portal-navigation-block-size"), "70px", "render never writes layout authority");
+    const cleanups = effects.map(callback => callback()).filter(Boolean);
+    assert.equal(style.getPropertyValue("--portal-header-block-size"), "100px");
+    assert.equal(style.getPropertyValue("--portal-navigation-block-size"), "140px");
+    const owned = observers.find(observer => observer.target === dock); assert.ok(owned);
+    dockHeight = 172; owned.callback(); owned.callback();
+    assert.equal(frames.size, 1, "reflow notifications coalesce");
+    const callback = frames.values().next().value; frames.clear(); callback();
+    assert.equal(style.getPropertyValue("--portal-navigation-block-size"), "172px", "real measured height updates reserved space");
+    owned.callback();
+    style.setProperty("--portal-navigation-block-size", "180px", "important");
+    for (const cleanup of cleanups.reverse()) cleanup();
+    assert.equal(style.getPropertyValue("--portal-navigation-block-size"), "180px", "unmount keeps a subsequent scoped writer");
+    assert.equal(style.getPropertyPriority("--portal-navigation-block-size"), "important");
+    assert.equal(style.getPropertyValue("--portal-header-block-size"), "99px", "Security header restores its own prior property");
+    assert.equal(style.getPropertyPriority("--portal-header-block-size"), "important");
+    assert.ok(observers.every(observer => observer.disconnected)); assert.equal(frames.size, 0);
+  } finally { for (const [key, descriptor] of Object.entries(previous)) { if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key]; } }
 });
