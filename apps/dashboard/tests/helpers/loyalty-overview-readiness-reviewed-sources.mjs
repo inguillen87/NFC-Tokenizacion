@@ -17,6 +17,13 @@ export const LOYALTY_OVERVIEW_READINESS_REVIEWED_SOURCES=Object.freeze({
   after:'e424c61acbbfc5dfd1c45d68d5b497b1bf64dad5895176d3e3696c59a286afa5',
  }),
 });
+// Copy-only successor of Dashboard556; historical readiness pins stay unchanged.
+export const LOYALTY_OVERVIEW_METRIC_COPY_SOURCE=Object.freeze({
+ path:'apps/dashboard/src/app/(app)/loyalty/overview/page.tsx',
+ base:'34cbe641978f7525a8c832de60a23c80d6e42315',
+ before:'e41b68835d3de5ce817502315a0b8df93a18bdbe16b091d8d0ff84aaffe0ead5',
+ after:'280f1a9f5b964734a2027a734056eb32e6b2b3dfa3954f490410aa049a9002db',
+});
 const baseline=readHistoricalBaseline('release-convergence',readFileSync(new URL('../fixtures/release-convergence-baseline.json',import.meta.url),'utf8'));
 function independentOrigin(path){
  if(path==='apps/dashboard/src/app/(app)/loyalty/overview/page.tsx')return LOYALTY_OVERVIEW_RECOVERY_REVIEWED_SOURCES[path]?.after;
@@ -27,6 +34,10 @@ export function loyaltyOverviewReadinessPriorHash(path,actual){
  if(!Object.hasOwn(LOYALTY_OVERVIEW_READINESS_REVIEWED_SOURCES,path))return actual;
  const pin=LOYALTY_OVERVIEW_READINESS_REVIEWED_SOURCES[path];
  assert.equal(pin.before,independentOrigin(path),path+' independently pinned preceding overview source');
+ if(path===LOYALTY_OVERVIEW_METRIC_COPY_SOURCE.path&&actual===LOYALTY_OVERVIEW_METRIC_COPY_SOURCE.after){
+  assert.equal(LOYALTY_OVERVIEW_METRIC_COPY_SOURCE.before,pin.after,path+' exact preceding Page before metric-copy successor');
+  actual=LOYALTY_OVERVIEW_METRIC_COPY_SOURCE.before;
+ }
  assert.equal(actual,pin.after,path+' exact reviewed overview readiness increment');
  return pin.before;
 }

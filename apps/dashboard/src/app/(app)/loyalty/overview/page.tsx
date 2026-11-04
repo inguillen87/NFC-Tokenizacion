@@ -188,21 +188,21 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <article className="min-w-0 rounded-xl border border-white/10 bg-slate-900/50 p-4" data-source-mode={loyaltyRead.source}>
-          <p className="text-xs uppercase tracking-widest text-slate-400">Total Miembros</p>
+          <p className="text-xs uppercase tracking-widest text-slate-400">Inscripciones en programas</p>
           <p className="mt-2 text-3xl font-bold text-white tabular-nums [overflow-wrap:anywhere]">{metricText(overview.total_members, loyaltyRead.source !== "unavailable")}</p>
-          <p className="mt-1 text-xs text-slate-500">{missingMetricCopy(overview.total_members, loyaltyRead.reason, "Miembros enrolados en el programa")}</p>
+          <p className="mt-1 text-xs text-slate-500">{missingMetricCopy(overview.total_members, loyaltyRead.reason, "Una persona puede figurar en varios programas activos.")}</p>
           {loyaltyRead.source === "demo" ? <p className="mt-2 text-xs font-semibold text-amber-200">Demo</p> : null}
         </article>
         <article className="min-w-0 rounded-xl border border-white/10 bg-slate-900/50 p-4" data-source-mode={loyaltyRead.source}>
-          <p className="text-xs uppercase tracking-widest text-slate-400">Puntos Emitidos</p>
+          <p className="text-xs uppercase tracking-widest text-slate-400">Puntos acreditados</p>
           <p className="mt-2 text-3xl font-bold text-white tabular-nums [overflow-wrap:anywhere]">{metricText(overview.points_issued, loyaltyRead.source !== "unavailable")}</p>
-          <p className="mt-1 text-xs text-slate-500">{missingMetricCopy(overview.points_issued, loyaltyRead.reason, "Puntos otorgados por la plataforma")}</p>
+          <p className="mt-1 text-xs text-slate-500">{missingMetricCopy(overview.points_issued, loyaltyRead.reason, "Total de puntos sumados en programas activos.")}</p>
           {loyaltyRead.source === "demo" ? <p className="mt-2 text-xs font-semibold text-amber-200">Demo</p> : null}
         </article>
         <article className="min-w-0 rounded-xl border border-white/10 bg-slate-900/50 p-4" data-source-mode={loyaltyRead.source}>
-          <p className="text-xs uppercase tracking-widest text-slate-400">Puntos Canjeados</p>
+          <p className="text-xs uppercase tracking-widest text-slate-400">Puntos debitados</p>
           <p className="mt-2 text-3xl font-bold text-white tabular-nums [overflow-wrap:anywhere]">{metricText(overview.points_redeemed, loyaltyRead.source !== "unavailable")}</p>
-          <p className="mt-1 text-xs text-emerald-400">{missingMetricCopy(overview.points_redeemed, loyaltyRead.reason, "Canjes confirmados por la fuente")}</p>
+          <p className="mt-1 text-xs text-emerald-400">{missingMetricCopy(overview.points_redeemed, loyaltyRead.reason, "Total de puntos descontados en programas activos, por canjes u otros movimientos.")}</p>
           {loyaltyRead.source === "demo" ? <p className="mt-2 text-xs font-semibold text-amber-200">Demo</p> : null}
         </article>
         <article className="min-w-0 rounded-xl border border-rose-500/20 bg-rose-950/20 p-4" data-source-mode={consumerRead.source}>

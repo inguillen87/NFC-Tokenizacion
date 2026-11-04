@@ -8,7 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import * as permissions from "../src/lib/permission-policy.ts";
 import * as consumerTruth from "../src/lib/consumer-network-overview-truth.ts";
-import { loyaltyOverviewReadinessPriorHash, LOYALTY_OVERVIEW_READINESS_REVIEWED_SOURCES } from "./helpers/loyalty-overview-readiness-reviewed-sources.mjs";
+import { loyaltyOverviewReadinessPriorHash, LOYALTY_OVERVIEW_READINESS_REVIEWED_SOURCES, LOYALTY_OVERVIEW_METRIC_COPY_SOURCE } from "./helpers/loyalty-overview-readiness-reviewed-sources.mjs";
 import { resolveDashboardTenantScope } from "../src/lib/dashboard-tenant-scope-policy.ts";
 import { LOYALTY_OVERVIEW_RECOVERY_SOURCE_BASE, LOYALTY_OVERVIEW_RECOVERY_REVIEWED_SOURCES, loyaltyOverviewRecoveryPriorHash } from "./helpers/loyalty-overview-recovery-reviewed-sources.mjs";
 import { REWARD_PROGRAM_CONTEXT_REVIEWED_SOURCES } from "./helpers/reward-program-context-reviewed-sources.mjs";
@@ -129,9 +129,9 @@ function article(result, label) {
 test("compiled Page retains valid module values, real zero points and company-bound links", async () => {
   const result = await mount().run();
   assertBoundReads(result);
-  assert.match(article(result, "Total Miembros"), /123/);
-  assert.match(article(result, "Puntos Emitidos"), /456/);
-  assert.match(article(result, "Puntos Canjeados"), /78/);
+  assert.match(article(result, "Inscripciones en programas"), /123/);
+  assert.match(article(result, "Puntos acreditados"), /456/);
+  assert.match(article(result, "Puntos debitados"), /78/);
   assert.match(article(result, "Titularidad con restricciones"), /7/);
   assert.match(result.html, /Beneficio de control QA/);
   assert.match(result.html, /0 pts/);
@@ -152,14 +152,14 @@ for (const failed of Object.keys(paths)) {
       assertBoundReads(result);
       assert.match(result.html, /Fuentes parciales/);
       assert.doesNotMatch(result.html, /PRIVATE_SOURCE_FAILURE|PRIVATE_INVALID_JSON|NaN|Infinity/);
-      const members = article(result, "Total Miembros");
+      const members = article(result, "Inscripciones en programas");
       const claims = article(result, "Titularidad con restricciones");
       if (failed === "loyalty") {
-        for (const label of ["Total Miembros", "Puntos Emitidos", "Puntos Canjeados"]) {
+        for (const label of ["Inscripciones en programas", "Puntos acreditados", "Puntos debitados"]) {
           assert.match(article(result, label), /—/);
           assert.match(article(result, label), /Fuente no disponible/);
         }
-        assert.doesNotMatch(members, /123|Miembros enrolados/);
+        assert.doesNotMatch(members, /123|Una persona puede figurar/);
       } else assert.match(members, /123/);
       if (failed === "consumer") {
         assert.match(claims, /—/);
@@ -278,13 +278,32 @@ function metricCard(result, label) {
   return matches[0];
 }
 const metricValue = (result, label) => text(metricCard(result, label).props.children[1]);
+
+test("loyalty cards distinguish program enrollments and point credits/debits from people or confirmed redemptions", async () => {
+  for (const totals of [loyalty, { active_programs: 0, total_members: 0, points_issued: 0, points_redeemed: 0 }]) {
+    const result = await mount({ responseFor: path => apiResponse(path === paths.loyalty ? totals : bodyFor(path)) }).run();
+    assertBoundReads(result);
+    for (const [key, label] of [["total_members", "Inscripciones en programas"], ["points_issued", "Puntos acreditados"], ["points_redeemed", "Puntos debitados"]]) assert.equal(metricValue(result, label), String(totals[key]));
+    assert.match(article(result, "Inscripciones en programas"), /Una persona puede figurar en varios programas activos\./);
+    assert.match(article(result, "Puntos acreditados"), /Total de puntos sumados en programas activos\./);
+    assert.match(article(result, "Puntos debitados"), /Total de puntos descontados en programas activos, por canjes u otros movimientos\./);
+    assert.doesNotMatch(result.html, /Total Miembros|Miembros enrolados|Inscripciones activas|Puntos Emitidos|Puntos otorgados por la plataforma|Puntos Canjeados|Canjes confirmados/);
+  }
+  const path = "apps/dashboard/src/app/(app)/loyalty/overview/page.tsx", copy = LOYALTY_OVERVIEW_METRIC_COPY_SOURCE;
+  assert.equal(copy.path, path);
+  assert.equal(copy.base, "34cbe641978f7525a8c832de60a23c80d6e42315");
+  assert.equal(copy.before, LOYALTY_OVERVIEW_READINESS_REVIEWED_SOURCES[path].after);
+  const actual = createHash("sha256").update(pageSource.replaceAll("\r\n", "\n")).digest("hex");
+  assert.equal(actual, copy.after);
+  assert.equal(loyaltyOverviewReadinessPriorHash(path, actual), LOYALTY_OVERVIEW_READINESS_REVIEWED_SOURCES[path].before);
+});
 function assertConsumerWithheld(result) {
   for (const label of ["Titularidad con restricciones", "Actores conocidos", "Identidad verificada", "Email opt-in", "WhatsApp opt-in", "Teléfono opt-in"]) assert.equal(metricValue(result, label), "—", label);
-  assert.match(article(result, "Total Miembros"), /123/);
+  assert.match(article(result, "Inscripciones en programas"), /123/);
   assert.match(result.html, /Beneficio de control QA/);
 }
 
-for (const [key, label] of [["total_members", "Total Miembros"], ["points_issued", "Puntos Emitidos"], ["points_redeemed", "Puntos Canjeados"]]) {
+for (const [key, label] of [["total_members", "Inscripciones en programas"], ["points_issued", "Puntos acreditados"], ["points_redeemed", "Puntos debitados"]]) {
   test(`loyalty ${key}: missing or invalid wire values withhold only that field and preserve other explicit numbers`, async () => {
     const invalid = [null, false, "", "0", "NaN", "Infinity", [], {}, -1, 1.5, Number.MAX_SAFE_INTEGER + 1];
     for (const value of [undefined, ...invalid]) {
@@ -293,9 +312,10 @@ for (const [key, label] of [["total_members", "Total Miembros"], ["points_issued
       const result = await mount({ responseFor: path => apiResponse(path === paths.loyalty ? body : bodyFor(path)) }).run();
       assertBoundReads(result);
       assert.equal(metricValue(result, label), "—", `${key}: ${JSON.stringify(value)}`);
+      assert.doesNotMatch(article(result, label), /Una persona puede figurar|Total de puntos sumados|Total de puntos descontados/);
       assert.match(result.html, /Fuentes parciales/);
       assert.equal(metricValue(result, "Titularidad con restricciones"), "7");
-      for (const [other, title] of [["total_members", "Total Miembros"], ["points_issued", "Puntos Emitidos"], ["points_redeemed", "Puntos Canjeados"]]) {
+      for (const [other, title] of [["total_members", "Inscripciones en programas"], ["points_issued", "Puntos acreditados"], ["points_redeemed", "Puntos debitados"]]) {
         if (other !== key) assert.equal(metricValue(result, title), String(loyalty[other]));
       }
     }
@@ -306,7 +326,7 @@ test("loyalty bare four-field zero response is confirmed without a consumer enve
   const result = await mount({ responseFor: path => apiResponse(path === paths.loyalty
     ? { active_programs: 0, total_members: 0, points_issued: 0, points_redeemed: 0 } : bodyFor(path)) }).run();
   assertBoundReads(result);
-  for (const label of ["Total Miembros", "Puntos Emitidos", "Puntos Canjeados"]) assert.equal(metricValue(result, label), "0");
+  for (const label of ["Inscripciones en programas", "Puntos acreditados", "Puntos debitados"]) assert.equal(metricValue(result, label), "0");
   assert.doesNotMatch(result.html, /Fuentes parciales/);
 });
 
@@ -316,7 +336,7 @@ test("real Page read preserves a large safe count in full without abbreviation o
   const result = await mount({ responseFor: path => apiResponse(path === paths.loyalty
     ? { ...loyalty, total_members: Number.MAX_SAFE_INTEGER } : path === paths.consumer ? body : bodyFor(path)) }).run();
   assertBoundReads(result);
-  assert.equal(metricValue(result, "Total Miembros"), "9.007.199.254.740.991");
+  assert.equal(metricValue(result, "Inscripciones en programas"), "9.007.199.254.740.991");
   assert.equal(metricValue(result, "Actores conocidos"), "9.007.199.254.740.991");
   assert.equal(metricValue(result, "Titularidad con restricciones"), "7");
   assert.doesNotMatch(result.html, /Fuentes parciales|NaN|Infinity/);
@@ -493,7 +513,7 @@ test("missing or unknown BFF mode never defaults all sources to production", asy
   for (const mode of [null, "", "real", "unknown"]) {
     const result = await mount({ responseFor: path => mode === null ? Response.json(bodyFor(path)) : apiResponse(bodyFor(path), 200, mode) }).run();
     assertBoundReads(result);
-    for (const label of ["Total Miembros", "Puntos Emitidos", "Puntos Canjeados", "Titularidad con restricciones"]) assert.equal(metricValue(result, label), "—");
+    for (const label of ["Inscripciones en programas", "Puntos acreditados", "Puntos debitados", "Titularidad con restricciones"]) assert.equal(metricValue(result, label), "—");
     assert.doesNotMatch(result.html, /Beneficio de control QA|No hay recompensas configuradas todavía/);
   }
 });
@@ -501,12 +521,12 @@ test("missing or unknown BFF mode never defaults all sources to production", asy
 test("known demo metadata has strict boolean/source types while production false or absent remains valid", async () => {
   for (const patch of [{}, { demo: false, demoMode: false, dataSource: "production" }]) {
     const result = await mount({ responseFor: path => apiResponse({ ...copy(bodyFor(path)), ...patch }) }).run();
-    assert.equal(metricValue(result, "Total Miembros"), "123");
+    assert.equal(metricValue(result, "Inscripciones en programas"), "123");
     assert.equal(metricValue(result, "Titularidad con restricciones"), "7");
   }
   for (const patch of [{ demo: "true" }, { demo: null }, { demo: true }, { demoMode: "false" }, { demoMode: null }, { demoMode: true }, { dataSource: "demo" }, { dataSource: null }]) {
     const result = await mount({ responseFor: path => apiResponse({ ...copy(bodyFor(path)), ...patch }) }).run();
-    for (const label of ["Total Miembros", "Titularidad con restricciones"]) assert.equal(metricValue(result, label), "—");
+    for (const label of ["Inscripciones en programas", "Titularidad con restricciones"]) assert.equal(metricValue(result, label), "—");
     assert.doesNotMatch(result.html, /Beneficio de control QA/);
   }
 });
@@ -516,7 +536,7 @@ test("demo data needs an allowed demo session and cannot carry positive operatio
   const operational = await mount({ responseFor: path => apiResponse(demoBody(path), 200, "demo") }).run();
   for (const label of ["Titularidad con restricciones", "Actores conocidos", "Identidad verificada", "Email opt-in", "WhatsApp opt-in", "Teléfono opt-in"]) assert.equal(metricValue(operational, label), "—");
   assert.doesNotMatch(operational.html, /Beneficio de control QA|No hay recompensas configuradas todavía/);
-  assert.equal(metricValue(operational, "Total Miembros"), "—");
+  assert.equal(metricValue(operational, "Inscripciones en programas"), "—");
   const allowed = await mount({ session: { ...principal, isDemo: true }, responseFor: path => apiResponse(demoBody(path), 200, "demo") }).run();
   assertBoundReads(allowed);
   assert.equal(metricValue(allowed, "Titularidad con restricciones"), "0");
@@ -529,7 +549,7 @@ test("demo data needs an allowed demo session and cannot carry positive operatio
   const contradiction = await mount({ session: { ...principal, isDemo: true }, responseFor: path => apiResponse(path === paths.consumer
     ? { ...copy(consumer), demo: true, demoMode: true, dataSource: "demo" } : demoBody(path), 200, "demo") }).run();
   assert.equal(metricValue(contradiction, "Titularidad con restricciones"), "—");
-  assert.equal(metricValue(contradiction, "Total Miembros"), "123");
+  assert.equal(metricValue(contradiction, "Inscripciones en programas"), "123");
 });
 
 test("reward validation checks the whole scoped collection, including an invalid sixth row, before five are shown", async () => {
@@ -545,7 +565,7 @@ test("reward validation checks the whole scoped collection, including an invalid
     assertBoundReads(result);
     assert.match(result.html, /Fuente de recompensas no disponible/);
     assert.doesNotMatch(result.html, /Beneficio de control QA|No hay recompensas configuradas todavía/);
-    assert.equal(metricValue(result, "Total Miembros"), "123");
+    assert.equal(metricValue(result, "Inscripciones en programas"), "123");
     assert.equal(metricValue(result, "Titularidad con restricciones"), "7");
   }
 });
@@ -572,11 +592,11 @@ test("a mixed authorized demo marks only its demo blocks and preserves productio
     ? apiResponse({ ...loyalty, demo: true, demoMode: true, dataSource: "demo" }, 200, "demo")
     : apiResponse(bodyFor(path)) }).run();
   assertBoundReads(result);
-  assert.equal(metricValue(result, "Total Miembros"), "123");
+  assert.equal(metricValue(result, "Inscripciones en programas"), "123");
   assert.equal(metricValue(result, "Titularidad con restricciones"), "7");
-  assert.equal(metricCard(result, "Total Miembros").props["data-source-mode"], "demo");
+  assert.equal(metricCard(result, "Inscripciones en programas").props["data-source-mode"], "demo");
   assert.equal(metricCard(result, "Titularidad con restricciones").props["data-source-mode"], "production");
-  assert.match(article(result, "Total Miembros"), /Demo/);
+  assert.match(article(result, "Inscripciones en programas"), /Demo/);
   assert.doesNotMatch(article(result, "Titularidad con restricciones"), /Demo/);
   assert.match(result.html, /Datos de demostración en: puntos y miembros\./);
   assert.doesNotMatch(result.html, /No representan actividad de clientes reales/);
@@ -586,7 +606,7 @@ test("a mixed authorized demo marks only its demo blocks and preserves productio
 test("reward read denial keeps other permitted sources visible without claiming an empty catalog", async () => {
   const result = await mount({ responseFor: path => path === paths.rewards ? apiResponse({ ok: false }, 403) : apiResponse(bodyFor(path)) }).run();
   assertBoundReads(result);
-  assert.equal(metricValue(result, "Total Miembros"), "123");
+  assert.equal(metricValue(result, "Inscripciones en programas"), "123");
   assert.equal(metricValue(result, "Titularidad con restricciones"), "7");
   assert.match(result.html, /Fuente de recompensas no disponible/);
   assert.doesNotMatch(result.html, /No hay recompensas configuradas todavía/);
