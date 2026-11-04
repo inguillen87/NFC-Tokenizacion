@@ -30,7 +30,7 @@
   --portal-shadow: 0 12px 34px rgba(0, 0, 0, .18);
 }
 
-.header { position: sticky; top: 0; z-index: 50; width: 100%; border-bottom: 1px solid var(--portal-border); background: var(--portal-surface); box-shadow: var(--portal-shadow); }
+.header { position: static; top: 0; z-index: 50; width: 100%; border-bottom: 1px solid var(--portal-border); background: var(--portal-surface); box-shadow: var(--portal-shadow); }
 .headerRow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .65rem; width: min(100%, 88rem); min-height: 4.75rem; margin-inline: auto; padding: .55rem max(.85rem, env(safe-area-inset-right)) .55rem max(.85rem, env(safe-area-inset-left)); }
 .brandArea { display: flex; align-items: center; gap: 1rem; min-width: 0; }
 .header .brand { display: inline-flex; min-width: 0; min-height: 3.5rem; border-radius: .85rem; }
@@ -59,7 +59,7 @@
 .portal .logoutControl button > span { display: none; }
 .portal .accountControls button:hover { border-color: var(--portal-accent); }
 
-.main { scroll-margin-block-start: calc(var(--portal-header-block-size, 6rem) + 0.75rem); width: min(100%, 88rem); min-width: 0; margin-inline: auto; padding: 1.5rem max(1rem, env(safe-area-inset-right)) calc(var(--portal-navigation-block-size, calc(5rem + env(safe-area-inset-bottom))) + 1rem) max(1rem, env(safe-area-inset-left)); }
+.main { scroll-margin-block-start: .75rem; width: min(100%, 88rem); min-width: 0; margin-inline: auto; padding: 1.5rem max(1rem, env(safe-area-inset-right)) calc(var(--portal-navigation-block-size, calc(5rem + env(safe-area-inset-bottom))) + 1rem) max(1rem, env(safe-area-inset-left)); }
 .pageHeading { max-width: 60rem; margin-bottom: 1.4rem; }
 .pageHeading h1 { margin: 0; color: var(--portal-text); font-size: clamp(1.7rem, 3.5vw, 2.7rem); font-weight: 800; line-height: 1.12; letter-spacing: -.035em; overflow-wrap: anywhere; }
 .pageHeading p { margin: .65rem 0 0; color: var(--portal-muted); font-size: .95rem; line-height: 1.65; }
@@ -76,7 +76,7 @@
 .navigation { box-sizing: border-box; max-block-size: 40vh; max-block-size: 40dvh; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: .45rem max(.45rem, var(--portal-safe-area-bottom, env(safe-area-inset-bottom))); }
 .navigationItem > span:not(.srOnly) { font-size: inherit; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
 :global(html[data-theme]) .portal .navigation { background: var(--portal-surface) !important; }
-.content :where(a, button, input, select, textarea, [tabindex]) { scroll-margin-block-start: calc(var(--portal-header-block-size, 6rem) + .75rem); scroll-margin-block-end: calc(var(--portal-navigation-block-size, calc(5rem + env(safe-area-inset-bottom))) + .75rem); }
+.content :where(a, button, input, select, textarea, [tabindex]) { scroll-margin-block-start: .75rem; scroll-margin-block-end: calc(var(--portal-navigation-block-size, calc(5rem + env(safe-area-inset-bottom))) + .75rem); }
 .navigationItem > svg { width: 1.25rem; height: 1.25rem; flex-shrink: 0; }
 .navigationItem[aria-current="page"], .navigationItem[data-active="true"] { border-color: var(--portal-border); background: var(--portal-active); color: var(--portal-accent); }
 .navigationItem:hover, .moreLink:hover { background: var(--portal-subtle); color: var(--portal-accent); }
@@ -109,7 +109,10 @@
   .moreLinks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
+/* The mobile dock owns persistent navigation; the header stays in flow.
+   Desktop moves navigation into the header, so only that layout is sticky. */
 @media (min-width: 64rem) {
+  .header { position: sticky; }
   .headerRow { min-height: 5.25rem; }
   .portal .logoutControl button { padding-inline: .85rem; }
   .portal .logoutControl button > span { display: inline; }
@@ -118,16 +121,7 @@
   .navigationItem { flex: 0 0 auto; flex-direction: row; gap: .5rem; min-height: 2.75rem; padding: .55rem 1rem; font-size: .85rem; }
   .navigationPlaceholder { min-height: 3.5rem; }
   .main { padding-bottom: 3rem; scroll-margin-block-start: calc(var(--portal-header-block-size, 10rem) + 0.75rem); }
-  .content :where(a, button, input, select, textarea, [tabindex]) { scroll-margin-block-end: .75rem; }
-}
-
-/* Short mobile viewports need the header in document flow so enlarged text,
-   the bounded dock and focus scroll margins leave room for content. The existing
-   owner still measures header/dock; only the non-occluding start margin changes. */
-@media (max-width: 63.999rem) and (max-height: 40rem) {
-  .header { position: static; }
-  .main { scroll-margin-block-start: .75rem; }
-  .content :where(a, button, input, select, textarea, [tabindex]) { scroll-margin-block-start: .75rem; }
+  .content :where(a, button, input, select, textarea, [tabindex]) { scroll-margin-block-start: calc(var(--portal-header-block-size, 10rem) + .75rem); scroll-margin-block-end: .75rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
