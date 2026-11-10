@@ -177,6 +177,36 @@ try {
   if(axe&&locale==='es-AR'){await page.addScriptTag({content:axe});const violations=await page.evaluate(async selector=>(await axe.run(selector,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})),name==='empty'?'[data-testid="sun-demo-gallery"]':'#sun-summary');check(!violations.length,`Availability accessibility ${name}`);report.views.push({width:390,state:name,locale,violations});}
   await context.close();
  }
+ for(const theme of ['light','dark']){
+   const context=await browser.newContext({viewport:{width:360,height:780},locale:'es-AR',reducedMotion:'reduce',serviceWorkers:'block'});
+   try{
+     await context.addCookies([{name:'theme',value:theme,url:origin},{name:'nexid_theme_version',value:'white-first-v2',url:origin}]);
+     const page=await context.newPage();page.on('pageerror',e=>report.errors.push(e.message));
+     await page.route('**/*',route=>{
+       const request=route.request(),url=new URL(request.url());
+       if(request.method()!=='GET'){report.blockedWrites++;return route.abort();}
+       if(url.origin!==origin)return route.abort();
+       if(url.pathname.startsWith('/api/'))return route.fulfill({status:404,contentType:'application/json',body:'{"ok":false}'});
+       return route.continue();
+     });
+     await page.goto(origin+'/sun?demo=1&profile=valle-secreto&scenario=closed&lang=es-AR',{waitUntil:'networkidle'});
+     const summary=page.locator('#sun-summary'),status=summary.getByTestId('sun-summary-status');
+     const title=summary.getByRole('heading',{level:1,name:'Profundo 2019'});
+     const badge=summary.getByText('MUESTRA DEMO · SIN TAP FÍSICO',{exact:true});
+     const seal=status.getByRole('heading',{level:2});
+     const selector=page.getByTestId('sun-demo-scenario-selector');
+     check(await page.locator('html').getAttribute('data-theme')===theme,`Valle Secreto uses requested theme ${theme}`);
+     for(const [label,element] of [['product title',title],['demo label',badge],['simulated seal headline',seal]]){
+       check(await element.evaluate(node=>{
+         const rect=node.getBoundingClientRect();
+         return rect.width>0&&rect.height>0&&rect.left>=0&&rect.right<=innerWidth+1&&rect.top>=0&&rect.bottom<=innerHeight+1;
+       }),`Valle Secreto shows ${label} in the 360×780 viewport ${theme}`);
+     }
+     check(await status.getAttribute('data-demo-scenario')==='closed',`Valle Secreto retains the simulated seal state ${theme}`);
+     check(await selector.evaluate(node=>Boolean(document.querySelector('#sun-summary')?.compareDocumentPosition(node)&Node.DOCUMENT_POSITION_FOLLOWING)),`Valle Secreto comparison follows the product summary ${theme}`);
+     check(await selector.getByRole('link').count()===3&&await selector.getByRole('link',{name:'Cerrado',exact:true}).getAttribute('aria-current')==='page',`Valle Secreto comparison retains three links and current state ${theme}`);
+   }finally{await context.close();}
+ }
  for(const [state,tone,headline] of [
   ['seal-unknown','verified','Identidad NFC validada'],
   ['unsupported','verified','Identidad NFC validada'],

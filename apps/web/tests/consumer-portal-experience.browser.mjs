@@ -30,6 +30,116 @@ async function assessment(page,selector,name,width,theme){
  await page.screenshot({path:join(output,`${name}-${width}-${theme}.png`),fullPage:name==='products'||name==='experience'||name==='marketplace'});
 }
 async function noOverflow(page,label){check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label);}
+
+async function waitForPortalNavigationLayout(page,width,height,theme,phase){
+ let poll,settled;
+ try{
+  poll=await page.evaluateHandle(({width,height})=>{
+   const sample=()=>{
+    const nav=document.querySelector('nav.consumer-bottom-nav'),root=nav?.closest('.consumer-portal-root'),main=document.querySelector('#consumer-portal-content'),header=nav?.closest('header');
+    if(!nav||!root||!main||!header)return null;
+    const dock=nav.getBoundingClientRect(),head=header.getBoundingClientRect(),style=getComputedStyle(nav);
+    return{innerWidth,innerHeight,clientWidth:document.documentElement.clientWidth,documentScrollWidth:document.documentElement.scrollWidth,
+     dock:{left:dock.left,right:dock.right,top:dock.top,bottom:dock.bottom,width:dock.width,height:dock.height},
+     position:style.position,maxBlockSize:style.maxBlockSize,scrollHeight:nav.scrollHeight,clientHeight:nav.clientHeight,
+     reservedHeight:parseFloat(root.style.getPropertyValue('--portal-navigation-block-size')),mainBottomPadding:parseFloat(getComputedStyle(main).paddingBottom),
+     header:{top:head.top,bottom:head.bottom,height:head.height,position:getComputedStyle(header).position}};
+   };
+   let previous=null,stableIntervals=0;
+   return()=>{
+    const geometry=sample();
+    const currentViewport=geometry&&geometry.innerWidth===width&&geometry.innerHeight===height;
+    const currentReservation=geometry&&Number.isFinite(geometry.reservedHeight)&&Math.abs(geometry.reservedHeight-Math.ceil(geometry.dock.height))<=1;
+    const maxBlockSize=parseFloat(geometry?.maxBlockSize);
+    const responsiveCap=geometry&&(geometry.position!=='fixed'||Number.isFinite(maxBlockSize)&&Math.abs(maxBlockSize-height*.4)<=1);
+    if(!currentViewport||!currentReservation||!responsiveCap){previous=null;stableIntervals=0;return false;}
+    const current=JSON.stringify(geometry);
+    stableIntervals=current===previous?stableIntervals+1:0;previous=current;
+    // A synchronous predicate is required: Playwright1.55.1 tests truthiness
+    // before assimilating a returned Promise. Three equal samples span two RAF polls.
+    return stableIntervals>=2?geometry:false;
+   };
+  },{width,height});
+  settled=await page.waitForFunction(poll=>poll(),poll,{polling:'raf',timeout:10000});
+  const geometry=await settled.jsonValue();
+  assert.ok(geometry&&typeof geometry==='object'&&!Array.isArray(geometry)&&geometry.innerWidth===width&&geometry.innerHeight===height,'Portal layout wait must return a current geometry object');
+  report.portalNavigationSettlement??=[];report.portalNavigationSettlement.push({requested:{width,height},theme,phase,settled:true,geometry});
+ }catch(error){
+  const diagnostic=await page.evaluate(()=>{const nav=document.querySelector('nav.consumer-bottom-nav'),root=nav?.closest('.consumer-portal-root'),main=document.querySelector('#consumer-portal-content'),r=nav?.getBoundingClientRect();return{innerWidth,innerHeight,maxBlockSize:nav?getComputedStyle(nav).maxBlockSize:null,dock:r?{width:r.width,height:r.height,top:r.top,bottom:r.bottom}:null,reservedHeight:root?.style.getPropertyValue('--portal-navigation-block-size')||null,mainBottomPadding:main?getComputedStyle(main).paddingBottom:null};}).catch(()=>null);
+  report.portalNavigationSettlement??=[];report.portalNavigationSettlement.push({requested:{width,height},theme,phase,settled:false,diagnostic});
+  throw error;
+ }finally{
+  if(settled)await settled.dispose().catch(()=>{});
+  if(poll)await poll.dispose().catch(()=>{});
+ }
+}
+
+async function portalNavigationGeometry(page,width,height,theme,phase,{largeText=false}={}){
+ const nav=page.getByRole('navigation',{name:'Navegación del portal',exact:true});
+ await page.evaluate(()=>document.fonts.ready.then(()=>undefined));
+ await waitForPortalNavigationLayout(page,width,height,theme,phase);
+ const measured=await nav.evaluate(nav=>{
+  const rect=node=>{const r=node.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
+  const contains=(r,b)=>r.left>=b.left-1&&r.right<=b.right+1&&r.top>=b.top-1&&r.bottom<=b.bottom+1;
+  const style=getComputedStyle(nav),dock=rect(nav),root=nav.closest('.consumer-portal-root'),main=document.querySelector('#consumer-portal-content');
+  const controls=[...nav.querySelector(':scope > div').children].filter(node=>node.matches('a,button'));
+  const header=nav.closest('header'),brand=header?.querySelector('[data-brand-home-link]'),graphics=brand?[...brand.querySelectorAll('svg')]:[];
+  const headerInventory={position:getComputedStyle(header).position,bounds:rect(header),desktopLayoutExpected:matchMedia('(min-width: 64rem)').matches,brand:brand?{bounds:rect(brand),accessibleLabel:brand.getAttribute('aria-label'),svg:graphics.map(node=>({classes:node.getAttribute('class'),bounds:rect(node)})),staticIdentity:Boolean(brand.querySelector('[data-identity-variant="static"]')),legacyWordmark:brand.querySelectorAll('.brand-wordmark-svg').length}:null};
+  return{viewport:{innerWidth,innerHeight,clientWidth:document.documentElement.clientWidth,documentScrollWidth:document.documentElement.scrollWidth},header:headerInventory,dock,position:style.position,overflowY:style.overflowY,scrollWidth:nav.scrollWidth,clientWidth:nav.clientWidth,scrollHeight:nav.scrollHeight,clientHeight:nav.clientHeight,background:style.backgroundColor,mainBottomPadding:parseFloat(getComputedStyle(main).paddingBottom),reservedHeight:parseFloat(root.style.getPropertyValue('--portal-navigation-block-size')),labels:controls.map(node=>{const span=node.querySelector(':scope > span:not([class*="srOnly"])'),range=document.createRange();range.selectNodeContents(span);const boxes=[...range.getClientRects()].filter(r=>r.width>0&&r.height>0).map(r=>({left:r.left,right:r.right,top:r.top,bottom:r.bottom}));range.detach();const item=rect(node),textStyle=getComputedStyle(span);return{text:span.textContent.trim(),href:node.getAttribute('href'),type:node.tagName,item,textBoxes:boxes,textInsideItem:boxes.length>0&&boxes.every(r=>contains(r,item)),fontSize:parseFloat(textStyle.fontSize),visible:textStyle.display!=='none'&&textStyle.visibility!=='hidden'&&Number(textStyle.opacity)>0};})};
+ });
+ const record={requested:{width,height},theme,phase,largeText,...measured,focusTargets:[]};report.portalNavigationGeometry??=[];report.portalNavigationGeometry.push(record);
+ check(measured.viewport.innerWidth===width&&measured.viewport.innerHeight===height,`${phase}/${theme}: actual CSS viewport recorded`);
+ check(measured.viewport.documentScrollWidth<=measured.viewport.innerWidth+1,`${phase}/${theme}: entire document including header fits the current text/viewport stress`);
+ check(measured.header.brand&&measured.header.brand.accessibleLabel&&measured.header.brand.bounds.left>=-1&&measured.header.brand.bounds.right<=measured.viewport.clientWidth+1,`${phase}/${theme}: actual mounted brand remains within the viewport`);
+ check(measured.header.position===(measured.header.desktopLayoutExpected?'sticky':'static'),`${phase}/${theme}: mobile header flows and desktop header stays sticky at the navigation breakpoint`);
+ check(measured.position===(measured.header.desktopLayoutExpected?'static':'fixed'),`${phase}/${theme}: navigation placement matches the same mobile/desktop structure`);
+ check(JSON.stringify(measured.labels.map(item=>item.text))===JSON.stringify(['Inicio','Productos','Historial','Beneficios','Más'])&&JSON.stringify(measured.labels.map(item=>item.href))===JSON.stringify(['/me','/me/products','/me/taps','/me/rewards',null]),`${phase}/${theme}: all five original actions and complete labels remain`);
+ check(measured.labels.every(item=>item.visible&&item.textInsideItem&&item.item.width>=44&&item.item.height>=44),`${phase}/${theme}: every readable label fits its own 44px target without truncation`);
+ if(largeText)check(measured.labels.every(item=>item.fontSize>=31.9),`${phase}/${theme}: stress text remains32px without shrinking`);
+ check(measured.dock.left>=-1&&measured.dock.right<=Math.min(width,measured.viewport.clientWidth)+1&&measured.scrollWidth<=measured.clientWidth+1,`${phase}/${theme}: dock and its content do not overflow horizontally`);
+ check(/^rgb\(/.test(measured.background)||/^rgba\([^,]+,[^,]+,[^,]+,\s*1\)/.test(measured.background),`${phase}/${theme}: dock has a solid theme background`);
+ const mobile=measured.position==='fixed';
+ if(mobile){check(measured.dock.height<=height*.4+1&&measured.dock.bottom<=height+1,`${phase}/${theme}: dock stays within40percent of viewport, leaving content space`);check(Math.abs(measured.reservedHeight-Math.ceil(measured.dock.height))<=1&&measured.mainBottomPadding>=measured.dock.height,`${phase}/${theme}: main reserves the actual dock height`);if(measured.scrollHeight>measured.clientHeight+1)check(['auto','scroll'].includes(measured.overflowY),`${phase}/${theme}: excess rows use an accessible vertical scrollport`);}
+ const controls=nav.locator(':scope > div > a, :scope > div > button');
+ await controls.first().focus();await page.keyboard.press('Shift+Tab');await page.keyboard.press('Tab');
+ for(let index=0;index<5;index++){
+  const control=controls.nth(index);await control.evaluate(node=>node.scrollIntoView({block:'nearest',inline:'nearest'}));
+  const focused=await control.evaluate(node=>{const nav=node.closest('nav'),style=getComputedStyle(nav),r=node.getBoundingClientRect(),d=nav.getBoundingClientRect(),usable={left:d.left+nav.clientLeft,right:d.left+nav.clientLeft+nav.clientWidth,top:d.top+nav.clientTop+parseFloat(style.paddingTop),bottom:d.top+nav.clientTop+nav.clientHeight-parseFloat(style.paddingBottom)};return{focused:document.activeElement===node,top:r.top,bottom:r.bottom,left:r.left,right:r.right,usable,navScrollTop:nav.scrollTop,outlineStyle:getComputedStyle(node).outlineStyle,outlineWidth:parseFloat(getComputedStyle(node).outlineWidth)};});record.focusTargets.push(focused);
+  check(focused.focused&&focused.left>=focused.usable.left-1&&focused.right<=focused.usable.right+1&&focused.top>=focused.usable.top-1&&focused.bottom<=focused.usable.bottom+1,`${phase}/${theme}: action${index+1} can be focused and scrolled fully into its dock`);
+  check(focused.outlineStyle!=='none'&&focused.outlineWidth>=2,`${phase}/${theme}: keyboard focus on action${index+1} has a visible outline`);
+  if(index<4)await page.keyboard.press('Tab');
+ }
+ const target=page.locator('#consumer-portal-content').locator('button:not([disabled]):visible, a[href]:visible, input:not([disabled]):visible, select:not([disabled]):visible, textarea:not([disabled]):visible').first();
+ await target.focus();await target.evaluate(node=>node.scrollIntoView({block:'nearest',inline:'nearest'}));
+ const contentFocus=await target.evaluate(node=>{const r=node.getBoundingClientRect(),header=document.querySelector('.consumer-portal-root > header').getBoundingClientRect(),nav=document.querySelector('nav.consumer-bottom-nav'),dock=nav.getBoundingClientRect(),fixed=getComputedStyle(nav).position==='fixed',band={top:Math.max(0,header.bottom),bottom:fixed?Math.min(innerHeight,dock.top):innerHeight};return{focused:document.activeElement===node,target:{top:r.top,bottom:r.bottom,height:r.height},band,visibleHeight:Math.max(0,Math.min(r.bottom,band.bottom)-Math.max(r.top,band.top)),fullTargetCanFit:band.bottom-band.top>=r.height};});record.contentFocus=contentFocus;
+ check(contentFocus.band.bottom-contentFocus.band.top>=44&&contentFocus.focused&&contentFocus.visibleHeight>=Math.min(44,contentFocus.target.height)-1,`${phase}/${theme}: focused product control has at least a44px usable visible band behind portal chrome`);
+ if(contentFocus.fullTargetCanFit)check(contentFocus.target.top>=contentFocus.band.top-1&&contentFocus.target.bottom<=contentFocus.band.bottom+1,`${phase}/${theme}: content focus fits the available band when its height permits`);
+ return record;
+}
+async function portalNavigationStress(page,theme){
+ const saved=await page.evaluate(()=>{const root=document.querySelector('.consumer-portal-root'),read=(style,key)=>({value:style.getPropertyValue(key),priority:style.getPropertyPriority(key)});return{font:read(document.documentElement.style,'font-size'),safe:Object.fromEntries(['--portal-safe-area-left','--portal-safe-area-right','--portal-safe-area-bottom'].map(key=>[key,read(root.style,key)])),items:[...document.querySelectorAll('nav.consumer-bottom-nav > div > a,nav.consumer-bottom-nav > div > button')].map(node=>read(node.style,'font-size'))};});
+ const cases=[{width:277,height:900,large:false,insets:false},{width:277,height:900,large:true,insets:false},{width:277,height:641,large:true,insets:false},{width:277,height:640,large:true,insets:false},{width:277,height:568,large:true,insets:false},{width:277,height:360,large:true,insets:false},{width:277,height:360,large:true,insets:true},{width:1023,height:641,large:true,insets:false},{width:1024,height:641,large:true,insets:false}];
+ let activeSample=null;
+ try{for(const sample of cases){activeSample=sample;await page.setViewportSize({width:sample.width,height:sample.height});await page.evaluate(({sample,saved})=>{const root=document.querySelector('.consumer-portal-root'),restore=(style,key,entry)=>entry.value?style.setProperty(key,entry.value,entry.priority):style.removeProperty(key);if(sample.large)document.documentElement.style.setProperty('font-size','32px');else restore(document.documentElement.style,'font-size',saved.font);for(const[key,entry]of Object.entries(saved.safe)){if(sample.insets)root.style.setProperty(key,'20px');else restore(root.style,key,entry);}[...root.querySelectorAll('nav.consumer-bottom-nav > div > a,nav.consumer-bottom-nav > div > button')].forEach((node,index)=>{if(sample.large)node.style.setProperty('font-size','32px');else restore(node.style,'font-size',saved.items[index]);});},{sample,saved});await portalNavigationGeometry(page,sample.width,sample.height,theme,`reflow-${sample.width}x${sample.height}-${sample.large?'text32':'default'}-${sample.insets?'safe20':'safe0'}`,{largeText:sample.large});}}
+ catch(error){
+  // Preserve the actual failing viewport before finally restores fonts/insets/size.
+  const phase=activeSample?`reflow-${activeSample.width}x${activeSample.height}-${activeSample.large?'text32':'default'}-${activeSample.insets?'safe20':'safe0'}`:'reflow-uninitialized';
+  const diagnostic=await page.evaluate(()=>{
+   const rect=node=>{if(!node)return null;const r=node.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
+   const header=document.querySelector('.consumer-portal-root > header'),nav=document.querySelector('nav.consumer-bottom-nav'),main=document.querySelector('#consumer-portal-content'),root=nav?.closest('.consumer-portal-root'),target=document.activeElement,scroll=document.scrollingElement;
+   const geometry=node=>node?{tag:node.tagName,rect:rect(node),position:getComputedStyle(node).position,overflowY:getComputedStyle(node).overflowY,clientHeight:node.clientHeight,scrollHeight:node.scrollHeight,scrollTop:node.scrollTop,scrollMarginBlockStart:getComputedStyle(node).scrollMarginBlockStart,scrollMarginBlockEnd:getComputedStyle(node).scrollMarginBlockEnd,scrollPaddingBlockStart:getComputedStyle(node).scrollPaddingBlockStart,scrollPaddingBlockEnd:getComputedStyle(node).scrollPaddingBlockEnd}:null;
+   const ancestors=[];for(let node=target?.parentElement;node;node=node.parentElement)ancestors.push(geometry(node));
+   return{viewport:{innerWidth,innerHeight,clientWidth:document.documentElement.clientWidth,documentScrollWidth:document.documentElement.scrollWidth,scrollX,scrollY,visualViewport:window.visualViewport?{width:visualViewport.width,height:visualViewport.height,offsetTop:visualViewport.offsetTop,scale:visualViewport.scale}:null},rootFontSize:getComputedStyle(document.documentElement).fontSize,header:geometry(header),dock:geometry(nav),main:geometry(main),mainBottomPadding:main?getComputedStyle(main).paddingBottom:null,headerReservation:root?.style.getPropertyValue('--portal-header-block-size')||null,dockReservation:root?.style.getPropertyValue('--portal-navigation-block-size')||null,target:geometry(target),focusWithinContent:Boolean(main&&target&&main.contains(target)),scrollingElement:geometry(scroll),ancestors};
+  }).catch(captureError=>({captureError:String(captureError)}));
+  const entry={requested:activeSample?{...activeSample}:null,theme,phase,beforeStressRestore:true,error:String(error.stack||error),diagnostic,screenshot:`${phase}-${theme}-before-restore.png`,snapshot:`${phase}-${theme}-before-restore.json`};
+  report.portalNavigationFailuresBeforeRestore??=[];report.portalNavigationFailuresBeforeRestore.push(entry);
+  await page.screenshot({path:join(output,entry.screenshot),fullPage:false}).catch(captureError=>{entry.screenshotError=String(captureError);});
+  await writeFile(join(output,entry.snapshot),JSON.stringify(entry,null,2),{flag:'wx'}).catch(captureError=>{entry.snapshotError=String(captureError);});
+  throw error;
+ }
+ finally{await page.evaluate(saved=>{const root=document.querySelector('.consumer-portal-root'),restore=(style,key,entry)=>entry.value?style.setProperty(key,entry.value,entry.priority):style.removeProperty(key);restore(document.documentElement.style,'font-size',saved.font);for(const[key,entry]of Object.entries(saved.safe))restore(root.style,key,entry);[...root.querySelectorAll('nav.consumer-bottom-nav > div > a,nav.consumer-bottom-nav > div > button')].forEach((node,index)=>restore(node.style,'font-size',saved.items[index]));},saved);await page.setViewportSize({width:320,height:900});await page.evaluate(()=>window.scrollTo(0,0));}
+}
+
 async function accountContactScenarios(page,width,theme){
  for(const [path,selector] of [['/me','[aria-labelledby="home-account-title"]'],['/me/passport','#consumer-portal-content'],['/me/privacy','[aria-labelledby="privacy-account-title"]']]){
   await page.goto(base+path,{waitUntil:'networkidle'});const surface=page.locator(selector);await surface.waitFor();
@@ -124,6 +234,8 @@ try{
   await productPhotoRecovery(page,context,width,theme);
   await page.goto(base+'/me/products',{waitUntil:'networkidle',timeout:90000});
   const library=page.getByTestId('consumer-product-library');await library.waitFor();
+  await portalNavigationGeometry(page,width,900,theme,'matrix');
+  if(width===320)await portalNavigationStress(page,theme);
   check(await library.getByRole('button',{name:/Abrir ficha y avisos de /}).count()===12,`${width}/${theme} first page has 12 product actions`);
   check(await library.locator('article').evaluateAll(cards=>cards.every(card=>card.querySelectorAll('button').length===1&&card.querySelectorAll('a,details').length===0)),`${width}/${theme} each card has one action`);
   check(await library.locator('article button').evaluateAll(buttons=>buttons.every(button=>button.getBoundingClientRect().height>=44&&parseFloat(getComputedStyle(button).fontSize)>=14)),`${width}/${theme} product actions are legible touch targets`);
