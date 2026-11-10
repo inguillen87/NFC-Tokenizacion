@@ -140,6 +140,7 @@ test("only the account-verified receipt survives a reload and highlights its exa
   assert.match(receipt(result.html), new RegExp("href=\"#voucher-claim-" + claimId + "\""));
   assert.doesNotMatch(receipt(result.html), /BALMEC-1234/);
   assert.equal(result.clientProps[0].selectedVoucher, "claim-" + claimId);
+  assert.equal(result.clientProps[0].receiptCard.voucherKey, "claim-" + claimId);
   const beyondCollection = await render(list([]), { lastReceipt });
   assert.match(receipt(beyondCollection.html), /Voucher emitido/);
   assert.match(receipt(beyondCollection.html), /aunque el voucher no figure en el listado actual/);

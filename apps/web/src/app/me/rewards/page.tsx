@@ -42,6 +42,20 @@ export default async function RewardsPage({ searchParams }: { searchParams?: Pro
   const receiptBrandHref = receiptTenant && !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(receiptTenant)
     ? "/me/brands?" + new URLSearchParams({ tenant: receiptTenant }).toString()
     : null;
+  const receiptContent = receipt ? <>
+    <h2 id="last-reward-receipt-title" className={styles.receiptHeading}>Última reserva en este navegador</h2>
+    {receiptItem ? <p>{receiptItem.title} · {receiptItem.brand}</p> : null}
+    <dl className={styles.receiptMeta}>
+      <div><dt>Estado registrado</dt><dd><span className={styles.badge} data-state={receipt.status}>{REWARD_STATE_LABELS[receipt.status]}</span></dd></div>
+      {receipt.expiresAt ? <div><dt>Vencimiento informado</dt><dd>{rewardDateLabel(receipt.expiresAt)}</dd></div> : null}
+    </dl>
+    {!receiptItem ? <p>{rewards.status === "unavailable"
+      ? "Podés consultar esta reserva aunque el listado de vouchers no se pudo cargar."
+      : receiptItems.length > 0
+        ? "El listado todavía no coincide con el estado de esta reserva."
+        : "Podés consultar esta reserva aunque el voucher no figure en el listado actual."}</p> : null}
+    <p>{receiptGuidance[receipt.status]}</p>
+  </> : null;
   return (
     <PortalShell title="Tus beneficios" subtitle="Tus marcas, tus puntos y tus vouchers. Todo en un lugar, con el estado de cada beneficio a la vista.">
       <div className={styles.rewards}>
@@ -57,27 +71,19 @@ export default async function RewardsPage({ searchParams }: { searchParams?: Pro
                 <strong>{brand.balance === null ? "No informado" : <>{brand.balance}<small> pts</small></>}</strong>
               </article>)}</div>}
         </section>
-        {receipt ? <section className={`${styles.notice} ${styles.receipt}`} aria-labelledby="last-reward-receipt-title">
-          <h2 id="last-reward-receipt-title" className={styles.receiptHeading}>Última reserva en este navegador</h2>
-          {receiptItem ? <p>{receiptItem.title} · {receiptItem.brand}</p> : null}
-          <dl className={styles.receiptMeta}>
-            <div><dt>Estado registrado</dt><dd><span className={styles.badge} data-state={receipt.status}>{REWARD_STATE_LABELS[receipt.status]}</span></dd></div>
-            {receipt.expiresAt ? <div><dt>Vencimiento informado</dt><dd>{rewardDateLabel(receipt.expiresAt)}</dd></div> : null}
-          </dl>
-          {!receiptItem ? <p>{rewards.status === "unavailable"
-            ? "Podés consultar esta reserva aunque el listado de vouchers no se pudo cargar."
-            : receiptItems.length > 0
-              ? "El listado todavía no coincide con el estado de esta reserva."
-              : "Podés consultar esta reserva aunque el voucher no figure en el listado actual."}</p> : null}
-          <p>{receiptGuidance[receipt.status]}</p>
-          {receiptItem ? <a className={styles.primaryLink} href={"#voucher-" + receiptItem.key}>{receipt.status === "claimed" ? "Ver detalle del voucher" : "Ver registro del voucher"}</a>
-            : receiptBrandHref ? <Link className={styles.primaryLink} href={receiptBrandHref} prefetch={false}>Ver mi relación con la marca</Link> : null}
+        {receiptContent && !receiptItem ? <section className={`${styles.notice} ${styles.receipt}`} aria-labelledby="last-reward-receipt-title">
+          {receiptContent}
+          {receiptBrandHref ? <Link className={styles.primaryLink} href={receiptBrandHref} prefetch={false}>Ver mi relación con la marca</Link> : null}
         </section> : null}
         {params.voucher ? <div role="status" className={styles.notice}>{selectedVoucher ? "Encontramos el voucher en tu cuenta. Abrí sus detalles para consultar el código y el vencimiento."
           : rewards.status === "unavailable" ? "No pudimos verificar el voucher de este enlace. Reintentá la carga."
             : "No encontramos un voucher vigente que corresponda a este enlace y a tu cuenta. Revisá la marca y el vencimiento del mensaje original."}</div> : null}
         {rewards.status === "unavailable" ? <section className={styles.unavailable} role="status"><h2>No pudimos cargar tus beneficios</h2><p>Tus vouchers no se borraron. La información no está disponible en este momento.</p><ConsumerDataRetryButton /></section>
-          : <ConsumerRewardsClient items={rewards.items} initialTenant={tenant} selectedVoucher={selectedVoucher ?? receiptItem?.key ?? null} />}
+          : <ConsumerRewardsClient items={rewards.items} initialTenant={tenant} selectedVoucher={selectedVoucher ?? receiptItem?.key ?? null}
+              receiptCard={receiptContent && receiptItem ? {
+                content: receiptContent, voucherKey: receiptItem.key,
+                label: receiptItem.state === "claimed" ? "Ver detalle del voucher" : "Ver registro del voucher",
+              } : undefined} />}
       </div>
     </PortalShell>
   );

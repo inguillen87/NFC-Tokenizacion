@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { ArrowUpRight, Check, ChevronDown, Copy, Gift, Search, Ticket } from "lucide-react";
 import { REWARD_STATE_LABELS, rewardAvailabilityNotice, rewardDateLabel, rewardTenant, type ConsumerReward } from "../_components/consumer-rewards-model";
 import { readConsumerReservation, reserveConsumerReward, rewardReservationQuote, sameReservationQuote, type RewardReservationLookup, type RewardReservationQuote } from "../_components/consumer-reward-reservation";
@@ -23,6 +23,7 @@ function VoucherCode({ code }: { code: string }) {
 }
 
 type RewardSourceIdentity = { items: ConsumerReward[]; initialTenant: string; selectedVoucher: string | null };
+type RewardReceiptCard = { content: ReactNode; voucherKey: string; label: string };
 type ReservationFlow = {
   source: RewardSourceIdentity; quote: RewardReservationQuote;
   phase: "confirm" | "pending" | "checking" | "uncertain" | "confirmed" | "authentication-required" | "denied";
@@ -30,7 +31,7 @@ type ReservationFlow = {
 };
 const sameSource = (a: RewardSourceIdentity, b: RewardSourceIdentity) => a.items === b.items && a.initialTenant === b.initialTenant && a.selectedVoucher === b.selectedVoucher;
 
-export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }: RewardSourceIdentity) {
+export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher, receiptCard }: RewardSourceIdentity & { receiptCard?: RewardReceiptCard }) {
   const identity = { items, initialTenant, selectedVoucher };
   const [filters, setFilters] = useState({ source: identity, tenant: initialTenant, query: "", view: "all" as "all" | "vouchers" | "catalog" });
   const [flow, setFlow] = useState<ReservationFlow | null>(null);
@@ -43,6 +44,7 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
   const confirmButton = useRef<HTMLButtonElement | null>(null);
   const returnFocus = useRef<HTMLButtonElement | null>(null);
   const reservationNotice = useRef<HTMLDivElement | null>(null);
+  const voucherJump = useRef<{ source: RewardSourceIdentity; key: string; origin: Element | null } | null>(null);
   const active = flow && sameSource(flow.source, identity) ? flow : null;
   const currentFilters = sameSource(filters.source, identity) ? filters : { source: identity, tenant: initialTenant, query: "", view: "all" as const };
   const { tenant, query, view } = currentFilters;
@@ -60,6 +62,20 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
     return () => { sequence.current += 1; controller.current?.abort(); controller.current = null; pending.current = false; };
   }, [items, initialTenant, selectedVoucher]);
   useEffect(() => { if (active?.phase === "confirm") confirmButton.current?.focus(); }, [active?.phase, active?.quote.rewardId]);
+  useEffect(() => {
+    const jump = voucherJump.current;
+    voucherJump.current = null;
+    if (!jump || !sameSource(jump.source, { items, initialTenant, selectedVoucher })) return;
+    const card = document.getElementById("voucher-" + jump.key);
+    const details = card?.querySelector("details");
+    const summary = details?.querySelector("summary");
+    if (!card || !details || !summary) return;
+    details.open = true;
+    if (document.activeElement === jump.origin || document.activeElement === document.body) {
+      summary.scrollIntoView({ block: "center", behavior: "instant" });
+      summary.focus({ preventScroll: true });
+    }
+  }, [filters, items, initialTenant, selectedVoucher]);
   const brands = [...new Map(displayedItems.map(item => [item.tenant, item.brand])).entries()];
   const catalogTenant = rewardTenant(tenant);
   const catalogHref = catalogTenant ? "/me/marketplace?tenant=" + encodeURIComponent(catalogTenant) : "/me/marketplace";
@@ -68,6 +84,14 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
   const filtered = Boolean(tenant || query || view !== "all");
   function changeFilters(patch: Partial<Pick<typeof filters, "tenant" | "query" | "view">>) { setFilters({ ...currentFilters, ...patch, source: identity }); }
   function reset() { changeFilters({ tenant: "", query: "", view: "all" }); }
+  function revealVoucher(event: MouseEvent<HTMLAnchorElement>, key: string | undefined) {
+    if (!key || event.button !== 0 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    const item = displayedItems.find(candidate => candidate.hasClaim && candidate.key === key);
+    if (!item) return;
+    event.preventDefault();
+    voucherJump.current = { source: identity, key, origin: document.activeElement };
+    changeFilters({ tenant: item.tenant, query: "", view: "vouchers" });
+  }
   function openReservation(item: ConsumerReward, button: HTMLButtonElement) {
     const quote = rewardReservationQuote(item);
     if (!quote || pending.current || attempted.current.has(quote.rewardId.toLowerCase())) return;
@@ -128,7 +152,7 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
       if (sequence.current === token) { pending.current = false; controller.current = null; }
     }
   }
-  return <section aria-labelledby="benefits-list-title" className={styles.catalog}>
+  const catalog = <section aria-labelledby="benefits-list-title" className={styles.catalog}>
     <div className={styles.sectionHeading}><div className={styles.headingIcon}><Gift aria-hidden="true" /><div><h2 id="benefits-list-title">Beneficios y vouchers</h2><p>El saldo de cada programa puede ser distinto al de la marca. Consultá los beneficios publicados y tus vouchers.</p></div></div>
       <Link className={styles.textLink} href={catalogHref}>{catalogTenant ? "Catálogo de esta marca" : "Explorar catálogo"} <ArrowUpRight aria-hidden="true" /></Link></div>
     {active ? <div ref={reservationNotice} tabIndex={-1} role="group" aria-label="Estado de la reserva" className={`${styles.notice} ${styles.reservationStatus}`}>
@@ -139,7 +163,7 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
       {active.phase === "uncertain" ? <button type="button" className={styles.primaryLink} onClick={checkReservation}>Comprobar mi reserva</button> : null}
       {active.phase === "authentication-required" ? <Link className={styles.primaryLink} href={"/login?consumer=1&next=" + encodeURIComponent(reservationPath)}>Volver a ingresar</Link> : null}
       {active.phase === "uncertain" && active.claimId ? <a className={styles.copyButton} href={reservationPath}>Consultar la última reserva</a> : null}
-      {active.phase === "confirmed" && active.claimKey ? <a className={styles.primaryLink} href={"#voucher-" + active.claimKey}>Ver mi voucher</a> : null}
+      {active.phase === "confirmed" && active.claimKey ? <a className={styles.primaryLink} href={"#voucher-" + active.claimKey} onClick={event => revealVoucher(event, active.claimKey)}>Ver mi voucher</a> : null}
     </div> : null}
     <div className={styles.filters}>
       <div className={styles.views} role="group" aria-label="Tipo de beneficio">{([['all','Todos'],['vouchers','Mis vouchers'],['catalog','Publicados']] as const).map(([value,label]) => <button key={value} type="button" aria-pressed={view === value} onClick={() => changeFilters({ view: value })}>{label}</button>)}</div>
@@ -183,4 +207,13 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
         </div></details>
       </article>; })}</div>}
   </section>;
+  return <>
+    {receiptCard ? <section className={`${styles.notice} ${styles.receipt}`} aria-labelledby="last-reward-receipt-title">
+      {receiptCard.content}
+      {displayedItems.some(item => item.hasClaim && item.key === receiptCard.voucherKey)
+        ? <a className={styles.primaryLink} href={"#voucher-" + receiptCard.voucherKey} onClick={event => revealVoucher(event, receiptCard.voucherKey)}>{receiptCard.label}</a>
+        : null}
+    </section> : null}
+    {catalog}
+  </>;
 }
