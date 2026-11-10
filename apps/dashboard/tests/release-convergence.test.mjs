@@ -1,4 +1,6 @@
-import {REWARD_DIALOG_SOURCE_BASE,REWARD_DIALOG_REVIEWED_SOURCES,rewardDialogPriorHash} from './helpers/reward-dialog-reviewed-sources.mjs';
+import {loyaltyOverviewReadinessPriorHash} from './helpers/loyalty-overview-readiness-reviewed-sources.mjs';
+import {loyaltyOverviewRecoveryPriorHash} from './helpers/loyalty-overview-recovery-reviewed-sources.mjs';
+import {REWARD_DIALOG_SOURCE_BASE,REWARD_DIALOG_REVIEWED_SOURCES,rewardCatalogHistoricalPriorHash,rewardDialogHistoricalPriorHash,rewardDialogPriorHash,rewardStockDisplayHistoricalPriorHash} from './helpers/reward-dialog-reviewed-sources.mjs';
 import {CUSTOMER_FEEDBACK_ADDED,customerFeedbackPriorHash,customerFeedbackPriorInventory,assertCustomerFeedbackAdded} from './helpers/customer-feedback-reviewed-sources.mjs';
 import {crmFilterContextPriorHash} from './helpers/crm-filter-context-reviewed-sources.mjs';
 import {catalogConfirmationPriorHash} from './helpers/catalog-confirmation-reviewed-sources.mjs';
@@ -66,7 +68,7 @@ test('every merged source file retains its immutable origin except the exact rev
  const root=new URL('../src/',import.meta.url),actual=[];
  async function walk(dir,prefix='apps/dashboard/src'){for(const e of await readdir(dir,{withFileTypes:true})){if(e.isDirectory())await walk(new URL(e.name+'/',dir),prefix+'/'+e.name);else if(e.isFile())actual.push(prefix+'/'+e.name);}}
  await walk(root);assertGovernanceInventory(marketplacePriorInventory(rewardNoticePriorInventory(crmOrderRequestPriorInventory(ticketStatusSyncPriorInventory(customerFeedbackPriorInventory(actual),baseline.expected),baseline.expected),baseline.expected),baseline.expected,Object.keys(ENGAGEMENT_GOVERNANCE_ADDED)),baseline.expected);
- for(const [path,expected]of Object.entries(baseline.expected)){const text=(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');const actual=customerFeedbackPriorHash(path,crmFilterContextPriorHash(path,catalogConfirmationPriorHash(path,rewardDialogPriorHash(path,createHash('sha256').update(text).digest('hex')))));assert.equal(tenantSyncHistoricalSourceHash(path,governancePublishedSourceHash(path,marketplacePublishedSourceHash(path,rewardProgramContextPublishedSourceHash(path,crmOrderRequestPublishedSourceHash(path,physicalTapPublishedSourceHash(path,ticketStatusSyncPublishedSourceHash(path,actual,baseline.expected[path]),baseline.expected[path]),baseline.expected[path])))),expected),expected,path);}
+ for(const [path,expected]of Object.entries(baseline.expected)){const text=(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');const actual=customerFeedbackPriorHash(path,crmFilterContextPriorHash(path,catalogConfirmationPriorHash(path,rewardDialogPriorHash(path,loyaltyOverviewRecoveryPriorHash(path,loyaltyOverviewReadinessPriorHash(path,createHash('sha256').update(text).digest('hex')))))));assert.equal(tenantSyncHistoricalSourceHash(path,governancePublishedSourceHash(path,marketplacePublishedSourceHash(path,rewardProgramContextPublishedSourceHash(path,crmOrderRequestPublishedSourceHash(path,physicalTapPublishedSourceHash(path,ticketStatusSyncPublishedSourceHash(path,actual,baseline.expected[path]),baseline.expected[path]),baseline.expected[path])))),expected),expected,path);}
  for(const path of Object.keys(ENGAGEMENT_GOVERNANCE_ADDED))assertGovernanceAddedSource(path,rewardProgramContextPublishedSourceHash(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8'))));
  for(const path of Object.keys(TENANT_MARKETPLACE_ADDED))assertMarketplaceAddedSource(path,customerFeedbackPriorHash(path,catalogConfirmationPriorHash(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')))));
  for(const name of Object.keys(CUSTOMER_FEEDBACK_ADDED))assertCustomerFeedbackAdded(name,governanceSourceHash(await readFile(new URL('../'+name.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
@@ -140,11 +142,51 @@ test('reward dialog overlay permits exactly two pinned successors and retains in
  assert.equal(REWARD_DIALOG_SOURCE_BASE,'a38a432e96cea93df53f1fca6bd58335b42a290a');
  assert.deepEqual(Object.keys(REWARD_DIALOG_REVIEWED_SOURCES).sort(),['apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx','apps/dashboard/src/lib/permission-policy.ts']);
  for(const [path,pin]of Object.entries(REWARD_DIALOG_REVIEWED_SOURCES)){
-  assert.equal(rewardDialogPriorHash(path,pin.after),pin.before);
-  for(const changed of [pin.before,'0'.repeat(64),pin.after.slice(0,-1)+(pin.after.endsWith('0')?'1':'0')])assert.throws(()=>rewardDialogPriorHash(path,changed),/exact reviewed reward-dialog increment/);
+  assert.equal(rewardDialogHistoricalPriorHash(path,pin.after),pin.before);
+  for(const changed of [pin.before,'0'.repeat(64),pin.after.slice(0,-1)+(pin.after.endsWith('0')?'1':'0')])assert.throws(()=>rewardDialogHistoricalPriorHash(path,changed),/exact reviewed reward-dialog increment/);
  }
  const unrelated='apps/dashboard/src/lib/enterprise-runtime-rbac.ts';
  assert.equal(rewardDialogPriorHash(unrelated,'unreviewed-content'),'unreviewed-content');
  assert.throws(()=>assert.equal(rewardDialogPriorHash(unrelated,'unreviewed-content'),'historical-origin'));
- assert.throws(()=>rewardDialogPriorHash('apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx',REWARD_DIALOG_REVIEWED_SOURCES['apps/dashboard/src/lib/permission-policy.ts'].after),/exact reviewed reward-dialog increment/);
+ assert.throws(()=>rewardDialogHistoricalPriorHash('apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx',REWARD_DIALOG_REVIEWED_SOURCES['apps/dashboard/src/lib/permission-policy.ts'].after),/exact reviewed reward-dialog increment/);
+});
+
+test('the historical stock display preserves the exact dialog and permission origins',()=>{
+ const path='apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx';
+ const stock='9039f7d58c85752f1e431c0714965078ece8b4a604ebb01d743499c4381b2099';
+ const pin=REWARD_DIALOG_REVIEWED_SOURCES[path];
+ assert.equal(rewardStockDisplayHistoricalPriorHash(path,stock),pin.before);
+ assert.throws(()=>rewardStockDisplayHistoricalPriorHash(path,pin.after),/exact reviewed reward-stock display/);
+ assert.throws(()=>rewardStockDisplayHistoricalPriorHash(path,stock.slice(0,-1)+'0'),/exact reviewed reward-stock display/);
+ const permissionPath='apps/dashboard/src/lib/permission-policy.ts';
+ const permissionPin=REWARD_DIALOG_REVIEWED_SOURCES[permissionPath];
+ assert.equal(rewardDialogPriorHash(permissionPath,permissionPin.after),permissionPin.before);
+ assert.throws(()=>rewardDialogPriorHash(permissionPath,stock),/exact reviewed reward-dialog increment/);
+});
+
+test('the rewards catalog preserves exact page and historical card origins',async()=>{
+ const baseline=readHistoricalBaseline('release-convergence',await readFile(new URL('./fixtures/release-convergence-baseline.json',import.meta.url),'utf8'));
+ const page='apps/dashboard/src/app/(app)/loyalty/rewards/page.tsx';
+ const client='apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx';
+ const pageOrigin='211ddba0d83e18aa6e60dc86ffd57b718e0533f67c760e88cfd6f577c92ca158';
+ assert.equal(pageOrigin,baseline.expected[page]);
+ const stock='9039f7d58c85752f1e431c0714965078ece8b4a604ebb01d743499c4381b2099';
+ const catalogClient='9c1af29f8e415cee6c4c6084a650af70682e0ee413215d9eb89cdd784715ffcc';
+ const text=(await readFile(new URL('../src/app/(app)/loyalty/rewards/page.tsx',import.meta.url),'utf8')).replaceAll('\r\n','\n');
+ const pageHash=createHash('sha256').update(text).digest('hex');
+ assert.equal(rewardDialogPriorHash(page,pageHash),pageOrigin);
+ assert.equal(rewardCatalogHistoricalPriorHash(client,catalogClient),REWARD_DIALOG_REVIEWED_SOURCES[client].before);
+ for(const [path,rejected] of [[page,[pageOrigin,createHash('sha256').update(text+'\n').digest('hex'),catalogClient]],[client,[stock,catalogClient.slice(0,-1)+'0',pageHash]]]){
+  for(const hash of rejected)assert.throws(()=>rewardCatalogHistoricalPriorHash(path,hash),/exact reviewed reward catalog/);
+ }
+});
+
+test('the reward dialog appearance requires the exact current client source',async()=>{
+ const path='apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx';
+ const text=(await readFile(new URL('../src/app/(app)/loyalty/rewards/rewards-client.tsx',import.meta.url),'utf8')).replaceAll('\r\n','\n');
+ const actual=createHash('sha256').update(text).digest('hex');
+ assert.equal(rewardDialogPriorHash(path,actual),REWARD_DIALOG_REVIEWED_SOURCES[path].before);
+ const priorCatalog='9c1af29f8e415cee6c4c6084a650af70682e0ee413215d9eb89cdd784715ffcc';
+ const priorProposal='7f20baf68320068e1f06a7bfb7270706bc39c405c4b3a387bd29edf762603b86';
+ for(const rejected of [priorCatalog,priorProposal,createHash('sha256').update(text+'\n').digest('hex')])assert.throws(()=>rewardDialogPriorHash(path,rejected),/exact reviewed reward dialog appearance/);
 });

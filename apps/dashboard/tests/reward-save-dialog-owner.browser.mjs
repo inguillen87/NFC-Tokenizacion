@@ -1,5 +1,5 @@
 // Real React/component/styles; synthetic props, router observer and owned loopback
-// transports. Identical assertions can run against the pre-owner baseline source.
+// transports.
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
@@ -21,10 +21,10 @@ const hashes=async()=>Object.fromEntries(await Promise.all(sourcePaths.map(async
 const before=await hashes(),observedHead=execFileSync('git',['--no-optional-locks','-C',root,'rev-parse','HEAD'],{encoding:'utf8',windowsHide:true}).trim();
 if(process.env.QA_SOURCE){assert.equal(process.env.QA_SOURCE,observedHead);assert.equal(execFileSync('git',['--no-optional-locks','-C',root,'status','--porcelain'],{encoding:'utf8',windowsHide:true}).trim(),'');}
 const REWARD='10000000-0000-4000-8000-000000000001',PROGRAM='20000000-0000-4000-8000-000000000001';
-const row={id:REWARD,program_id:PROGRAM,tenant_slug:'qa-a',code:'EXISTING',title:'Beneficio guardado QA',points:40,status:'active',description:'Texto sintético',type:'TOUR',image_url:null,stock_total:12,stock_remaining:10,requires_age_gate:false,network_visible:false};
+const row={id:REWARD,program_id:PROGRAM,tenant_slug:'qa-a',code:'EXISTING',title:'Beneficio guardado QA',points:40,status:'active',description:'Texto sintético',type:'TOUR',image_url:null,stock_total:12,stock_remaining:10,requires_age_gate:false,network_visible:false,reservation_requirements:{version:'portal-reservation-requirements.v1',program:{association_confirmed:true}}};
 const entry=`import React,{useState}from'react';import{flushSync}from'react-dom';import{createRoot}from'react-dom/client';import RewardsClient from'./src/app/(app)/loyalty/rewards/rewards-client';
 window.__rewardRefreshes=0;window.__rewardRequests=[];const realFetch=window.fetch.bind(window);window.fetch=(input,init)=>{const url=new URL(typeof input==='string'?input:input.url,location.href),record={path:url.pathname,query:url.search,method:init?.method||'GET',cache:init?.cache,credentials:init?.credentials,hasBody:init?.body!==undefined,hasSignal:Boolean(init?.signal),headers:false,bodySettled:false};if(url.origin===location.origin&&url.pathname.startsWith('/api/'))window.__rewardRequests.push(record);return realFetch(input,init).then(response=>{record.headers=true;const json=response.json.bind(response);response.json=()=>json().finally(()=>{record.bodySettled=true});return response;});};
-const initial=${JSON.stringify(row)},rowsA=[initial],rowsB=[{...initial,tenant_slug:'qa-b',title:'Beneficio de otra empresa QA'}];const reactRoot=createRoot(document.getElementById('root'));
+const initial=${JSON.stringify(row)},rowsA=new URLSearchParams(location.search).has('historical')?[{...initial,status:'archived',type:'SERVICE'},{...initial,id:'10000000-0000-4000-8000-000000000002',code:'S'.repeat(200),title:'Beneficio histórico QA',points:null,status:'legacy',type:null}]:[initial],rowsB=[{...initial,tenant_slug:'qa-b',title:'Beneficio de otra empresa QA'}];const reactRoot=createRoot(document.getElementById('root'));
 function Fixture(){const[props,setProps]=useState({initialRewards:rowsA,tenantScope:'qa-a',isDemo:false,canWrite:true,dataSource:'production',availability:'ready',sourceReason:''});window.__rewardChangeSource=kind=>flushSync(()=>setProps(old=>kind==='tenant'?{...old,tenantScope:'qa-b',initialRewards:rowsB}:kind==='permission'?{...old,canWrite:false}:{...old,dataSource:'unavailable',availability:'upstream_error',initialRewards:[]}));return <main className='dashboard-app mx-auto max-w-6xl p-4'><h1 className='text-2xl font-bold'>Beneficios · ensayo local</h1><p>Componentes reales, empresa y solicitudes sintéticas.</p><RewardsClient {...props}/></main>};window.__rewardReopenSameTurn=()=>{const previous=document.querySelector('dialog'),close=previous.querySelector('[aria-label="Cerrar edición del beneficio"]'),create=[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Nuevo Beneficio');flushSync(()=>{close.click();create.click()});window.__previousRewardDialog=previous;return previous===document.querySelector('dialog')};window.__rewardUnmount=()=>flushSync(()=>reactRoot.unmount());reactRoot.render(<Fixture/>);`;
 const report={schema:'nexid.reward-save-dialog-owner.native.v1',passed:false,releaseAcceptanceEligible:false,actualReact:true,actualComponent:true,nativeComponentCss:true,syntheticShell:true,syntheticProps:true,syntheticTransport:true,routerObserverStub:true,actualNext:false,realAuthentication:false,realDatabase:false,realProvider:false,physicalTap:false,backendReadOnlyCertified:false,notes:['No initializer or business write is added by the client GET; existing live IAM initialization/last_seen side effects are outside this synthetic fixture.','Cancellation may stop delivery of an old response; direct unit callbacks separately cover post-unmount/pre-effect ownership.'],observedHead,qaSource:process.env.QA_SOURCE||null,sourceBefore:before,sourceAfter:null,cases:[],checks:[],errors:[],blockedRequests:[],serverRequests:[],closure:{contexts:false,browser:false,server:false,esbuild:false}};
 await mkdir(output,{recursive:true});let browser,origin,js,css;const contexts=new Set(),bodyPlans=[];
@@ -44,6 +44,23 @@ const server=createServer(async(req,res)=>{
 });
 const check=(item,value,description)=>{report.checks.push({scenario:item.name,description,passed:Boolean(value)});assert.ok(value,description);};
 const settle=page=>page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
+async function checkFeedbackContrast(item,feedback){
+ const colors=await feedback.evaluate(node=>{
+  const canvas=document.createElement('canvas');canvas.width=canvas.height=1;
+  const context=canvas.getContext('2d',{willReadFrequently:true});
+  const rgba=color=>{context.clearRect(0,0,1,1);context.fillStyle=color;context.fillRect(0,0,1,1);return Array.from(context.getImageData(0,0,1,1).data);};
+  const surface=getComputedStyle(node),foreground=getComputedStyle(node.querySelector('span'));
+  let opaque=true;
+  for(let ancestor=node;ancestor;ancestor=ancestor.parentElement)opaque&&=getComputedStyle(ancestor).opacity==='1';
+  return {foreground:rgba(foreground.color),background:rgba(surface.backgroundColor),opaque:opaque&&surface.backgroundImage==='none'};
+ });
+ const luminance=rgba=>rgba.slice(0,3).map(value=>value/255).map(value=>value<=0.04045?value/12.92:((value+0.055)/1.055)**2.4)
+  .reduce((total,value,index)=>total+value*[0.2126,0.7152,0.0722][index],0);
+ const [text,background]=[luminance(colors.foreground),luminance(colors.background)];
+ const ratio=(Math.max(text,background)+0.05)/(Math.min(text,background)+0.05);
+ item.feedbackContrast={...colors,ratio};
+ check(item,colors.opaque&&colors.foreground[3]===255&&colors.background[3]===255&&ratio>=4.5,'rendered feedback text has at least 4.5:1 contrast on an opaque surface');
+}
 async function waitFor(label,predicate){const end=Date.now()+12000;while(!predicate()){assert(Date.now()<end,label);await new Promise(done=>setTimeout(done,15));}}
 async function open(width,theme,name){
  const context=await browser.newContext({viewport:{width,height:950},locale:'es-AR',colorScheme:theme,reducedMotion:'reduce',serviceWorkers:'block'});contexts.add(context);const page=await context.newPage();page.setDefaultTimeout(10000);
@@ -66,7 +83,7 @@ async function open(width,theme,name){
   report.blockedRequests.push({name,method:request.method(),path:url.pathname});return route.abort();
  };
  await page.route('**/*',route=>{const task=handler(route);tasks.add(task);task.finally(()=>tasks.delete(task)).catch(error=>{if(!closing)report.errors.push({name,width,theme,message:String(error)})});return task;});
- await page.goto(origin+'/?theme='+theme,{waitUntil:'networkidle'});
+ await page.goto(origin+'/?theme='+theme+(name==='historical-catalog'?'&historical=1':''),{waitUntil:'networkidle'});
  const dialog=page.getByRole('dialog'),newButton=page.getByRole('button',{name:'Nuevo Beneficio',exact:true});
  async function fillNew(code='NEW',title='Título conservado QA'){await newButton.click();await dialog.waitFor();await dialog.getByLabel('Código de Control',{exact:true}).fill(code);await dialog.getByLabel('Título del Beneficio',{exact:true}).fill(title);await dialog.getByLabel('Costo en Puntos',{exact:true}).fill('40');await dialog.getByLabel('Stock total',{exact:true}).fill('12');}
  async function submit(){await dialog.locator('form').evaluate(form=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));await waitFor('at least one deliberate POST',()=>item.posts.length>0);}
@@ -76,13 +93,41 @@ async function open(width,theme,name){
 }
 async function runCase(width,theme,name){const f=await open(width,theme,name),{page,item,dialog}=f;
  try{
-  if(name==='exact-edit-route'){
+  if(name==='historical-catalog'){
+   await page.getByRole('heading',{name:'Beneficio histórico QA',exact:true}).waitFor();
+   check(item,await page.getByText('Estado sin confirmar',{exact:true}).count()===1,'historical status is shown as unconfirmed');
+   check(item,await page.getByText('Puntos sin confirmar',{exact:true}).count()===1,'historical missing points are not replaced by zero');
+   check(item,await page.getByText('Solo lectura · configuración por revisar',{exact:true}).count()===1,'unrepresentable historical row remains readable');
+   check(item,await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'long historical code fits the viewport');
+   const edit=page.getByRole('button',{name:'Editar',exact:true});check(item,await edit.count()===1,'only the supported row can be edited');
+   await edit.click();await dialog.waitFor();
+   check(item,await dialog.locator('#reward-edit-status').inputValue()==='archived','editor keeps archived status');
+   check(item,await dialog.locator('select').evaluateAll(selects=>selects.some(select=>select.value==='SERVICE')),'editor keeps the saved service type');
+   check(item,item.posts.length===0&&item.reads.length===0,'opening the historical catalog and supported editor makes no API calls');
+  }else if(name==='exact-edit-route'){
    await page.getByRole('button',{name:'Editar',exact:true}).click();await dialog.waitFor();await dialog.getByLabel('Título del Beneficio',{exact:true}).fill('Edición explícita QA');await f.submit();
    check(item,item.posts.length===1&&item.posts[0].path==='/api/admin/loyalty/rewards','exact edit uses legacy endpoint once');
    check(item,item.posts[0].body.reward_id===REWARD&&item.posts[0].body.program_id===PROGRAM&&!Object.hasOwn(item.posts[0].body,'creationIntent'),'exact edit retains persisted identities and no creation intent');
    await f.releasePost(409,{ok:false,error:'reward_update_conflict'});await dialog.getByRole('alert').waitFor();
   }else{
-   await f.fillNew();await f.submit();
+   await f.fillNew();
+   if(name==='current-409-retains-fields'){
+    const options=dialog.getByRole('group',{name:'Opciones de imagen'});
+    const tasting=options.getByRole('button',{name:'Degustación en bodega',exact:true});
+    const crate=options.getByRole('button',{name:'Caja de seis botellas',exact:true});
+    const noImage=options.getByRole('button',{name:'Sin imagen',exact:true});
+    const custom=dialog.getByLabel('URL personalizada de imagen (opcional)',{exact:true});
+    check(item,await tasting.getAttribute('aria-pressed')==='true'&&await custom.inputValue()===''&&!(await options.innerText()).includes('/images/'),'default image has a descriptive selected button and hides its asset path');
+    await noImage.click();
+    check(item,await noImage.getAttribute('aria-pressed')==='true'&&await tasting.getAttribute('aria-pressed')==='false'&&await custom.inputValue()==='','removing the preset explicitly selects no image');
+    await custom.fill('https://example.invalid/beneficio.png');
+    check(item,await custom.inputValue()==='https://example.invalid/beneficio.png'&&await options.getByRole('button',{pressed:true}).count()===0,'a custom URL remains editable and clears the image option selection');
+    await crate.click();
+    check(item,await crate.getAttribute('aria-pressed')==='true'&&await noImage.getAttribute('aria-pressed')==='false'&&await custom.inputValue()==='','selecting another image updates its accessible state');
+   }else if(name==='success-no-timer'){
+    await dialog.getByRole('button',{name:'Sin imagen',exact:true}).click();
+   }
+   await f.submit();
    if(name==='double-submit'){
     await dialog.locator('form').evaluate(form=>{form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));});await settle(page);
     check(item,item.posts.length===1,'repeated current-owner submit events cannot issue another POST');await f.releasePost();
@@ -93,7 +138,9 @@ async function runCase(width,theme,name){const f=await open(width,theme,name),{p
     check(item,await page.getByRole('button',{name:'Consultar catálogo',exact:true}).count()>0&&item.posts.length===1,'uncertain close retains a real recovery action and never rePOSTs');
     check(item,await page.evaluate(()=>window.__rewardRefreshes)===0,'late result cannot refresh the page after its owner closes');
    }else if(name==='success-no-timer'){
-    await f.releasePost(200,{ok:true,reward:row});await dialog.getByRole('status').filter({hasText:/Nuevo beneficio creado/}).waitFor();
+    check(item,item.posts[0].body.image_url==='','removing a suggested image submits the existing empty image value');
+    await f.releasePost(200,{ok:true,reward:row});const success=dialog.getByRole('status').filter({hasText:/Nuevo beneficio creado/});await success.waitFor();
+    await checkFeedbackContrast(item,success);
     await dialog.locator('form').evaluate(form=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
     await dialog.getByRole('button',{name:'Cerrar edición del beneficio',exact:true}).click();await dialog.waitFor({state:'detached'});
     await f.fillNew('SECOND','Otra operación QA');await page.waitForTimeout(1700);
@@ -123,6 +170,8 @@ async function runCase(width,theme,name){const f=await open(width,theme,name),{p
     check(item,item.posts.length===1&&item.posts[0].body.tenant_slug==='qa-a','source change does not forward the old action into another tenant');
    }else if(name==='current-409-retains-fields'){
     await f.releasePost();const alert=dialog.getByRole('alert');await alert.waitFor();
+    await checkFeedbackContrast(item,alert);
+    check(item,item.posts[0].body.image_url==='/images/wine_crate.png'&&await dialog.getByRole('button',{name:'Caja de seis botellas',pressed:true}).count()===1,'preset uses its existing asset value and survives a refused save');
     check(item,await dialog.getByLabel('Código de Control',{exact:true}).inputValue()==='NEW'&&await dialog.getByLabel('Título del Beneficio',{exact:true}).inputValue()==='Título conservado QA','current refusal preserves the typed fields');
     check(item,(await alert.innerText()).includes('otro código')&&await alert.evaluate(node=>node===document.activeElement),'current duplicate refusal offers deliberate recovery and focuses neutral feedback');
    }else if(name==='old-api-404'){
@@ -159,7 +208,7 @@ try{
  const bundle=await build({stdin:{contents:entry,loader:'tsx',resolveDir:app},bundle:true,write:false,outfile:'fixture.js',platform:'browser',format:'iife',jsx:'automatic',define:{'process.env.NODE_ENV':'"production"','process.env':'{}'},logLevel:'silent',plugins:[{name:'router-observer',setup(builder){builder.onResolve({filter:/^next\/navigation$/},()=>({path:'navigation',namespace:'router-observer'}));builder.onLoad({filter:/.*/,namespace:'router-observer'},()=>({contents:'export const useRouter=()=>({refresh(){window.__rewardRefreshes++}})',loader:'js'}));}}]});js=bundle.outputFiles.find(f=>f.path.endsWith('.js')).contents;
  css=(await postcss([tailwindcss({content:[join(app,'src/**/*.{ts,tsx}').replaceAll('\\','/'),join(root,'packages/ui/src/**/*.{ts,tsx}').replaceAll('\\','/'),{raw:entry,extension:'tsx'}],darkMode:['selector','[data-theme="dark"]'],theme:{extend:{colors:{brand:{dark:'#020617',card:'#0f172a',border:'#1e293b',cyan:'#06b6d4',blue:'#3b82f6'}}}},plugins:[]})]).process(await readFile(join(app,'src/app/globals.css'),'utf8'),{from:undefined})).css+(bundle.outputFiles.find(f=>f.path.endsWith('.css'))?.text||'');
  await new Promise((done,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',done)});origin='http://127.0.0.1:'+server.address().port;browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH});
- const scenarios=['double-submit','close-late-409','close-late-200','native-close-late','success-no-timer','same-turn-close-reopen','catalogue-read-does-not-resolve-closed-save','unmounted-late-success','source-replace-late','current-409-retains-fields','old-api-404','stalled-body-held','exact-edit-route'];
+ const scenarios=['double-submit','close-late-409','close-late-200','native-close-late','success-no-timer','same-turn-close-reopen','catalogue-read-does-not-resolve-closed-save','unmounted-late-success','source-replace-late','current-409-retains-fields','old-api-404','stalled-body-held','exact-edit-route','historical-catalog'];
  const chosen=process.env.QA_REWARD_DIALOG_CASE?scenarios.filter(n=>n===process.env.QA_REWARD_DIALOG_CASE):scenarios;assert(chosen.length>0,'known explicit case filter');
  for(const width of [390,1280])for(const theme of ['light','dark'])for(const name of chosen)await runCase(width,theme,name);
  report.sourceAfter=await hashes();assert.deepEqual(report.sourceAfter,before);report.allPlannedCases=chosen.length===scenarios.length;report.passed=report.cases.length===chosen.length*4&&report.cases.every(c=>c.passed)&&report.errors.length===0&&report.blockedRequests.length===0;if(!report.passed)process.exitCode=1;

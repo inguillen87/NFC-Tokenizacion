@@ -48,7 +48,7 @@ const PRESETS = [
   }
 ];
 
-type RewardRecord = (typeof PRESETS)[number];
+type RewardRecord = Parameters<typeof RewardsClient>[0]["initialRewards"][number];
 type RewardsReadResult = {
   availability: RewardsAvailability;
   items: RewardRecord[];
@@ -63,6 +63,47 @@ function unavailableRewards(
   return { availability, items: [], dataSource: "unavailable", reason };
 }
 
+const rewardId = /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i;
+const readText = (value: unknown) => typeof value === "string" || value === null ? value : undefined;
+const readStock = (value: unknown) => typeof value === "number" || value === null ? value : undefined;
+const readFlag = (value: unknown) => typeof value === "boolean" ? value : undefined;
+
+function readRewardCatalog(body: Record<string, unknown>, tenant: string): RewardRecord[] | null {
+  if (body.tenant !== (tenant || null) || body.scope !== (tenant ? "tenant" : "global") || !Array.isArray(body.rewards)) return null;
+  const items: RewardRecord[] = [];
+  const ids = new Set<string>();
+  for (const item of body.rewards) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+    const row = item as Record<string, unknown>;
+    if (typeof row.id !== "string" || !rewardId.test(row.id)
+      || typeof row.program_id !== "string" || !rewardId.test(row.program_id)
+      || typeof row.tenant_slug !== "string" || !row.tenant_slug.trim()
+      || (tenant && row.tenant_slug !== tenant)) return null;
+    const id = row.id.toLowerCase();
+    if (ids.has(id)) return null;
+    ids.add(id);
+    items.push({
+      id: row.id,
+      program_id: row.program_id,
+      tenant_slug: row.tenant_slug,
+      code: readText(row.code) ?? "",
+      title: readText(row.title) ?? "",
+      status: readText(row.status) ?? "",
+      points: typeof row.points === "number" && Number.isSafeInteger(row.points)
+        && row.points >= 0 && row.points <= 2_147_483_647 ? row.points : null,
+      description: readText(row.description),
+      type: readText(row.type),
+      image_url: readText(row.image_url),
+      stock_total: readStock(row.stock_total),
+      stock_remaining: readStock(row.stock_remaining),
+      requires_age_gate: readFlag(row.requires_age_gate),
+      network_visible: readFlag(row.network_visible),
+      reservation_requirements: row.reservation_requirements,
+    });
+  }
+  return items;
+}
+
 async function getRewards(
   context: AdminPageContext,
   path: string,
@@ -71,28 +112,21 @@ async function getRewards(
   try {
     const response = await fetchAdminPage(context, path);
     const meta = readDemoDataMetaFromResponse(response);
-    const payload = await response.json().catch(() => null);
+    const payload: unknown = await response.json().catch(() => null);
+    const body = payload && typeof payload === "object" && !Array.isArray(payload)
+      ? payload as Record<string, unknown> : null;
 
-    if (response.status === 403) {
+    if (response.status === 403 || response.status === 401) {
       return unavailableRewards("forbidden", "rewards_read_forbidden");
     }
-    if (!response.ok || (payload && typeof payload === "object" && (payload as { ok?: boolean }).ok === false)) {
-      const reason = payload && typeof payload === "object"
-        ? String((payload as { reason?: unknown; error?: unknown }).reason || (payload as { error?: unknown }).error || `upstream_${response.status}`)
-        : `upstream_${response.status}`;
-      return unavailableRewards("upstream_error", reason);
+    if (!response.ok || body?.ok === false) {
+      return unavailableRewards("upstream_error", String(body?.reason || body?.error || `upstream_${response.status}`));
     }
-
-    const rewards = payload && typeof payload === "object"
-      ? (payload as { rewards?: unknown }).rewards
-      : null;
-    if (Array.isArray(rewards)) {
-      return {
-        availability: rewards.length ? "ready" : "ready_empty",
-        items: rewards as RewardRecord[],
-        dataSource: meta.demoMode ? "demo" : "production",
-        reason: "",
-      };
+    if (!body || body.ok !== true || response.headers.get("x-nexid-data-mode")?.trim().toLowerCase() !== meta.dataSource
+      || (Object.hasOwn(body, "dataSource") && body.dataSource !== meta.dataSource)
+      || (Object.hasOwn(body, "demoMode") && body.demoMode !== meta.demoMode)
+      || (Object.hasOwn(body, "demo") && body.demo !== meta.demoMode)) {
+      return unavailableRewards("upstream_error", "rewards_payload_invalid");
     }
 
     if (allowDemoData && meta.demoMode) {
@@ -103,7 +137,14 @@ async function getRewards(
         reason: "illustrative_presets",
       };
     }
-    return unavailableRewards("upstream_error", "rewards_payload_invalid");
+    if (meta.demoMode) return unavailableRewards("upstream_error", "rewards_demo_source_unexpected");
+    const items = readRewardCatalog(body, context.tenantSlug);
+    return items === null ? unavailableRewards("upstream_error", "rewards_payload_invalid") : {
+      availability: items.length ? "ready" : "ready_empty",
+      items,
+      dataSource: "production",
+      reason: "",
+    };
   } catch {
     return unavailableRewards("upstream_error", "admin_bff_unreachable");
   }

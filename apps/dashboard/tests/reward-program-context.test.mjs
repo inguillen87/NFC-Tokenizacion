@@ -15,7 +15,7 @@ const revision = "2026-10-14 12:00:00.000001+00";
 const program = { id, revision, lastOperationId: null, name: "Programa asociado QA", vertical: "wine", status: "active", pointsName: "Puntos", pointsPerValidTap: 0, cooldownSeconds: 0, startAt: "2026-01-01T00:00:00.000Z", endAt: null };
 const board = (patch = {}) => ({ ok: true, tenant, profile: { revision, lastOperationId: null, status: "draft", allowedActions: [] }, programs: [program, { ...program, id: otherId, name: "Otro programa QA" }], quizzes: [], ...patch });
 const requirements = { version: notices.REWARD_REQUIREMENTS_VERSION, program: { name: program.name, association_confirmed: true, age_gate_required: true }, starts_at: "2026-10-01T00:00:00.000Z", ends_at: null, requires_age_gate: true, eligibility_policy_review: true, fulfillment_policy_review: false, redemption_limit_per_member: 1, redemption_limit_known: true };
-const reward = { id: otherId, program_id: id, tenant_slug: tenant, code: "VISIT", title: "Visita QA", points: 0, stock_total: 10, stock_remaining: 2, status: "active", requires_age_gate: true, network_visible: false, reservation_requirements: requirements };
+const reward = { id: otherId, program_id: id, tenant_slug: tenant, code: "VISIT", title: "Visita QA", points: 0, stock_total: 10, stock_remaining: 2, status: "active", type: "TOUR", description: null, image_url: null, requires_age_gate: true, network_visible: false, reservation_requirements: requirements };
 const context = { tenantScope: tenant, dataSource: "production" };
 
 test("program navigation requires the same confirmed tenant, version and persisted association", () => {
