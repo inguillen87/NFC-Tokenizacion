@@ -2,9 +2,17 @@ import { sql, type SqlExecutor } from "./db";
 
 export const CONSUMER_REWARDS_LIMIT = 100;
 export const CONSUMER_PORTAL_CLAIM_INTENT = "portal-first-reservation.v1" as const;
+const UUID = /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i;
 
 export type ConsumerRewardCatalogState = "reported" | "locked" | "upcoming" | "expired" | "out_of_stock" | "inactive";
 export type ConsumerRewardClaimStatus = "claimed" | "redeemed" | "cancelled" | "expired";
+export type ConsumerRewardReceipt = {
+  id: string;
+  reward_id: string;
+  tenant_slug: string;
+  status: ConsumerRewardClaimStatus | "unknown";
+  expires_at: string | null;
+};
 export type ConsumerRewardUnavailableReason =
   | "age_verification_required" | "insufficient_program_points" | "brand_connection_required"
   | "program_participation_required" | "brand_conditions_review" | "availability_review" | "account_review";
@@ -66,6 +74,39 @@ export function consumerRewardClaimExpiresAt(explicitValue: unknown, createdAt: 
   }
   const created = timestamp(createdAt);
   return created ? timestamp(new Date(Date.parse(created) + 48 * 60 * 60 * 1000)) : null;
+}
+
+/** Historical receipt lookup. Current catalog eligibility is independent of an issued receipt. */
+export async function getPrivateConsumerRewardReceipt(
+  consumerId: string,
+  redemptionId: string,
+  executor: SqlExecutor = sql,
+): Promise<ConsumerRewardReceipt | null> {
+  if (typeof redemptionId !== "string" || redemptionId.length !== 36 || !UUID.test(redemptionId)) return null;
+  if (!UUID.test(consumerId)) throw new Error("invalid_consumer_id");
+
+  const [row] = await executor/*sql*/`
+    SELECT claim.id::text AS id, claim.reward_id::text AS reward_id,
+           tenant.slug AS tenant_slug, claim.status::text AS claim_status,
+           claim.created_at AS claimed_at, claim.metadata_json->'expires_at' AS claim_expires_at_value
+    FROM consumer_reward_claims claim
+    JOIN rewards reward ON reward.id = claim.reward_id AND reward.tenant_id = claim.tenant_id
+    JOIN tenants tenant ON tenant.id = claim.tenant_id
+    WHERE claim.id = ${redemptionId.toLowerCase()}::uuid AND claim.consumer_id = ${consumerId}::uuid
+  `;
+  if (!row) return null;
+  if (typeof row.id !== "string" || typeof row.reward_id !== "string" || typeof row.tenant_slug !== "string" || !row.tenant_slug) {
+    throw new Error("invalid_reward_receipt");
+  }
+
+  const expiresAt = consumerRewardClaimExpiresAt(row.claim_expires_at_value, row.claimed_at);
+  let status: ConsumerRewardReceipt["status"] = "unknown";
+  if (row.claim_status === "claimed" && expiresAt) {
+    status = Date.parse(expiresAt) <= Date.now() ? "expired" : "claimed";
+  } else if (row.claim_status === "redeemed" || row.claim_status === "cancelled" || row.claim_status === "expired") {
+    status = row.claim_status;
+  }
+  return { id: row.id, reward_id: row.reward_id, tenant_slug: row.tenant_slug, status, expires_at: expiresAt };
 }
 
 function catalogState(row: Record<string, unknown>, now: number): ConsumerRewardCatalogState {
@@ -190,7 +231,7 @@ export function toConsumerRewardItem(row: Record<string, unknown>, now = Date.no
  * Network discovery is deliberately outside this authenticated read contract.
  */
 export async function getPrivateConsumerRewardsSnapshot(consumerId: string, executor: SqlExecutor = sql): Promise<{ items: ConsumerRewardItem[]; checkedAt: string }> {
-  if (!/^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(consumerId)) throw new Error("invalid_consumer_id");
+  if (!UUID.test(consumerId)) throw new Error("invalid_consumer_id");
 
   const rows = await executor/*sql*/`
     SELECT
