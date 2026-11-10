@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { stripConsumerTapCapabilityCookies } from "../../api/_lib/consumer-tap-handoff";
+import { hasConsumerTapHandoffCookie, stripConsumerTapCapabilityCookies } from "../../api/_lib/consumer-tap-handoff";
 import { consumerSessionState, fetchConsumerJson } from "./consumer-bounded-fetch";
 import { productUrls } from "@product/config";
 import { fetchRuntimeApi } from "../../api/_lib/server-api-transport";
@@ -50,17 +50,35 @@ export async function fetchConsumerSession() {
   return fetchJson("/consumer/session");
 }
 
-export type ConsumerSessionRead = { status: "ready" } | { status: "unavailable" };
+export type ConsumerSessionRead = { status: "ready"; accountId?: string } | { status: "unavailable" };
 export type ConsumerHomeSessionRead = ConsumerSessionRead;
 
 /** Expected lookup failures are recoverable; only confirmed sessions open private pages. */
-export async function readConsumerSession(nextPath = "/me"): Promise<ConsumerSessionRead> {
+export async function readConsumerSession(nextPath = "/me", { includeAccountId = false } = {}): Promise<ConsumerSessionRead> {
   const result = await readJson("/consumer/session");
   const state = consumerSessionState(result);
   if (state === "unauthenticated") {
     redirect(`/login?consumer=1&next=${encodeURIComponent(nextPath)}`);
   }
-  return { status: state === "authenticated" ? "ready" : "unavailable" };
+  if (state !== "authenticated" || result.status !== "ready") return { status: "unavailable" };
+  const accountId = includeAccountId ? jsonRecord(jsonRecord(result.data)?.consumer)?.id : undefined;
+  if (typeof accountId === "string" && /^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i.test(accountId)) {
+    return { status: "ready", accountId: accountId.toLowerCase() };
+  }
+  return { status: "ready" };
+}
+
+/** Local, read-only hint for an already authenticated product return. */
+export async function readConsumerTapHandoffPresence(eventId: string): Promise<boolean | null> {
+  const incoming = await headers();
+  let url = new URL("https://nexid.invalid");
+  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+    const scheme = incoming.get("x-forwarded-proto");
+    const host = incoming.get("host");
+    if ((scheme !== "https" && scheme !== "http") || !host) return null;
+    try { url = new URL(`${scheme}://${host}`); } catch { return null; }
+  }
+  return hasConsumerTapHandoffCookie(incoming.get("cookie"), url, eventId);
 }
 
 /** Retain the home reader's public contract for independently maintained callers. */

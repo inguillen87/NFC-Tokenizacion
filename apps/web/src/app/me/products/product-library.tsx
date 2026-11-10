@@ -1,5 +1,5 @@
 "use client";
-import {useEffect,useMemo,useRef,useState} from 'react';
+import {useEffect,useMemo,useRef,useState,type RefObject} from 'react';
 import Link from 'next/link';
 import {useSearchParams} from 'next/navigation';
 import {ArrowRight,ArrowUpRight,History,Search,ShieldAlert,X,Package,MessageSquareText,ShoppingBag,Clock3,ChevronDown} from 'lucide-react';
@@ -14,6 +14,7 @@ export function ConsumerProductLibrary({products,focusEvent=null}:{products:Home
  const searchParams=useSearchParams(),focusValues=searchParams?.getAll('focus');
  const requestedFocus=focusValues?(focusValues.length===1?focusValues[0]:null):focusEvent;
  const openedFromList=useRef<string|null>(null);
+ const libraryHeading=useRef<HTMLHeadingElement>(null);
  useEffect(()=>{const index=productFocus(products,requestedFocus);setSelected(index===null?null:{index,item:products[index]});},[products,requestedFocus]);
  const choices=useMemo(()=>{
   const reportedNames=new Map<string,Set<string>>();
@@ -43,7 +44,7 @@ export function ConsumerProductLibrary({products,focusEvent=null}:{products:Home
   window.history.replaceState(null,'',window.location.pathname+(query?'?'+query:'')+window.location.hash);openedFromList.current=null;
  }
  return <section className={styles.library} data-testid="consumer-product-library">
-  <div className={styles.intro}><h2>Encontrá tu producto</h2><span className={styles.count}>{products.length} {products.length===1?'producto en esta lista':'productos en esta lista'}</span></div>
+  <div className={styles.intro}><h2 ref={libraryHeading} tabIndex={-1}>Encontrá tu producto</h2><span className={styles.count}>{products.length} {products.length===1?'producto en esta lista':'productos en esta lista'}</span></div>
   <div className={styles.filters}><label className={styles.search}><Search size={18} aria-hidden="true"/><span className={styles.srOnly}>Buscar producto, marca o lote</span><input type="search" maxLength={160} value={search} placeholder="Producto, marca o lote" onChange={e=>{setSearch(e.target.value);resetLimit();}}/></label><label>Marca<select value={brand} onChange={e=>{setBrand(e.target.value);resetLimit();}}><option value="">Todas mis marcas</option>{choices.map(([slug,label])=><option value={slug} key={slug}>{label}</option>)}</select></label><label>Orden<select value={order} onChange={e=>{setOrder(e.target.value);resetLimit();}}><option value="original">Orden de la lista</option><option value="recent">Lectura más reciente</option><option value="name">Nombre del producto</option></select></label></div>
   <p role="status" className={styles.results}>Mostrando {Math.min(limit,filtered.length)} de {filtered.length} {filtered.length===1?'producto':'productos'} de la lista cargada.</p>
   <div className={styles.grid}>{filtered.slice(0,limit).map(({product:p,index})=><article className={styles.card} key={`${p.eventId||p.batch||'product'}:${index}`}>
@@ -53,12 +54,27 @@ export function ConsumerProductLibrary({products,focusEvent=null}:{products:Home
   </article>)}</div>
   {!filtered.length&&<div className={styles.empty}><Package size={28} aria-hidden="true"/><h3>No hay coincidencias con estos filtros.</h3><button type="button" onClick={()=>{setSearch('');setBrand('');setLimit(12);}}>Restablecer filtros</button></div>}
   {filtered.length>limit&&<button type="button" className={styles.more} onClick={()=>setLimit(n=>n+12)}>Mostrar más productos<ChevronDown size={16} aria-hidden="true"/></button>}
-  {selected!==null&&products[selected.index]===selected.item&&<ProductPassportDialog key={selected.index} product={selected.item} onClose={closeProduct}/>}
+  {selected!==null&&products[selected.index]===selected.item&&<ProductPassportDialog key={selected.index} product={selected.item} onClose={closeProduct} fallbackFocus={libraryHeading}/>}
  </section>;
 }
-export function ProductPassportDialog({product:p,onClose}:{product:HomeProduct;onClose:()=>void}){
+export function ProductPassportDialog({product:p,onClose,fallbackFocus}:{product:HomeProduct;onClose:()=>void;fallbackFocus:RefObject<HTMLHeadingElement>}){
  const ref=useRef<HTMLDialogElement>(null);const scope=publicProductScope(p);
- useEffect(()=>{const previous=document.activeElement as HTMLElement|null,dialog=ref.current;dialog?.showModal();return()=>{dialog?.close();requestAnimationFrame(()=>{if(previous?.isConnected)previous.focus({preventScroll:true});});};},[]);
+ useEffect(() => {
+  const previous = document.activeElement;
+  const dialog = ref.current;
+  dialog?.showModal();
+  return () => {
+   dialog?.close();
+   requestAnimationFrame(() => {
+    if (document.activeElement !== document.body && document.activeElement !== previous) return;
+    if (previous instanceof HTMLElement && previous !== document.body && previous.isConnected) {
+     previous.focus({preventScroll:true});
+    } else {
+     fallbackFocus.current?.focus();
+    }
+   });
+  };
+ }, [fallbackFocus]);
  return <dialog ref={ref} className={styles.dialog} aria-labelledby="saved-passport-title" onCancel={e=>{e.preventDefault();onClose();}}>
   <header className={styles.dialogHeading}><span className={styles.eyebrow}>PASAPORTE GUARDADO</span><button type="button" aria-label="Cerrar ficha del producto" onClick={onClose}><X size={20} aria-hidden="true"/></button></header>
   <div className={styles.dialogBody}><div className={styles.identity}><ConsumerProductImage product={p}/><div><span className={styles.eyebrow}>{p.brand||'Marca no informada'}</span><h2 id="saved-passport-title">{p.name}</h2><p>{p.batch?`Lote ${p.batch}`:'Lote no informado'}</p><span className={styles.badge}>{homeOwnershipLabel(p.ownershipStatus)}</span></div></div>

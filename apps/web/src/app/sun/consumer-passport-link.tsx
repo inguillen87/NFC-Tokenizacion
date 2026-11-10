@@ -143,7 +143,19 @@ export function ConsumerTapLink({ href, eventId, freshToken, children, className
   </div>;
 }
 
-export function ConsumerPassportLink(props: { href: string; eventId: string; freshToken: string }) {
+const saveLabels = { "es-AR": "Guardar en mi cuenta", en: "Save to my account", "pt-BR": "Salvar na minha conta" } as const;
+const accountLinkStyle = "sun-account-entry flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-cyan-300/25 px-3 py-2 text-left text-xs font-bold text-cyan-100 disabled:opacity-60";
+
+export function ConsumerPassportLink({ save }: { save?: { href: string; eventId: string; freshToken: string } }) {
   const { locale } = useSunLocale();
-  return <div data-testid="consumer-passport-primary"><ConsumerTapLink {...props} className="sun-account-entry flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-cyan-300/25 px-3 py-2 text-left text-xs font-bold text-cyan-100 disabled:opacity-60"><span>{copy[locale].open}</span><ChevronRight size={16} aria-hidden="true" /></ConsumerTapLink></div>;
+  return <div className="grid gap-2">
+    {save ? <div data-testid="consumer-passport-primary">
+      <ConsumerTapLink {...save} className={accountLinkStyle}>
+        <span>{saveLabels[locale]}</span><ChevronRight size={16} aria-hidden="true" />
+      </ConsumerTapLink>
+    </div> : null}
+    <a href="/me/products" referrerPolicy="no-referrer" data-testid="consumer-passport-library" className={accountLinkStyle}>
+      <span>{copy[locale].open}</span><ChevronRight size={16} aria-hidden="true" />
+    </a>
+  </div>;
 }

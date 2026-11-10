@@ -30,7 +30,7 @@
   --portal-shadow: 0 12px 34px rgba(0, 0, 0, .18);
 }
 
-.header { position: sticky; top: 0; z-index: 50; width: 100%; border-bottom: 1px solid var(--portal-border); background: var(--portal-surface); box-shadow: var(--portal-shadow); }
+.header { width: 100%; border-bottom: 1px solid var(--portal-border); background: var(--portal-surface); box-shadow: var(--portal-shadow); }
 .headerRow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .65rem; width: min(100%, 88rem); min-height: 4.75rem; margin-inline: auto; padding: .55rem max(.85rem, env(safe-area-inset-right)) .55rem max(.85rem, env(safe-area-inset-left)); }
 .brandArea { display: flex; align-items: center; gap: 1rem; min-width: 0; }
 .header .brand { display: inline-flex; min-width: 0; min-height: 3.5rem; border-radius: .85rem; }
@@ -59,7 +59,7 @@
 .portal .logoutControl button > span { display: none; }
 .portal .accountControls button:hover { border-color: var(--portal-accent); }
 
-.main { scroll-margin-block-start: calc(var(--portal-header-block-size, 6rem) + 0.75rem); width: min(100%, 88rem); min-width: 0; margin-inline: auto; padding: 1.5rem max(1rem, env(safe-area-inset-right)) calc(6rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); }
+.main { scroll-margin-block-start: .75rem; width: min(100%, 88rem); min-width: 0; margin-inline: auto; padding: 1.5rem max(1rem, env(safe-area-inset-right)) calc(6rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); }
 .pageHeading { max-width: 60rem; margin-bottom: 1.4rem; }
 .pageHeading h1 { margin: 0; color: var(--portal-text); font-size: clamp(1.7rem, 3.5vw, 2.7rem); font-weight: 800; line-height: 1.12; letter-spacing: -.035em; overflow-wrap: anywhere; }
 .pageHeading p { margin: .65rem 0 0; color: var(--portal-muted); font-size: .95rem; line-height: 1.65; }
@@ -69,6 +69,7 @@
 .skipLink:focus { transform: translateY(0); }
 
 .navigation, .navigationPlaceholder { position: fixed; inset: auto 0 0; z-index: 120; width: 100%; border-top: 1px solid var(--portal-border); padding: .45rem max(.45rem, env(safe-area-inset-right)) max(.45rem, env(safe-area-inset-bottom)) max(.45rem, env(safe-area-inset-left)); background: var(--portal-surface); }
+.navigation { container: portal-dock / inline-size; }
 .navigationPlaceholder { min-height: calc(4.5rem + env(safe-area-inset-bottom)); }
 .navigationItems { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .2rem; max-width: 40rem; margin-inline: auto; }
 .navigationItem { display: flex; overflow-wrap: anywhere; flex-direction: column; align-items: center; justify-content: center; gap: .25rem; min-width: 0; min-height: 3.5rem; border: 1px solid transparent; border-radius: .8rem; padding: .45rem .1rem; background: transparent; color: var(--portal-muted); font-size: .6875rem; font-weight: 650; line-height: 1.4; text-align: center; text-decoration: none; touch-action: manipulation; cursor: pointer; }
@@ -105,6 +106,7 @@
 }
 
 @media (min-width: 64rem) {
+  .header { position: sticky; top: 0; z-index: 50; }
   .headerRow { min-height: 5.25rem; }
   .portal .logoutControl button { padding-inline: .85rem; }
   .portal .logoutControl button > span { display: inline; }
@@ -113,6 +115,18 @@
   .navigationItem { flex-direction: row; gap: .5rem; min-height: 2.75rem; padding: .55rem 1rem; font-size: .85rem; }
   .navigationPlaceholder { min-height: 3.5rem; }
   .main { padding-bottom: 3rem; scroll-margin-block-start: calc(var(--portal-header-block-size, 10rem) + 0.75rem); }
+}
+
+@container portal-dock (max-width: 17rem) {
+  .navigationItems { display: flex; flex-wrap: wrap; column-gap: .1rem; }
+  .navigationItem {
+    flex: 1 0 auto;
+    min-width: 44px;
+    max-width: 100%;
+    min-height: 44px;
+    padding: .2rem .1rem;
+  }
+  .navigationItem > svg { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

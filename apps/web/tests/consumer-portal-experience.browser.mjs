@@ -160,6 +160,9 @@ try{
   await page.evaluate(()=>window.history.pushState(null,'','?focus=900001'));await page.getByRole('dialog',{name:'Vino reserva QA'}).waitFor();
   check(true,`${width}/${theme} same-page history changes selected product`);
   await page.keyboard.press('Escape');await page.locator('dialog[open]').waitFor({state:'hidden'});
+  const libraryHeading=library.getByRole('heading',{name:'Encontrá tu producto',exact:true});
+  await page.waitForFunction(()=>document.activeElement?.textContent==='Encontrá tu producto');
+  check(await libraryHeading.evaluate(node=>node===document.activeElement),`${width}/${theme} closing a direct product link returns focus to the library heading`);
   for(const query of ['focus=999999','focus=900001&focus=900002','focus=01']){await page.goto(base+'/me/products?'+query,{waitUntil:'networkidle'});await library.waitFor();check(await page.locator('dialog[open]').count()===0,`${width}/${theme} rejects unowned or ambiguous focus ${query}`);}
 
   await page.goto(base+'/me/taps/900003',{waitUntil:'networkidle'});const unknown=page.getByTestId('reading-current-notices');await unknown.waitFor();

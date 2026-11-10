@@ -196,6 +196,8 @@ async function lateCodeSuccessfulReturn(theme){
  check(new URL(p.url()).pathname==='/login',`${label} code acknowledgement cannot enter without a confirmed session`);
  state.session={ok:true,authenticated:true};await p.getByRole('button',{name:'Validar y continuar',exact:true}).click();
  await p.waitForURL(url=>url.pathname==='/me/products'&&url.searchParams.get('eventId')==='900001');await p.getByTestId('consumer-product-library').waitFor();
+ await p.getByTestId('save-handoff-required').waitFor();
+ check(await p.getByTestId('tap-association-confirm').count()===0,`${label} a fresh reading is requested before offering Save`);
  check(new URL(p.url()).pathname+new URL(p.url()).search===productNext,`${label} late-code entry restores the exact product selection after session confirmation`);
  check(starts(state).length===1,`${label} successful late-code entry never requests another code`);
  check(state.calls.filter(c=>c.path.endsWith('/verify')).length===2,`${label} both checks follow explicit user verification`);
@@ -210,21 +212,18 @@ async function magicProductContinuation(width,theme){
  check(await p.getByRole('button',{name:'Validar y continuar',exact:true}).count()===1,`${label} verification action explains the product return`);
  const continuation=starts(state)[0].payload.next;
  state.verify={ok:true};state.verifyHttp=200;state.session={ok:true,authenticated:true};
- // Install this observer before authentication. The product's own session
- // read must happen after its document navigation, and must be awaited so
- // the historical whole-page count race is reproduced deterministically.
- const destinationSessionRequested=p.waitForRequest(request=>new URL(request.url()).pathname==='/api/consumer/session'&&requestDocumentPath(request)==='/me/products');
- void destinationSessionRequested.catch(()=>{}); // Report a later awaited rejection through the scenario catch.
  // Simulate the URL received in an API-generated email. The token, identity,
- // session cookie and account projections are local fixtures, not credentials.
+ // session cookie and account projections are local fixtures. This browser
+ // has no cookie for the physical reading.
  const link='/login?'+new URLSearchParams({consumer:'1',t:'synthetic-continuation-only',next:continuation});
  await p.evaluate(link=>history.pushState(null,'',link),link);
  await p.waitForURL(url=>url.pathname==='/me/products'&&url.searchParams.get('eventId')==='900001');
- const destinationSessionRequest=await destinationSessionRequested,destinationSessionResponse=await destinationSessionRequest.response();
- check(destinationSessionResponse?.status()===200&&destinationSessionRequest.method()==='GET',`${label} destination independently reads its session after navigation`);
- check((await destinationSessionResponse.finished())===null,`${label} destination session response transfer completes`);
  const library=p.getByTestId('consumer-product-library');await library.waitFor();
  check((await library.innerText()).includes('Vino reserva QA'),`${label} actual private Next product page renders the synthetic collection`);
+ const handoff=p.getByTestId('save-handoff-required');await handoff.waitFor();
+ check(/acercá otra vez el teléfono a la etiqueta/i.test(await handoff.innerText()),`${label} next step explains how to make a new reading before offering Save`);
+ check(await p.getByTestId('tap-association').count()===0&&await p.getByTestId('tap-association-confirm').count()===0,`${label} no action or duplicate client session check is mounted for a missing handoff`);
+ check(await handoff.getByRole('link',{name:'Revisar mis productos',exact:true}).getAttribute('href')==='/me/products',`${label} the collection remains reachable without TAP context`);
  const verifyCalls=state.calls.filter(call=>call.path.endsWith('/verify')),sessionCalls=state.calls.filter(call=>call.path.endsWith('/session'));
  check(state.navigationBoundaries.length===1,`${label} one product document navigation was requested`);
  const boundary=state.navigationBoundaries[0],before=boundary.requests;
@@ -236,15 +235,15 @@ async function magicProductContinuation(width,theme){
  check(beforeVerify[0].sequence<beforeSession[0].sequence,`${label} session confirmation follows token verification`);
  check(verifyCalls.length===1,`${label} destination never repeats token verification`);
  checkPayload(beforeVerify[0].payload,{token:'synthetic-continuation-only'},`${label} magic verification carries only its token`);
- check(sessionCalls.length>1,`${label} awaiting the destination read reproduces the former whole-page count mismatch`);
+ check(sessionCalls.every(call=>call.documentPath!=='/me/products'),`${label} the authenticated destination needs no extra client session read for missing handoff`);
  check(state.calls.slice(boundary.requestCount).every(call=>['GET','HEAD'].includes(call.method)),`${label} destination requests after navigation remain read-only`);
  check(starts(state).length===1,`${label} continuation preserves one explicit OTP send`);
- checkpoint(state,'destination-session-read-confirmed');
+ checkpoint(state,'destination-missing-handoff-confirmed');
  check(new URL(p.url()).pathname+new URL(p.url()).search===productNext,`${label} successful session restores the exact product selection`);
  check(state.calls.filter(call=>!['GET','HEAD'].includes(call.method)).every(call=>['/api/consumer/auth/logout','/api/consumer/auth/start','/api/consumer/auth/verify'].includes(call.path)),`${label} product continuation performs no automatic save, claim or association`);
  check(await p.evaluate(()=>window.__geoCalls)===0,`${label} product continuation requests no location`);
  await assess(p,'[data-testid="consumer-product-library"]','email-product-return',width,theme);
- report.scenarios.push({name:'magic-email-product-continuation',width,theme,requests:state.calls,navigationBoundary:boundary,preNavigationAuthCounts:{verify:beforeVerify.length,session:beforeSession.length},wholePageSessionCount:sessionCalls.length,legacyWholePageSingleSessionCheckWouldPass:verifyCalls.length===1&&sessionCalls.length===1});await s.context.close();
+ report.scenarios.push({name:'magic-email-product-continuation',width,theme,requests:state.calls,navigationBoundary:boundary,preNavigationAuthCounts:{verify:beforeVerify.length,session:beforeSession.length},wholePageSessionCount:sessionCalls.length,missingHandoff:true});await s.context.close();
 }
 try{
  for(const width of [320,390,768,1440])for(const theme of ['light','dark']){

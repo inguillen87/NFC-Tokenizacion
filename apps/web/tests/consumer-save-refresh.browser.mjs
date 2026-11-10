@@ -156,8 +156,10 @@ async function open(width, theme, scenario, action = 'save') {
   await confirm.waitFor();
   const home = page.getByTestId('consumer-home');
   await home.waitFor();
+  const savedProducts = home.getByRole('navigation', { name: 'Accesos de tu cuenta' })
+    .getByRole('link', { name: /^Productos guardados/ });
   check(await home.getByRole('heading', { name: productName, exact: true }).count() === 0, `${width}/${theme}/${scenario}: pre-save projection contains no new product`);
-  check((await home.innerText()).includes('0 en tu cuenta'), `${width}/${theme}/${scenario}: initial saved-product count comes from the empty account projection`);
+  check(await savedProducts.getByText('Aún no guardaste productos', { exact: true }).isVisible(), `${width}/${theme}/${scenario}: initial saved-product count comes from the empty account projection`);
   check(postCount === 0, `${width}/${theme}/${scenario}: entering the portal sends no save`);
   const initialRefreshes = refreshCount;
   await confirm.click();
@@ -209,7 +211,9 @@ async function open(width, theme, scenario, action = 'save') {
   // positions. Capture the untouched viewport after focus before any locator
   // screenshot or additional scroll, then measure what is actually hit-testable.
   const headingHitTest = await viewportHitTest(page.locator('#tap-association-results'));
-  const reviewLink = banner.getByRole('link', { name: 'Revisar mis productos', exact: true });
+  const reviewLink = banner.getByRole('link', { name: confirmed ? 'Abrir ficha guardada' : 'Revisar mis productos', exact: true });
+  const reviewPath = confirmed ? `/me/products?focus=${eventId}` : '/me/products';
+  check(await reviewLink.getAttribute('href') === reviewPath, `${width}/${theme}/${scenario}: only a confirmed save links to a focused product`);
   const reviewBeforeScroll = await viewportHitTest(reviewLink);
   const focusedViewport = `${scenario}-${width}-${theme}-viewport-focused.png`;
   await page.screenshot({ path: join(output, focusedViewport) });
@@ -230,7 +234,7 @@ async function open(width, theme, scenario, action = 'save') {
   check(postCount === 1, `${width}/${theme}/${scenario}: result does not automatically repeat the POST`);
   if (confirmed) {
     check(refreshCount - initialRefreshes === 1, `${width}/${theme}: definitive receipt performs exactly one Next RSC refresh`);
-    check((await home.innerText()).includes('1 en tu cuenta'), `${width}/${theme}: refreshed account count reflects the synthetic new product`);
+    check(await savedProducts.getByText('1 producto en tu cuenta', { exact: true }).isVisible(), `${width}/${theme}: refreshed account count reflects the synthetic new product`);
     check(await result.isVisible() && await confirm.isDisabled(), `${width}/${theme}: confirmed feedback survives refresh and stays terminal`);
     await confirm.evaluate(button => { button.click(); button.click(); });
     await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
@@ -238,7 +242,7 @@ async function open(width, theme, scenario, action = 'save') {
   } else {
     check(refreshCount === initialRefreshes, `${width}/${theme}/${scenario}: missing definitive receipt performs no automatic refresh`);
     check(await home.getByRole('heading', { name: productName, exact: true }).count() === 0, `${width}/${theme}/${scenario}: unconfirmed response never invents a saved product`);
-    check(await banner.getByRole('link', { name: 'Revisar mis productos', exact: true }).isVisible(), `${width}/${theme}/${scenario}: read-only collection review remains available`);
+    check(await reviewLink.isVisible(), `${width}/${theme}/${scenario}: read-only collection review remains available`);
     if (inactiveMembership) {
       check(await result.getByRole('heading', { name: 'Tu vínculo con la marca está inactivo', exact: true }).isVisible(), `${width}/${theme}/${scenario}: the known brand-membership condition has a specific visible heading`);
       check(await result.locator('p').innerText() === 'Consultá con la marca para revisar el vínculo de esta cuenta antes de volver a intentar. Esta solicitud no se reenviará automáticamente; otro TAP no reactiva el vínculo.', `${width}/${theme}/${scenario}: brand review is explicit and another TAP is not presented as reactivation`);
@@ -272,7 +276,7 @@ async function open(width, theme, scenario, action = 'save') {
     }
   }
   check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${width}/${theme}/${scenario}: no horizontal overflow`);
-  check(await banner.getByRole('link', { name: 'Revisar mis productos', exact: true }).evaluate(link => link.getBoundingClientRect().height >= 44), `${width}/${theme}/${scenario}: collection action has a 44px target`);
+  check(await reviewLink.evaluate(link => link.getBoundingClientRect().height >= 44), `${width}/${theme}/${scenario}: collection action has a 44px target`);
   await page.addScriptTag({ content: axe });
   const violations = await page.evaluate(async () => (await axe.run('[data-testid="tap-association"]', { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] } })).violations.map(item => ({ id: item.id, impact: item.impact, targets: item.nodes.map(node => node.target), failures: item.nodes.map(node => node.failureSummary) })));
   report.views.push({ width, theme, scenario, violations });
@@ -281,7 +285,7 @@ async function open(width, theme, scenario, action = 'save') {
   report.cases.push({ width, theme, scenario, action, interceptedSavePosts: action === 'save' ? postCount : 0, interceptedJoinPosts: action === 'join' ? postCount : 0, automaticRscRefreshes: refreshCount - initialRefreshes, expectedOutcome,
     newerInteraction, feedbackFocus: await page.evaluate(() => ({ ...window.__saveFeedbackFocus })) });
   await reviewLink.click();
-  await page.waitForURL(url => url.pathname === '/me/products' && url.searchParams.get('focus') === eventId);
+  await page.waitForURL(url => url.pathname + url.search === reviewPath);
   await page.getByRole('heading', { name: 'Tus productos guardados', exact: true }).waitFor();
   check(true, `${width}/${theme}/${scenario}: explicit collection review navigates through the actual Next router`);
   if (confirmed) {

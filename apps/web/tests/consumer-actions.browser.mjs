@@ -38,14 +38,16 @@ async function assess(page, selector, name, width, theme) {
   report.visual.push({ name, width, theme, violations });
   assert.deepEqual(violations, []);
 }
-async function fresh(page, action = 'products') {
+async function fresh(page, action = 'save', trace = 'qa-only') {
   const issued = await (await fetch(api + '/qa-issue')).json();
-  await page.goto(`${base}/sun?snapshot=${issued.eventId}&trace=qa-only&access=qa-only&fresh=${encodeURIComponent(issued.token)}`, { waitUntil: 'load', timeout: 90000 });
-  await page.getByTestId('consumer-passport-primary').getByRole('button').click();
+  await page.goto(`${base}/sun?snapshot=${issued.eventId}&trace=${trace}&access=qa-only&fresh=${encodeURIComponent(issued.token)}`, { waitUntil: 'load', timeout: 90000 });
+  assert.equal(await page.getByTestId('consumer-passport-library').getAttribute('href'), '/me/products');
+  await page.getByTestId('consumer-passport-primary').getByRole('button', {name:'Guardar en mi cuenta',exact:true}).click();
   await page.waitForURL(u => u.pathname === '/me/products', { timeout: 60000 });
+  assert.equal(new URL(page.url()).searchParams.get('action'), 'save');
   assert.ok(!page.url().includes(issued.token) && !page.url().includes('fresh='));
   await page.getByTestId('tap-association-confirm').waitFor();
-  if (action !== 'products') {
+  if (action !== 'save') {
     await page.getByTestId('tap-association').getByText('Otras opciones', { exact: true }).click();
     await page.locator(`input[name="tap-association-action"][value="${action}"]`).check();
   }
@@ -81,6 +83,26 @@ try {
     report.checks.push('Slow hydration keeps the handoff disabled until ready, then one click navigates without a business mutation');
   } finally { releaseScripts(); await delayed.context.close(); }
   const { context, page } = await open();
+  const beforeCollection = actions(await state()).length;
+  let collectionPreparations = 0;
+  const countCollectionPreparation = request => { if (new URL(request.url()).pathname === '/api/consumer/tap-handoff' && request.method() === 'POST') collectionPreparations++; };
+  page.on('request', countCollectionPreparation);
+  for (const trace of ['save-provenance-only', 'save-join-blocked', 'qa-only']) {
+    const issue = await (await fetch(api + '/qa-issue')).json();
+    await page.goto(`${base}/sun?snapshot=${issue.eventId}&trace=${trace}&access=qa-only&fresh=${encodeURIComponent(issue.token)}`, { waitUntil: 'load', timeout: 90000 });
+    assert.equal(await page.getByTestId('consumer-passport-primary').count(), trace === 'qa-only' ? 1 : 0);
+    const library = page.getByTestId('consumer-passport-library');
+    assert.equal(await library.getAttribute('referrerpolicy'), 'no-referrer');
+    await library.press('Enter');
+    await page.waitForURL(base + '/me/products');
+    assert.equal(await page.getByTestId('tap-association').count(), 0);
+  }
+  assert.equal(collectionPreparations, 0);
+  assert.equal(actions(await state()).length, beforeCollection);
+  page.off('request', countCollectionPreparation);
+  await fresh(page, 'save', 'save-opened');
+  assert.equal(actions(await state()).length, beforeCollection, 'A verified opened product with grants requires confirmation before saving');
+  report.checks.push('SUN collection remains a literal read-only link with or without save grants; a verified opened TAP can offer an explicit save');
   await page.goto(base + '/sun?snapshot=900001&trace=qa-only&access=qa-only', { waitUntil: 'load', timeout: 90000 });
   const evidence = page.getByTestId('passport-evidence-resources');
   await evidence.waitFor();
@@ -164,6 +186,9 @@ try {
   assert.ok(!(await page.evaluate(() => document.cookie)).includes(issued.token));
   assert.ok(!(await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }))).includes(issued.token));
   await confirm(page, 'saved');
+  const savedReceipt = page.getByTestId('tap-association-open-saved');
+  assert.equal(await savedReceipt.getAttribute('href'), `/me/products?focus=${issued.eventId}`);
+  assert.equal(await savedReceipt.innerText(), 'Abrir ficha guardada');
   const writes = actions(await state()).slice(before);
   assert.equal(writes.length, 1); assert.ok(writes[0].path.endsWith('/consumer/save-product')); assert.equal(writes[0].hasCapability, true); assert.equal(writes[0].leakedCookie, false);
   assert.equal(await page.getByTestId('tap-association-confirm').isDisabled(), true);
@@ -190,6 +215,8 @@ try {
   report.checks.push('An unconfirmed response preserves context and permits a deliberate retry without executing other actions');
   await mode('invalid-response'); await fresh(page); await confirm(page, 'unconfirmed');
   assert.equal(await page.locator('[data-outcome="saved"]').count(), 0);
+  assert.equal(await savedReceipt.count(), 0);
+  assert.equal(await page.getByTestId('tap-association').locator('a[href="/me/products"]').count(), 1);
   await mode('manual-review'); await fresh(page, 'claim'); await confirm(page, 'review_required');
   assert.equal(await page.locator('[data-outcome="claimed"]').count(), 0);
   await mode('committed'); await fresh(page, 'claim'); await confirm(page, 'recorded_pending');

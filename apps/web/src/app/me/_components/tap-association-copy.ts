@@ -4,6 +4,8 @@ type Copy = {
   eyebrow: string; title: string; intro: string; reference: string; choose: string; checking: string; active: string;
   loginNeeded: string; login: string; checkError: string; checkAgain: string; sending: string; retry: string;
   results: string; done: string; products: string; benefits: string; freshHelp: string;
+  saveHandoffMissing: string;
+  savedProductTitle: string; savedProductHelp: string; savedProductAction: string;
   alternatives: string; readingDetails: string; history: string; subtitle: string;
   pinLabel: string; pinHelp: string; pinInputError: string;
   titles: Record<TapAssociationOutcome, string>;
@@ -35,6 +37,10 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
     checkError: "No pudimos comprobar la sesión. No enviamos una acción nueva.", checkAgain: "Comprobar sesión",
     sending: "Esperando confirmación…", retry: "Reintentar solo esta acción", results: "Resultado de cada acción", done: "Respuesta recibida", products: "Revisar mis productos",
     freshHelp: "Estas acciones requieren una lectura NFC vigente. Si hace falta otra, acercá el teléfono a la etiqueta y completá el flujo desde esa pantalla.",
+    saveHandoffMissing: "Acercá otra vez el teléfono a la etiqueta. Si aparece «Guardar en mi cuenta» en el pasaporte, elegí esa opción y confirmá. Tu sesión ya está activa.",
+    savedProductTitle: "Este producto ya está en tu cuenta",
+    savedProductHelp: "Podés volver a la ficha histórica de esta lectura desde tu colección.",
+    savedProductAction: "Abrir ficha guardada",
     actions: {
       save: { label: "Guardar producto", detail: "Guarda la lectura y vincula el producto con tu cuenta y la empresa. No solicita titularidad ni habilita premios.", button: "Guardar producto en mi cuenta", title: "Guardá tu producto en tu cuenta", subtitle: "Guardá su historia para volver cuando quieras." },
       join: { label: "Vincularme con la empresa", detail: "Vincula tu cuenta con la empresa y guarda el producto. No autoriza mensajes comerciales ni inscribe en beneficios.", button: "Vincular mi cuenta y guardar producto", title: "Vinculá tu cuenta con la empresa", subtitle: "Revisá cómo conectar con la marca antes de confirmar." },
@@ -79,6 +85,10 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
     choose: "One action at a time", checking: "Checking your session…", active: "Your current session will be used.", loginNeeded: "Sign in to continue. You will then need to confirm your chosen action.", login: "Sign in",
     checkError: "We could not check your session. No new action was sent.", checkAgain: "Check session", sending: "Waiting for confirmation…", retry: "Retry only this action", results: "Result of each action", done: "Response received", products: "Review my products",
     freshHelp: "These actions require a current NFC reading. If another is needed, tap the tag with your phone and complete the flow on that screen.",
+    saveHandoffMissing: "Tap the tag again with your phone. If “Save to my account” appears in the passport, choose it and confirm. You're already signed in.",
+    savedProductTitle: "This product is already in your account",
+    savedProductHelp: "You can open the historical record for this reading from your collection.",
+    savedProductAction: "Open saved product details",
     actions: {
       save: { label: "Save product", detail: "Saves the reading and links the product to your account and the company. Does not claim title or activate rewards.", button: "Save product to my account", title: "Save your product to your account", subtitle: "Save its story and come back whenever you like." },
       join: { label: "Connect with the company", detail: "Links your account to the company and saves the product. Does not authorize marketing messages or enroll in rewards.", button: "Link my account and save product", title: "Connect your account with the company", subtitle: "Review how to connect with the brand before confirming." },
@@ -118,6 +128,10 @@ export const associationCopy: Record<AssociationLocale, Copy> = {
     choose: "Uma ação por vez", checking: "Verificando sua sessão…", active: "Sua sessão atual será utilizada.", loginNeeded: "Entre para continuar. Depois, confirme a ação escolhida.", login: "Entrar",
     checkError: "Não foi possível verificar a sessão. Nenhuma nova ação foi enviada.", checkAgain: "Verificar sessão", sending: "Aguardando confirmação…", retry: "Repetir somente esta ação", results: "Resultado de cada ação", done: "Resposta recebida", products: "Revisar meus produtos",
     freshHelp: "Estas ações exigem uma leitura NFC vigente. Se precisar de outra, aproxime o celular da etiqueta e conclua o fluxo nessa tela.",
+    saveHandoffMissing: "Aproxime o celular da etiqueta novamente. Se “Salvar na minha conta” aparecer no passaporte, selecione a opção e confirme. Você já entrou na sua conta.",
+    savedProductTitle: "Este produto já está na sua conta",
+    savedProductHelp: "Você pode abrir a ficha histórica desta leitura na sua coleção.",
+    savedProductAction: "Abrir ficha salva",
     actions: {
       save: { label: "Guardar produto", detail: "Guarda a leitura e vincula o produto à sua conta e à empresa. Não solicita titularidade nem libera prêmios.", button: "Guardar produto na minha conta", title: "Guarde seu produto na sua conta", subtitle: "Guarde a história e volte quando quiser." },
       join: { label: "Vincular-me à empresa", detail: "Vincula sua conta à empresa e guarda o produto. Não autoriza mensagens comerciais nem inscreve em benefícios.", button: "Vincular minha conta e guardar produto", title: "Vincule sua conta à empresa", subtitle: "Confira como se conectar com a marca antes de confirmar." },
