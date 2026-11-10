@@ -33,6 +33,34 @@ async function prepareEmail(page, brand, value) {
  await panel.getByRole('checkbox').check();
  return panel;
 }
+async function measureUpdatesReadingLayout(panel) {
+ return panel.evaluate(section=>{
+  const heading=section.querySelector('h3');
+  const toggle=section.querySelector('button[aria-controls="sun-updates-form"]');
+  const [whatsapp,email]=section.querySelectorAll('fieldset button[aria-pressed]');
+  const wordLines=(node,word)=>{
+   const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);
+   for(let text=walker.nextNode();text;text=walker.nextNode()){
+    const start=text.data.indexOf(word);
+    if(start<0)continue;
+    const range=document.createRange();
+    range.setStart(text,start);
+    range.setEnd(text,start+word.length);
+    const rects=[...range.getClientRects()].filter(rect=>rect.width>0),box=node.getBoundingClientRect();
+    return {lines:rects.length,fits:rects.every(rect=>rect.left>=box.left-1&&rect.right<=box.right+1)};
+   }
+   return {lines:0,fits:false};
+  };
+  const first=whatsapp.getBoundingClientRect(),second=email.getBoundingClientRect(),formToggle=toggle.getBoundingClientRect();
+  return {
+   words:{heading:wordLines(heading,'Novedades'),toggle:wordLines(toggle,'formulario'),
+    whatsapp:wordLines(whatsapp,'WhatsApp'),email:wordLines(email,'Email')},
+   channels:first.bottom<=second.top+1?'stacked':first.right<=second.left+1&&Math.abs(first.top-second.top)<=1?'row':'overlap',
+   minimumTargetSize:Math.min(first.width,first.height,second.width,second.height,formToggle.width,formToggle.height),
+  };
+ });
+}
+
 async function nativeSubmitTwice(page){
  await page.evaluate(()=>{const form=document.querySelector('#sun-updates-form');if(!(form instanceof HTMLFormElement))throw Error('Owned updates form unavailable');form.requestSubmit();form.requestSubmit();});
 }
@@ -61,11 +89,13 @@ export async function runSunUpdatesRenderPurityScenarios({scenario,assess,report
    await panel.getByRole('textbox',{name:/^Nombre/}).fill('Nombre A de ensayo');
    check(await panel.getByRole('textbox',{name:/^Nombre/}).inputValue()==='Nombre A de ensayo'&&!await panel.getByRole('checkbox').isChecked(),label+': committed A handlers still edit and explicitly revoke consent');
    await panel.getByRole('checkbox').check();
+   const reading=await measureUpdatesReadingLayout(panel);
+   check(reading.channels==='row'&&reading.minimumTargetSize>=44&&Object.values(reading.words).every(word=>word.lines===1&&word.fits),label+': regular 320px keeps readable channel buttons in a row');
    await assess(t.page,width,theme,'updates-render-purity');
    await nativeSubmitTwice(t.page);
    await panel.getByText('Suscripción solicitada',{exact:true}).waitFor();
    check(t.calls.length===1&&legacyOnly(t.calls[0],'synthetic-a','715','a@example.test'),label+': same-turn native submit sends one legacy A request');
-   report.sunUpdatesRenderPurity.cases.push({width,theme,case:'abandoned-speculative-B',suspendedBObserved:true,committedARetained:true,committedAEditableWhileBPending:true,syntheticRequests:t.calls.length});
+   report.sunUpdatesRenderPurity.cases.push({width,theme,case:'abandoned-speculative-B',suspendedBObserved:true,committedARetained:true,committedAEditableWhileBPending:true,reading,syntheticRequests:t.calls.length});
   }finally{await t.close();}
 
   const u=await scenario('updates-render-purity',width,theme),pendingLabel=width+'/'+theme+'/updates-pending-context';
@@ -185,7 +215,10 @@ async function runSunUpdatesPendingNoticeScenarios({scenario,assess,report,check
      contact:widths(document.querySelector('#sun-updates-form fieldset')),
     };
    });
-   report.sunUpdatesPendingNotice.layout.push({width,height,textSize,theme,phase,...layout});
+   const reading=await measureUpdatesReadingLayout(panel);
+   report.sunUpdatesPendingNotice.layout.push({width,height,textSize,theme,phase,...layout,reading});
+   check(Object.values(reading.words).every(word=>word.lines===1&&word.fits),label+': heading and control words remain whole');
+   check(reading.channels===(textSize===32?'stacked':'row')&&reading.minimumTargetSize>=44,label+': channels reflow and retain 44px touch targets');
    check(layout.notice.scroll<=layout.notice.content+1,label+': pending notice stays within its width');
    check(layout.viewport.scroll<=layout.viewport.content+1,label+': pending form stays within the viewport');
    await assess(t.page,width,theme,`updates-pending-${phase}-text${textSize}`);

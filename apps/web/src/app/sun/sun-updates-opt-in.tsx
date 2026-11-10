@@ -235,111 +235,113 @@ function SunUpdatesForm({ contextKey, locale, brandName, productName, tenantSlug
   return (
     <section
       id="sun-updates-opt-in"
-      className="min-w-0 scroll-mt-24 rounded-2xl border border-indigo-300/15 bg-indigo-500/[0.06] p-4 [overflow-wrap:anywhere]"
+      className="@container/sun-updates min-w-0 scroll-mt-24 rounded-2xl border border-indigo-300/15 bg-indigo-500/[0.06] [overflow-wrap:anywhere]"
       aria-labelledby="sun-updates-title"
     >
-      <div className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-indigo-300/20 bg-indigo-500/10 text-indigo-200">
-          <BellRing className="h-4 w-4" aria-hidden="true" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h3 id="sun-updates-title" className="text-sm font-black text-white">Novedades de {brandName}</h3>
-          <p className="mt-1 text-[11px] leading-4 text-slate-400">
-            Elegí cómo recibir novedades. Compartir tu contacto es opcional.
-          </p>
-        </div>
-      </div>
-
-      <details className="mt-3 text-[11px] leading-4 text-slate-400">
-        <summary className="min-h-11 cursor-pointer font-bold text-slate-300">Antes de suscribirte</summary>
-        <p>No activa premios, propiedad ni garantía. No solicita ubicación ni datos del dispositivo.</p>
-      </details>
-      {!contextReady ? <p role="status" className="mt-3 text-xs text-slate-300">{CONTEXT_RECOVERY_COPY}</p> : null}
-      <div id="sun-updates-request-status" role="status" aria-live="polite" aria-atomic="true">
-        {showDelay ? <div className="mt-3 text-sm leading-relaxed text-slate-200">
-          <p>{previousRequestPending
-            ? "Seguimos esperando la confirmación de una solicitud anterior. Podría haberse guardado; este producto todavía necesita una nueva autorización."
-            : "Seguimos esperando la confirmación de tu solicitud. Podría haberse guardado; no enviamos otra automáticamente."}</p>
-          <a href="#sun-summary" className="mt-1 inline-flex min-h-11 items-center underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-300">Volver a la ficha</a>
-        </div> : previousRequestPending ? <p className="mt-3 text-xs text-slate-300">Estamos terminando una solicitud anterior. Este producto necesita una nueva autorización.</p> : null}
-      </div>
-
-      {state === "success" ? (
-        <div className="mt-3 flex items-start gap-3 rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3 text-emerald-100" role="status">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <div>
-            <strong className="block text-xs">Suscripción solicitada</strong>
-            <p className="mt-1 text-[10px] leading-4 opacity-80">La marca puede comunicarse por el canal autorizado. Podrás pedir la baja desde cualquier mensaje.</p>
+      <div className="p-4 @max-[15rem]/sun-updates:p-[12px]">
+        <div className="flex items-start gap-3 @max-[15rem]/sun-updates:flex-col @max-[15rem]/sun-updates:gap-[8px]">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-indigo-300/20 bg-indigo-500/10 text-indigo-200 @max-[15rem]/sun-updates:size-[32px]">
+            <BellRing className="h-4 w-4 @max-[15rem]/sun-updates:size-[16px]" aria-hidden="true" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 id="sun-updates-title" className="text-sm font-black text-white">Novedades de {brandName}</h3>
+            <p className="mt-1 text-[11px] leading-4 text-slate-400 @max-[15rem]/sun-updates:text-xs @max-[15rem]/sun-updates:leading-normal">
+              Elegí cómo recibir novedades. Compartir tu contacto es opcional.
+            </p>
           </div>
         </div>
-      ) : (
-        <>
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-controls="sun-updates-form"
-            onClick={() => setOpen((value) => !value)}
-            disabled={pending || !contextReady}
-            className="mt-3 flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/50 px-3 text-left text-xs font-black text-slate-100 transition hover:border-indigo-300/25 hover:bg-slate-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-300"
-          >
-            {open ? "Cerrar formulario" : "Elegir canal de contacto"}
-            <ChevronDown className={`h-4 w-4 shrink-0 text-indigo-200 transition ${open ? "rotate-180" : ""}`} aria-hidden="true" />
-          </button>
 
-          {open ? (
-            <>
-              <form id="sun-updates-form" className="mt-3 v3-space-y-3" aria-busy={pending} onSubmit={submit}>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Nombre <span className="normal-case tracking-normal text-slate-400">(opcional)</span>
-                  <input
-                    value={name}
-                    onChange={(event) => changeName(event.target.value)}
-                    autoComplete="name"
-                    disabled={pending}
-                    className="mt-1.5 block min-h-11 w-full rounded-xl border border-white/10 bg-slate-950 px-3 text-xs font-medium normal-case tracking-normal text-white outline-hidden transition placeholder:text-slate-600 focus:border-indigo-300/35 focus:ring-2 focus:ring-indigo-300/20"
-                    placeholder="Tu nombre"
-                  />
-                </label>
-                <fieldset className="min-w-0 [&_input]:min-w-0 [&_input]:w-full [&_select]:min-w-0 [&_select]:w-full">
-                  <legend className="mb-2 text-xs font-bold text-slate-300">Elegí dónde recibir novedades</legend>
-                  <ConsumerContactInput
-                    draft={contactDraft}
-                    onChange={changeContact}
-                    disabled={pending}
-                    idPrefix="sun-updates-contact"
-                    invalid={Boolean(contactError)}
-                    describedBy={contactError ? "sun-updates-contact-error" : undefined}
-                    purpose="updates"
-                    compact
-                  />
-                </fieldset>
-                {contactError ? <p id="sun-updates-contact-error" role="status" aria-live="polite" className="text-xs text-rose-200">{contactError}</p> : null}
-                {!nameIsValid ? <p role="status" className="text-xs text-rose-200">Usá hasta 120 caracteres en el nombre.</p> : null}
-                <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-white/10 bg-slate-950/45 p-3 text-[10px] leading-4 text-slate-300">
-                  <input
-                    required
-                    type="checkbox"
-                    checked={consent}
-                    disabled={pending}
-                    onChange={(event) => changeConsent(event.target.checked)}
-                    className="mt-0.5 h-4 w-4 shrink-0 accent-indigo-400"
-                  />
-                  Autorizo a {brandName} a enviarme novedades de este producto por el canal indicado. Este consentimiento es opcional y revocable.
-                </label>
-                <button
-                  type="submit"
-                  disabled={pending || !consent || !contactPayload || !nameIsValid || !contextReady}
-                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-indigo-400 px-4 text-xs font-black text-slate-950 transition hover:bg-indigo-300 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Send className="h-4 w-4" aria-hidden="true" />
-                  {pending ? previousRequestPending ? "Terminando solicitud anterior..." : "Enviando solicitud..." : state === "error" ? "Reintentar solicitud" : "Confirmar suscripción"}
-                </button>
-                {state === "error" ? <p className="text-center text-[10px] text-rose-200" role="alert">No pudimos confirmar la solicitud. Tus datos se conservan; no se envía otra automáticamente.</p> : null}
-              </form>
-            </>
-          ) : null}
-        </>
-      )}
+        <details className="mt-3 text-[11px] leading-4 text-slate-400">
+          <summary className="min-h-11 cursor-pointer font-bold text-slate-300 @max-[15rem]/sun-updates:min-h-[44px]">Antes de suscribirte</summary>
+          <p>No activa premios, propiedad ni garantía. No solicita ubicación ni datos del dispositivo.</p>
+        </details>
+        {!contextReady ? <p role="status" className="mt-3 text-xs text-slate-300">{CONTEXT_RECOVERY_COPY}</p> : null}
+        <div id="sun-updates-request-status" role="status" aria-live="polite" aria-atomic="true">
+          {showDelay ? <div className="mt-3 text-sm leading-relaxed text-slate-200">
+            <p>{previousRequestPending
+              ? "Seguimos esperando la confirmación de una solicitud anterior. Podría haberse guardado; este producto todavía necesita una nueva autorización."
+              : "Seguimos esperando la confirmación de tu solicitud. Podría haberse guardado; no enviamos otra automáticamente."}</p>
+            <a href="#sun-summary" className="mt-1 inline-flex min-h-11 items-center underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-300">Volver a la ficha</a>
+          </div> : previousRequestPending ? <p className="mt-3 text-xs text-slate-300">Estamos terminando una solicitud anterior. Este producto necesita una nueva autorización.</p> : null}
+        </div>
+
+        {state === "success" ? (
+          <div className="mt-3 flex items-start gap-3 rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3 text-emerald-100" role="status">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <div>
+              <strong className="block text-xs">Suscripción solicitada</strong>
+              <p className="mt-1 text-[10px] leading-4 opacity-80">La marca puede comunicarse por el canal autorizado. Podrás pedir la baja desde cualquier mensaje.</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-controls="sun-updates-form"
+              onClick={() => setOpen((value) => !value)}
+              disabled={pending || !contextReady}
+              className="mt-3 flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/50 px-3 text-left text-xs font-black text-slate-100 transition hover:border-indigo-300/25 hover:bg-slate-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-300 @max-[15rem]/sun-updates:min-h-[44px] @max-[15rem]/sun-updates:gap-[8px] @max-[15rem]/sun-updates:px-[12px] @max-[15rem]/sun-updates:py-[8px]"
+            >
+              {open ? "Cerrar formulario" : "Elegir canal de contacto"}
+              <ChevronDown className={`h-4 w-4 shrink-0 text-indigo-200 transition @max-[15rem]/sun-updates:size-[16px] ${open ? "rotate-180" : ""}`} aria-hidden="true" />
+            </button>
+
+            {open ? (
+              <>
+                <form id="sun-updates-form" className="mt-3 v3-space-y-3" aria-busy={pending} onSubmit={submit}>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Nombre <span className="normal-case tracking-normal text-slate-400">(opcional)</span>
+                    <input
+                      value={name}
+                      onChange={(event) => changeName(event.target.value)}
+                      autoComplete="name"
+                      disabled={pending}
+                      className="mt-1.5 block min-h-11 w-full rounded-xl border border-white/10 bg-slate-950 px-3 text-xs font-medium normal-case tracking-normal text-white outline-hidden transition placeholder:text-slate-600 focus:border-indigo-300/35 focus:ring-2 focus:ring-indigo-300/20"
+                      placeholder="Tu nombre"
+                    />
+                  </label>
+                  <fieldset className="min-w-0 [&_input]:min-w-0 [&_input]:w-full [&_select]:min-w-0 [&_select]:w-full @max-[15rem]/sun-updates:[&_[data-sun-updates-contact-channels]]:grid-cols-1 @max-[15rem]/sun-updates:[&_[data-sun-updates-contact-channels]]:gap-[8px] @max-[15rem]/sun-updates:[&_[data-sun-updates-contact-channels]]:p-[4px] @max-[15rem]/sun-updates:[&_[data-sun-updates-contact-channels]>button]:min-h-[44px] @max-[15rem]/sun-updates:[&_[data-sun-updates-contact-channels]>button]:px-[12px] @max-[15rem]/sun-updates:[&_[data-sun-updates-contact-channels]>button]:py-[8px]">
+                    <legend className="mb-2 text-xs font-bold text-slate-300">Elegí dónde recibir novedades</legend>
+                    <ConsumerContactInput
+                      draft={contactDraft}
+                      onChange={changeContact}
+                      disabled={pending}
+                      idPrefix="sun-updates-contact"
+                      invalid={Boolean(contactError)}
+                      describedBy={contactError ? "sun-updates-contact-error" : undefined}
+                      purpose="updates"
+                      compact
+                    />
+                  </fieldset>
+                  {contactError ? <p id="sun-updates-contact-error" role="status" aria-live="polite" className="text-xs text-rose-200">{contactError}</p> : null}
+                  {!nameIsValid ? <p role="status" className="text-xs text-rose-200">Usá hasta 120 caracteres en el nombre.</p> : null}
+                  <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-white/10 bg-slate-950/45 p-3 text-[10px] leading-4 text-slate-300 @max-[15rem]/sun-updates:gap-[8px] @max-[15rem]/sun-updates:p-[12px] @max-[15rem]/sun-updates:text-xs @max-[15rem]/sun-updates:leading-normal">
+                    <input
+                      required
+                      type="checkbox"
+                      checked={consent}
+                      disabled={pending}
+                      onChange={(event) => changeConsent(event.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-indigo-400 @max-[15rem]/sun-updates:size-[20px]"
+                    />
+                    Autorizo a {brandName} a enviarme novedades de este producto por el canal indicado. Este consentimiento es opcional y revocable.
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={pending || !consent || !contactPayload || !nameIsValid || !contextReady}
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-indigo-400 px-4 text-xs font-black text-slate-950 transition hover:bg-indigo-300 disabled:cursor-not-allowed disabled:opacity-50 @max-[15rem]/sun-updates:min-h-[44px] @max-[15rem]/sun-updates:gap-[8px] @max-[15rem]/sun-updates:px-[12px] @max-[15rem]/sun-updates:py-[8px]"
+                  >
+                    <Send className="h-4 w-4 @max-[15rem]/sun-updates:size-[16px] @max-[15rem]/sun-updates:shrink-0" aria-hidden="true" />
+                    {pending ? previousRequestPending ? "Terminando solicitud anterior..." : "Enviando solicitud..." : state === "error" ? "Reintentar solicitud" : "Confirmar suscripción"}
+                  </button>
+                  {state === "error" ? <p className="text-center text-[10px] text-rose-200" role="alert">No pudimos confirmar la solicitud. Tus datos se conservan; no se envía otra automáticamente.</p> : null}
+                </form>
+              </>
+            ) : null}
+          </>
+        )}
+      </div>
     </section>
   );
 }

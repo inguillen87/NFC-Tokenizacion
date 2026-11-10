@@ -13,12 +13,40 @@ const homeHtml=await(await fetch(origin)).text(),homeStyles=await stylesFor(home
 async function context(width,theme){const context=await browser.newContext({viewport:{width,height:900},locale:'es-AR',reducedMotion:'reduce',serviceWorkers:'block'});await context.addCookies([{name:'theme',value:theme,url:origin},{name:'nexid_theme_version',value:'white-first-v2',url:origin}]);const page=await context.newPage();page.on('pageerror',e=>report.errors.push(e.message.slice(0,180)));await page.route('**/*',route=>{const r=route.request(),u=new URL(r.url());if(r.method()!=='GET'){report.unexpectedWrites.push({method:r.method(),path:u.pathname});return route.abort();}if(u.origin===origin)return route.continue();return route.abort();});return{page,context,width,theme};}
 const stable=p=>p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
 async function capture(page){return page.evaluate(()=>{const root=document.querySelector('.sun-tap-experience')||document.querySelector('[data-testid="sun-summary-product"]')?.parentElement;return [...root.querySelectorAll('*')].filter(el=>el instanceof HTMLElement&&el.offsetWidth&&el.offsetHeight).map(el=>{const cs=getComputedStyle(el);return{tag:el.tagName,classes:el.className,styles:Object.fromEntries(['display','position','color','backgroundColor','fontSize','fontWeight','lineHeight','paddingTop','paddingLeft','paddingBottom','paddingRight','marginTop','borderRadius','gridTemplateColumns','visibility'].map(k=>[k,cs[k]])),width:Math.round(el.getBoundingClientRect().width*10)/10};});});}
+async function measureSunUpdatesChannelCss(page){
+ return page.evaluate(()=>{
+  const panel=document.createElement('div'),fields=document.createElement('div'),channels=document.createElement('div');
+  panel.className='@container/sun-updates';
+  panel.style.cssText='position:fixed;inset:0 auto auto 0;visibility:hidden;pointer-events:none';
+  panel.setAttribute('aria-hidden','true');
+  fields.className='@max-[15rem]/sun-updates:[&_[data-sun-updates-contact-channels]]:grid-cols-1';
+  channels.className='grid grid-cols-2';
+  channels.setAttribute('data-sun-updates-contact-channels','');
+  channels.append(document.createElement('span'),document.createElement('span'));
+  fields.append(channels);panel.append(fields);document.body.append(panel);
+  try{
+   const columns=()=>{
+    const computed=getComputedStyle(channels);
+    return computed.display==='grid'&&computed.gridTemplateColumns!=='none'?computed.gridTemplateColumns.trim().split(/\s+/).length:0;
+   };
+   panel.style.inlineSize='12rem';const narrow=columns();
+   panel.style.inlineSize='16rem';const regular=columns();
+   return {named:getComputedStyle(panel).containerName==='sun-updates',narrow,regular};
+  }finally{panel.remove();}
+ });
+}
 try{
  check(full.css.length>500000,'Reference full site stylesheet is present on the homepage');
  for(const theme of ['light','dark'])for(const width of [320,390,768,1440]){
   const t=await context(width,theme);await t.page.goto(origin+path,{waitUntil:'networkidle',timeout:45000});await t.page.locator('[data-testid="sun-summary-product"]').waitFor();await stable(t.page);
   const sheets=await stylesFor(await t.page.content()),lean=sheets.toSorted((a,b)=>b.css.length-a.css.length)[0];const smallBytes=sheets.reduce((sum,s)=>sum+gzipSync(s.css).length,0);
   check(lean.css.length<full.css.length*.55,'Cold SUN excludes unrelated style families '+width+' '+theme);
+  if(width===320&&theme==='light'){
+   // Isolate the stylesheet from product eligibility. No application controls or requests are invoked.
+   const channels=await measureSunUpdatesChannelCss(t.page);
+   report.sunUpdatesGeneratedCss=channels;
+   check(channels.named&&channels.narrow===1&&channels.regular===2,'Generated SUN styles reflow only the scoped contact channels');
+  }
   check(await t.page.locator('html').getAttribute('data-theme')===theme,'Server theme retained '+width+' '+theme);
   const before=await capture(t.page);await t.page.screenshot({path:join(output,`sun-${width}-${theme}.png`),fullPage:true});
   // An independent load keeps React's stylesheet precedence and initial cascade intact.

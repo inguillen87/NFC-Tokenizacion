@@ -133,7 +133,10 @@ export function ConsumerContactInput({
 
   return (
     <div className="grid gap-2">
-      {!channelLocked ? <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-slate-950/45 p-1">
+      {!channelLocked ? <div
+        className="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-slate-950/45 p-1"
+        data-sun-updates-contact-channels={purpose === "updates" ? "" : undefined}
+      >
         {[
           ["whatsapp", "WhatsApp"],
           ["email", "Email"],
