@@ -97,7 +97,25 @@ export async function runSunUpdatesRenderPurityScenarios({scenario,assess,report
    await nativeSubmitTwice(t.page);
    await panel.getByText('Suscripción solicitada',{exact:true}).waitFor();
    check(t.calls.length===1&&legacyOnly(t.calls[0],'synthetic-a','715','a@example.test'),label+': same-turn native submit sends one legacy A request');
-   report.sunUpdatesRenderPurity.cases.push({width,theme,case:'abandoned-speculative-B',suspendedBObserved:true,committedARetained:true,committedAEditableWhileBPending:true,reading,syntheticRequests:t.calls.length});
+   const confirmationContrast=await panel.locator('.sun-updates-success').evaluate(notice=>{
+    const style=getComputedStyle(notice),canvas=document.createElement('canvas');
+    canvas.width=canvas.height=1;
+    const ctx=canvas.getContext('2d');
+    const rgba=color=>{
+     ctx.clearRect(0,0,1,1);ctx.fillStyle=color;ctx.fillRect(0,0,1,1);
+     return [...ctx.getImageData(0,0,1,1).data];
+    };
+    const luminance=([r,g,b])=>[r,g,b].map(value=>value/255)
+     .reduce((sum,value,index)=>sum+[0.2126,0.7152,0.0722][index]*(value<=0.04045?value/12.92:((value+0.055)/1.055)**2.4),0);
+    const background=rgba(style.backgroundColor),base=luminance(background);
+    const text=[...notice.querySelectorAll('strong,p')].map(node=>{
+     const computed=getComputedStyle(node),ink=rgba(computed.color),foreground=luminance(ink);
+     return {opaque:computed.opacity==='1'&&ink[3]===255,ratio:(Math.max(base,foreground)+0.05)/(Math.min(base,foreground)+0.05)};
+    });
+    return {opaque:background[3]===255&&style.backgroundImage==='none'&&style.opacity==='1',text};
+   });
+   check(confirmationContrast.opaque&&confirmationContrast.text.length===2&&confirmationContrast.text.every(({opaque,ratio})=>opaque&&ratio>=4.5),label+': confirmation heading and copy meet 4.5:1 contrast on an opaque surface');
+   report.sunUpdatesRenderPurity.cases.push({width,theme,case:'abandoned-speculative-B',suspendedBObserved:true,committedARetained:true,committedAEditableWhileBPending:true,reading,confirmationContrast,syntheticRequests:t.calls.length});
   }finally{await t.close();}
 
   const u=await scenario('updates-render-purity',width,theme),pendingLabel=width+'/'+theme+'/updates-pending-context';

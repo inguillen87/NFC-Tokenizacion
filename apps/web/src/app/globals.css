@@ -55581,6 +55581,26 @@ html[data-theme="light"] .sun-tap-experience .sun-summary-actions a:first-child 
   scroll-padding-bottom: calc(var(--sun-mobile-dock-height) + env(safe-area-inset-bottom) + 1rem);
 }
 
+.sun-tap-experience .sun-updates-success {
+  border-color: #2d6657;
+  background-color: #10392f;
+  color: #d1fae5;
+}
+
+html:is(.theme-light, [data-theme="light"]) .sun-tap-experience .sun-updates-success {
+  border-color: #a7f3d0;
+  background-color: #ecfdf5;
+  color: #065f46;
+}
+
+html:is(.theme-light, [data-theme="light"]) .sun-tap-experience .sun-updates-icon {
+  color: #3730a3;
+}
+
+.sun-tap-experience #sun-updates-opt-in [data-sun-updates-contact-channels] > button[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 2px #0f766e;
+}
+
 /* Semantic SUN surfaces avoid relying on escaped arbitrary Tailwind class
    selectors. These cards must never become dark islands with dark copy when
    the saved consumer preference is light. */
