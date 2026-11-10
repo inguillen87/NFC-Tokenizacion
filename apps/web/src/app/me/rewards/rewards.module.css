@@ -76,7 +76,15 @@
 .empty p, .unavailable p { margin: 0; max-width: 42rem; color: var(--portal-muted); font-size: .9rem; line-height: 1.7; }
 .notice { border: 1px solid var(--portal-border); border-radius: .9rem; padding: 1rem; background: var(--portal-subtle); color: var(--portal-muted); font-size: .875rem; line-height: 1.65; }
 .notice p { margin: 0 0 .65rem; }
-.receiptHeading { margin: 0 0 .5rem; font-size: 1.05rem; font-weight: 750; color: var(--portal-text); }
+.receipt { display: grid; justify-items: start; gap: .65rem; min-width: 0; overflow-wrap: anywhere; }
+.receipt p, .receiptHeading { margin: 0; }
+.receiptHeading { font-size: 1.05rem; font-weight: 750; color: var(--portal-text); }
+.receiptMeta { display: flex; flex-wrap: wrap; gap: .6rem 1.3rem; margin: 0; }
+.receiptMeta > div { min-width: 0; }
+.receiptMeta dt { font-size: .8rem; }
+.receiptMeta dd { margin: .15rem 0 0; color: var(--portal-text); font-weight: 650; }
+.receiptMeta .badge { display: inline-block; }
+.receipt .primaryLink { min-height: max(44px, 2.75rem); max-width: 100%; text-align: center; }
 .reservationStatus { margin-block-end: .75rem; }
 .reservationStatus:focus-visible { outline: 3px solid var(--portal-accent); outline-offset: 3px; }
 .reservationMessage { display: flex; align-items: flex-start; gap: .55rem; overflow-wrap: anywhere; }

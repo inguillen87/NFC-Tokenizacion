@@ -8,6 +8,7 @@ import ts from "typescript";
 import * as tapHandoff from "../src/app/api/_lib/consumer-tap-handoff.ts";
 import * as boundedFetch from "../src/app/me/_components/consumer-bounded-fetch.ts";
 import { rewardNextActions } from "../src/app/me/_components/consumer-reward-next-actions.ts";
+import { brandTenantSlug } from "../src/app/me/brands/brands-model.ts";
 
 const require = createRequire(import.meta.url);
 const dir = new URL("../src/app/me/", import.meta.url);
@@ -71,6 +72,7 @@ function loadPage(payload, options = {}) {
     },
     "../_components/consumer-portal-recovery": { ConsumerPortalUnavailable: () => null },
     "../_components/consumer-wallet-points-model": walletModel,
+    "../brands/brands-model": { brandTenantSlug },
     "../_components/me-portal-interactive-client": { ConsumerDataRetryButton: () => React.createElement("button", { type: "button" }, "Reintentar carga") },
     "../_components/portal-shell": { PortalShell: ({ children }) => React.createElement("main", null, children) },
     "./rewards-client": { ConsumerRewardsClient: (props) => { clientProps.push(props); return React.createElement(ConsumerRewardsClient, props); } },
@@ -140,10 +142,34 @@ test("only the account-verified receipt survives a reload and highlights its exa
   assert.equal(result.clientProps[0].selectedVoucher, "claim-" + claimId);
   const beyondCollection = await render(list([]), { lastReceipt });
   assert.match(receipt(beyondCollection.html), /Voucher emitido/);
-  assert.doesNotMatch(receipt(beyondCollection.html), /href=/);
+  assert.match(receipt(beyondCollection.html), /aunque el voucher no figure en el listado actual/);
+  assert.match(receipt(beyondCollection.html), /href="\/me\/brands\?tenant=demobodega">Ver mi relación con la marca/);
+  assert.doesNotMatch(receipt(beyondCollection.html), new RegExp("voucher-claim|BALMEC-1234|" + claimId));
   const conflict = await render(list([owned]), { lastReceipt: { ...lastReceipt, status: "cancelled" } });
   assert.match(receipt(conflict.html), /Cancelado/);
-  assert.doesNotMatch(receipt(conflict.html), /href=/);
+  assert.match(receipt(conflict.html), /El listado todavía no coincide con el estado de esta reserva/);
+  assert.doesNotMatch(receipt(conflict.html), /href="#voucher-|no figure en el listado/);
+  const terminal = await render(list([{ ...owned, claim_status: "redeemed" }]), { lastReceipt: { ...lastReceipt, status: "redeemed" } });
+  assert.match(receipt(terminal.html), /Canjeado[\s\S]*Ver registro del voucher/);
+  assert.doesNotMatch(receipt(terminal.html), /Ver detalle del voucher|BALMEC-1234/);
+  const unavailable = await render(null, { lastReceipt });
+  assert.match(receipt(unavailable.html), /aunque el listado de vouchers no se pudo cargar/);
+  assert.match(receipt(unavailable.html), /href="\/me\/brands\?tenant=demobodega"/);
+  for (const [status, guidance] of [
+    ["unknown", /Todavía hace falta confirmar si podés usar el voucher/],
+    ["redeemed", /El canje queda registrado en tu cuenta/],
+    ["expired", /Terminó la vigencia de este voucher/],
+  ]) {
+    const details = receipt((await render(list([]), { lastReceipt: { ...lastReceipt, status } })).html);
+    assert.match(details, guidance);
+    assert.match(details, /href="\/me\/brands\?tenant=demobodega"/);
+    assert.doesNotMatch(details, /href="#voucher-|Copiar código/);
+  }
+  for (const tenant of ["Balmec-AR", rewardId]) {
+    const details = receipt((await render(list([]), { lastReceipt: { ...lastReceipt, tenant } })).html);
+    assert.match(details, /Voucher emitido/);
+    assert.doesNotMatch(details, /href=/);
+  }
   for (const params of [{ tenant: "another-brand" }, { tenant: ["demobodega"] }, { voucher: "BALMEC-1234" }]) {
     assert.equal(receipt((await render(list([owned]), { lastReceipt, params })).html), "");
   }
