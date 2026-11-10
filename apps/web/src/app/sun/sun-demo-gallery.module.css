@@ -61,7 +61,8 @@
 .scenarioLinks a[data-demo-scenario="opened"] { background: #fff5df; border-color: #cab478; color: #725313; }
 .scenarioLinks a[data-demo-scenario="invalid"] { background: #fff0ef; border-color: #d3a3a1; color: #892b30; }
 .scenarioDot { width: 0.375rem; height: 0.375rem; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-.scenarioLinks a[aria-current="page"] { box-shadow: inset 0 0 0 1px currentColor; }
+.scenarioLinks a[aria-current="page"] { flex-wrap: wrap; max-inline-size: 100%; box-shadow: inset 0 0 0 1px currentColor; }
+.scenarioCurrent { border-inline-start: 1px solid currentColor; padding-inline-start: 0.375rem; font-weight: 600; }
 .scenarioLinks a:focus-visible { outline: 3px solid #08786b; outline-offset: 3px; }
 .scenarioNote { margin: 0.625rem 0 0; color: var(--gallery-muted, #4e6265); font-size: 0.75rem; line-height: 1.5; }
 :global(html.theme-dark) .scenarioSelector, :global(html[data-theme="dark"]) .scenarioSelector { --gallery-surface: #142630; --gallery-ink: #edf5f3; --gallery-muted: #b4c7c8; --gallery-line: #36505a; }

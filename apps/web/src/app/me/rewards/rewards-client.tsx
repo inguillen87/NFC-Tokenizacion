@@ -42,6 +42,7 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
   const attempted = useRef(new Set<string>());
   const confirmButton = useRef<HTMLButtonElement | null>(null);
   const returnFocus = useRef<HTMLButtonElement | null>(null);
+  const reservationNotice = useRef<HTMLDivElement | null>(null);
   const active = flow && sameSource(flow.source, identity) ? flow : null;
   const currentFilters = sameSource(filters.source, identity) ? filters : { source: identity, tenant: initialTenant, query: "", view: "all" as const };
   const { tenant, query, view } = currentFilters;
@@ -97,6 +98,7 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
     pending.current = true; attempted.current.add(base.quote.rewardId.toLowerCase()); controller.current = abort;
     const current = () => sequence.current === token && sameSource(owner.current, base.source) && !abort.signal.aborted;
     setFlow({ ...base, phase: "pending", message: "Estamos preparando tu reserva. Esperá la confirmación." });
+    reservationNotice.current?.focus();
     try {
       const result = await reserveConsumerReward(base.quote, { signal: abort.signal });
       if (!current()) return;
@@ -115,6 +117,7 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
     const base = active, token = ++sequence.current, abort = new AbortController();
     pending.current = true; controller.current = abort;
     setFlow({ ...base, phase: "checking", message: "Estamos consultando tu reserva. Esta consulta no descuenta puntos." });
+    reservationNotice.current?.focus();
     try {
       const result = await readConsumerReservation(base.quote, base.claimId, { signal: abort.signal });
       if (sequence.current === token && sameSource(owner.current, base.source) && !abort.signal.aborted) finishLookup(base, result, base.claimId);
@@ -125,7 +128,11 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
   return <section aria-labelledby="benefits-list-title" className={styles.catalog}>
     <div className={styles.sectionHeading}><div className={styles.headingIcon}><Gift aria-hidden="true" /><div><h2 id="benefits-list-title">Beneficios y vouchers</h2><p>El saldo de cada programa puede ser distinto al de la marca. Consultá los beneficios publicados y tus vouchers.</p></div></div>
       <Link className={styles.textLink} href={catalogHref}>{catalogTenant ? "Catálogo de esta marca" : "Explorar catálogo"} <ArrowUpRight aria-hidden="true" /></Link></div>
-    {active ? <div className={styles.notice} aria-busy={busy}><p role="status" aria-atomic="true">{active.message}</p>
+    {active ? <div ref={reservationNotice} tabIndex={-1} role="group" aria-label="Estado de la reserva" className={`${styles.notice} ${styles.reservationStatus}`}>
+      <p role="status" aria-atomic="true" className={styles.reservationMessage}>
+        {busy ? <span className={styles.progressMark} aria-hidden="true" /> : null}
+        <span>{active.message}</span>
+      </p>
       {active.phase === "uncertain" ? <button type="button" className={styles.primaryLink} onClick={checkReservation}>Comprobar mi reserva</button> : null}
       {active.phase === "authentication-required" ? <Link className={styles.primaryLink} href="/login?consumer=1&next=%2Fme%2Frewards">Volver a ingresar</Link> : null}
       {active.phase === "confirmed" && active.claimKey ? <a className={styles.primaryLink} href={"#voucher-" + active.claimKey}>Ver mi voucher</a> : null}

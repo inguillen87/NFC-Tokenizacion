@@ -10,10 +10,16 @@
 .primary:hover{background:#075769!important}.secondary,.reopen{background:var(--quick-secondary);color:var(--quick-ink);border-color:var(--quick-line)}
 .primary:disabled,.secondary:disabled{opacity:.65;cursor:wait;box-shadow:none}
 .optional{font-size:11px;line-height:1.5;color:var(--quick-muted);margin:5px 0 0}
-.details{border-top:1px solid var(--quick-line);margin-top:4px}
-.details summary{min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;font-size:12px;font-weight:650;color:var(--quick-ink);list-style:none}
-.details summary::-webkit-details-marker{display:none}.details summary>svg{flex-shrink:0}.details[open] summary>svg{transform:rotate(180deg)}
-.details p{font-size:12px;line-height:1.6;color:var(--quick-muted);margin:6px 0 9px}
+.promptHeader{display:flex;flex-wrap:wrap;align-items:flex-start;gap:.25rem .5rem}
+.promptHeader .heading{flex:1 1 9rem;min-inline-size:0}
+.promptHeader .heading h2,.promptHeader .heading p{overflow-wrap:anywhere}
+.details{flex:0 0 auto;min-inline-size:0;max-inline-size:100%}
+.details[open]{flex:1 1 100%;border-top:1px solid var(--quick-line);padding-top:.25rem}
+.details summary{box-sizing:border-box;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:.375rem;min-block-size:44px;min-inline-size:44px;inline-size:fit-content;max-inline-size:100%;padding:.25rem .5rem;margin-inline-start:auto;border:1px solid var(--quick-line);border-radius:9px;background:var(--quick-secondary);color:var(--quick-ink);font-size:.75rem;line-height:1.25;font-weight:750;cursor:pointer;list-style:none}
+.details summary::-webkit-details-marker{display:none}
+.details summary>span{min-inline-size:0;overflow-wrap:anywhere}
+.privacyTitle{margin:0;font-size:.8125rem;font-weight:750;line-height:1.4;overflow-wrap:anywhere}
+.details p{font-size:.75rem;line-height:1.6;color:var(--quick-muted);margin:6px 0 9px;overflow-wrap:anywhere}
 .feedback{font-size:13px;line-height:1.6;padding:10px;border:1px solid var(--quick-line);border-radius:10px;color:var(--quick-ink);margin:9px 0 0}
 .phase{border-inline-start-width:3px;background:var(--quick-secondary)}
 .success{border-color:#35a17e;background:var(--quick-bg)}.success .heading>svg{color:#2dad83}

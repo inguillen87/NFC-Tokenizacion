@@ -33,6 +33,7 @@
 .details[open] .summary svg:last-child { transform: rotate(180deg); }
 .summary:focus-visible, .root button:focus-visible, .field textarea:focus-visible, .field input:focus-visible, .field select:focus-visible { outline: 3px solid var(--rp-accent); outline-offset: 3px; }
 .content { padding: 0 18px 18px; }
+.submissionStatus { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .note, .privacy { color: var(--rp-muted); font-size: 13px; line-height: 1.75; margin: 0 0 18px; }
 .privacy { padding: 12px 0; margin-bottom: 12px; border-top: 1px solid var(--rp-line); font-size: 12px; }
 .field { display: block; margin: 18px 0 6px; }
@@ -45,6 +46,8 @@
 .error { border: 1px solid currentColor; border-radius: 12px; padding: 12px; margin: 12px 0 18px; }
 .fieldError { margin: 6px 0 12px; }
 .review h3 { margin: 18px 0; color: var(--rp-text); font-size: 17px; line-height: 1.6; font-weight: 750; }
+.review h3, .receipt h3 { scroll-margin-block-start: 100px; }
+.review h3:focus-visible, .receipt h3:focus-visible { outline: 3px solid var(--rp-accent); outline-offset: 3px; }
 .context { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 0 0 18px; padding: 14px; background: var(--rp-card); border-radius: 12px; }
 .context dt, .detailsText dt, .receipt dt { color: var(--rp-muted); font-size: 12px; line-height: 1.6; }
 .context dd, .detailsText dd, .receipt dd { margin: 3px 0 0; color: var(--rp-text); font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }

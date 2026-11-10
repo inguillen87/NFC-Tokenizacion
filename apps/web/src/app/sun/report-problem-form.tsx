@@ -29,6 +29,9 @@ function ReportProblemSession(props: ReportProblemProps) {
   const [sending, setSending] = useState(false);
   const details = useRef<HTMLDetailsElement>(null);
   const reviewHeading = useRef<HTMLHeadingElement>(null);
+  const receiptHeading = useRef<HTMLHeadingElement>(null);
+  const returnToDraft = useRef(false);
+  const moveToReceipt = useRef(false);
   const description = useRef<HTMLTextAreaElement>(null);
   const contact = useRef<HTMLInputElement>(null);
   const category = useRef<HTMLSelectElement>(null);
@@ -54,14 +57,27 @@ function ReportProblemSession(props: ReportProblemProps) {
     window.addEventListener("hashchange", reveal);
     return () => { mounted.current = false; controller.current?.abort(); window.removeEventListener("hashchange", reveal); };
   }, []);
-  useEffect(() => { if (review) reviewHeading.current?.focus(); }, [review]);
+  useEffect(() => {
+    if (review) reviewHeading.current?.focus();
+    else if (returnToDraft.current) {
+      returnToDraft.current = false;
+      description.current?.focus();
+    }
+  }, [review]);
 
   const errorText = outcome && outcome.kind !== "received"
     ? outcome.kind === "invalid" ? copy.errors.invalid_response : copy.errors[outcome.kind]
     : preparationError ? copy.errors[preparationError] : null;
   const lockedDetails = sending || runner.current.current().unresolved || (outcome && ["uncertain", "unavailable", "rate_limited"].includes(outcome.kind));
   const received = outcome?.kind === "received" ? outcome : null;
+  const receiptTitle = received ? received.existing ? copy.existing : copy.received : "";
   const productName = typeof props.productName === "string" && props.productName.trim() ? props.productName.trim().slice(0, 256) : copy.unknownProduct;
+
+  useEffect(() => {
+    if (!received || !moveToReceipt.current) return;
+    moveToReceipt.current = false;
+    if (details.current?.open && document.activeElement === document.body) receiptHeading.current?.focus();
+  }, [received]);
 
   function prepare(event: FormEvent) {
     event.preventDefault();
@@ -77,12 +93,16 @@ function ReportProblemSession(props: ReportProblemProps) {
   async function confirm() {
     if (!ready || !review || requestLock.current) return;
     requestLock.current = true;
+    reviewHeading.current?.focus();
     setSending(true);
     controller.current = new AbortController();
     const timer = window.setTimeout(() => controller.current?.abort(), 12000);
     try {
       const result = await runner.current!.submit(props, controller.current.signal);
-      if (mounted.current && result) setOutcome(result);
+      if (mounted.current && result) {
+        moveToReceipt.current = result.kind === "received" && document.activeElement === reviewHeading.current;
+        setOutcome(result);
+      }
     } finally {
       window.clearTimeout(timer);
       requestLock.current = false;
@@ -91,6 +111,7 @@ function ReportProblemSession(props: ReportProblemProps) {
   }
   function edit() {
     if (requestLock.current || lockedDetails) return;
+    returnToDraft.current = true;
     setReview(null);
     setOutcome(null);
     setPreparationError(null);
@@ -99,11 +120,12 @@ function ReportProblemSession(props: ReportProblemProps) {
     : fieldErrors[field] === "too_long" ? field === "description" ? copy.errors.tooLongDescription : copy.errors.tooLongContact : copy.errors.invalid;
 
   return <section id="report-problem" className={styles.root} aria-labelledby="report-problem-title" data-testid="report-problem-form" data-report-step={received ? "received" : review ? "review" : "description"} data-report-ready={ready} data-sun-server-evidence="true">
+    <p role="status" aria-atomic="true" className={styles.submissionStatus}>{sending ? copy.sending : receiptTitle}</p>
     <details ref={details} className={styles.details}>
       <summary className={styles.summary} data-testid="report-problem-summary"><h2 id="report-problem-title"><MessageSquareWarning size={19} aria-hidden="true" /><span>{copy.title}</span><ChevronDown size={18} aria-hidden="true" /></h2></summary>
       <div className={styles.content}>
-        {props.isDemoPreview ? <p className={styles.note}>{copy.demo}</p> : received ? <div role="status" className={styles.receipt} data-testid="report-problem-receipt">
-          <CheckCircle2 size={24} aria-hidden="true" /><h3>{received.existing ? copy.existing : copy.received}</h3>
+        {props.isDemoPreview ? <p className={styles.note}>{copy.demo}</p> : received ? <div className={styles.receipt} data-testid="report-problem-receipt">
+          <CheckCircle2 size={24} aria-hidden="true" /><h3 ref={receiptHeading} tabIndex={-1}>{receiptTitle}</h3>
           <p>{copy[received.ticket.status]}</p>
           <dl><div><dt>{copy.reference}</dt><dd translate="no">{received.ticket.id}</dd></div><div><dt>{copy.createdAt}</dt><dd><time dateTime={received.ticket.createdAt}>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC", hourCycle: "h23" }).format(new Date(received.ticket.createdAt))} UTC</time></dd></div></dl>
           <p>{copy.receivedHelp}</p>

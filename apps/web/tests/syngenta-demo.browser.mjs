@@ -132,7 +132,11 @@ async function runInternal({ origin, phase = 'local', source = git('rev-parse', 
         check(await status.getAttribute('data-demo-product-state') === ({ closed: 'VALID_CLOSED', opened: 'VALID_OPENED', invalid: 'INVALID' })[scenario], `${view}/${scenario}: state semantics`);
         if (scenario === 'invalid') check(await status.getAttribute('data-demo-protected-actions') === 'blocked', view + ': invalid protected actions blocked');
         const controls = page.getByTestId('sun-demo-scenario-selector');
-        check(await controls.locator(`a[data-demo-scenario="${scenario}"]`).getAttribute('aria-current') === 'page', `${view}/${scenario}: state selection reflected`);
+        const currentScenario = controls.locator(`a[data-demo-scenario="${scenario}"]`);
+        check(await currentScenario.getAttribute('aria-current') === 'page', `${view}/${scenario}: state selection reflected`);
+        const currentLabel = ({ 'es-AR': 'Actual', en: 'Current', 'pt-BR': 'Atual' })[locale];
+        check(await currentScenario.getByText(currentLabel, { exact: true }).isVisible()
+          && await controls.getByText(currentLabel, { exact: true }).count() === 1, `${view}/${scenario}: only the selected state has a visible current label`);
         check(await page.locator('html').getAttribute('data-theme') === theme, `${view}/${scenario}: exact theme`);
         check(await page.getByTestId('syngenta-demo-experience').getAttribute('lang') === ({ 'es-AR': 'es', en: 'en', 'pt-BR': 'pt' })[locale], `${view}/${scenario}: exact language`);
         check(await page.getByTestId('valle-secreto-experience').count() === 0 && await page.locator('#qr-engagement').count() === 0, `${view}/${scenario}: no wine tools inherited`);
