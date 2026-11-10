@@ -962,6 +962,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     isSunProfileMismatch,
     isSnapshotView,
   }, (value) => translateSunUiText(value, locale));
+  const showHistoricalReadingLabel = !isDemoPreview && isSnapshotView
+    && (consumerStatus.tone === "closed" || consumerStatus.tone === "opened" || consumerStatus.tone === "verified");
   const consumerServicesLabel = isRiskBlocked
     ? "Protegidos"
     : isDemoPreview
@@ -1885,15 +1887,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                         : <ShieldAlert className="h-5 w-5" strokeWidth={2} />}
                 </span>
                 <div className="min-w-0">
-                  <span className={`sr-only ${
-                    consumerStatus.tone === "closed"
-                      ? "text-emerald-300"
-                      : consumerStatus.tone === "opened" || consumerStatus.tone === "review"
-                        ? "text-amber-200"
-                        : consumerStatus.tone === "verified" || consumerStatus.tone === "info"
-                          ? "text-cyan-200"
-                          : "text-rose-200"
-                  }`}>
+                  <span
+                    className={showHistoricalReadingLabel ? passportStyles.historicalReadingLabel : "sr-only"}
+                    data-testid={showHistoricalReadingLabel ? "sun-summary-history-label" : undefined}
+                  >
                     {consumerStatus.label}
                   </span>
                   <h2 className="sun-summary-status__headline mt-1 break-words text-[19px] font-black leading-tight text-white">

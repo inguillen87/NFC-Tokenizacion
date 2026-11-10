@@ -53,6 +53,7 @@ try {
   check(firstAction.width>=44&&firstAction.height>=44&&!firstAction.insideClosedDetails&&firstAction.left>=0&&firstAction.right<=firstAction.viewportWidth&&firstAction.top>=0&&firstAction.bottom<=firstAction.viewportHeight,`Contextual action reachable in first viewport ${state} ${width} ${theme}`);
   check(await page.getByTestId('sun-summary-evidence').getAttribute('open')===null&&await page.getByTestId('sun-summary-location-disclosure').getAttribute('open')===null&&await page.getByTestId('sun-product-reading-details').getAttribute('open')===null,`Optional evidence starts collapsed ${state} ${width} ${theme}`);
   check(await page.getByTestId('sun-summary-status').isVisible(),`Result stays visible before optional evidence ${state} ${width} ${theme}`);
+  check(await page.getByTestId('sun-summary-history-label').count()===0,`Only a historical result gets a visible history label ${state} ${width} ${theme}`);
   const readingTime=page.locator('.sun-result-journey li').nth(2).locator('strong');
   await openReadingEvidence(page);
   const summaryTime=page.getByTestId('sun-summary-location').locator('p').filter({hasText:'Hora del tap:'}).locator('span').last();
@@ -160,6 +161,7 @@ try {
     check(await page.getByTestId('passport-evidence-resources').count()===0&&await page.locator('#protected-actions').count()===0&&await page.locator('[data-sun-datetime]').count()===0,`Gallery has no reading evidence or protected action ${locale}`);
   }else if(name==='demo'){
     check((await page.locator('body').innerText()).includes(locale==='en'?'DEMO PREVIEW · NO PHYSICAL TAP':locale==='pt-BR'?'DEMONSTRAÇÃO · SEM TOQUE FÍSICO':'MUESTRA DEMO · SIN TAP FÍSICO'),`Demo truth label ${locale}`);
+    check(await status.getByTestId('sun-summary-history-label').count()===0,`Demo has no historical reading label ${locale}`);
   }else{
     check(await status.locator('h2').innerText()===headlines[locale][availability],`Clear availability headline ${name} ${locale}`);
     check(await status.getAttribute('data-status-tone')==='info',`Availability is neutral ${name} ${locale}`);
@@ -177,13 +179,14 @@ try {
   if(axe&&locale==='es-AR'){await page.addScriptTag({content:axe});const violations=await page.evaluate(async selector=>(await axe.run(selector,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})),name==='empty'?'[data-testid="sun-demo-gallery"]':'#sun-summary');check(!violations.length,`Availability accessibility ${name}`);report.views.push({width:390,state:name,locale,violations});}
   await context.close();
  }
- for(const [state,tone,headline] of [
+ for(const [width,theme] of [[320,'light'],[390,'dark']])for(const [state,tone,headline] of [
   ['seal-unknown','verified','Identidad NFC validada'],
   ['unsupported','verified','Identidad NFC validada'],
   ['historical-closed','closed','En esa lectura, el tag informó: sello cerrado'],
   ['invalid','risk','Revisá el producto antes de usarlo'],
  ]){
-  const context=await browser.newContext({viewport:{width:390,height:844},locale:'es-AR',serviceWorkers:'block'}),page=await context.newPage();
+  const context=await browser.newContext({viewport:{width,height:844},locale:'es-AR',reducedMotion:'reduce',serviceWorkers:'block'}),page=await context.newPage();
+  await context.addCookies([{name:'theme',value:theme,url:origin},{name:'nexid_theme_version',value:'white-first-v2',url:origin}]);
   page.on('pageerror',e=>report.errors.push(e.message));
   await page.route('**/*',r=>{const u=new URL(r.request().url());if(r.request().method()!=='GET'){report.blockedWrites++;return r.abort();}if(u.origin!==origin)return r.abort();if(u.pathname==='/qa-product.svg')return r.fulfill({status:200,contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="92" height="128"/>'});if(u.pathname.startsWith('/api/'))return r.fulfill({status:404,contentType:'application/json',body:'{"ok":false}'});return r.continue();});
   await page.goto(origin+`/sun?snapshot=qa-${state}&trace=synthetic&access=invalid`,{waitUntil:'networkidle'});
@@ -191,6 +194,13 @@ try {
   check(await status.getAttribute('data-availability')==='ready',`Delivered result remains distinct ${state}`);
   check(await status.getAttribute('data-status-tone')===tone,`NFC result tone preserved ${state}`);
   check(await status.locator('h2').innerText()===headline,`NFC result meaning preserved ${state}`);
+  const historyLabel=status.getByTestId('sun-summary-history-label');
+  if(state==='historical-closed'){
+   check(await page.locator('html').getAttribute('data-theme')===theme,`Historical reading theme ${theme}`);
+   check(await historyLabel.innerText()==='Registro de una lectura NFC'&&await historyLabel.isVisible(),`Historical provenance is visible ${width} ${theme}`);
+   check(await status.getByRole('heading',{level:2,name:headline,exact:true}).count()===1,`Historical seal retains its accessible heading ${width} ${theme}`);
+   check(await page.getByTestId('sun-summary-primary').getAttribute('href')==='#fresh-tap-required',`Historical reading retains the new TAP action ${width} ${theme}`);
+  }else check(await historyLabel.count()===0,`Nonhistorical result has no history label ${state} ${width} ${theme}`);
   await openNativeDisclosure(page,'sun-summary-evidence');
   if(state!=='invalid')check(await page.getByTestId('sun-summary-facts').getByText('Verificada',{exact:true}).count()===1,`Verified identity retained ${state}`);
   if(state==='seal-unknown'||state==='unsupported')check(await page.getByTestId('sun-summary-facts').getByText('No informado',{exact:true}).count()===1,`Unknown seal is not closed ${state}`);
