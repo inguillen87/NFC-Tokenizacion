@@ -53,6 +53,7 @@ type RewardsReadResult = {
   availability: RewardsAvailability;
   items: RewardRecord[];
   dataSource: "production" | "demo" | "unavailable";
+  catalogScope?: "tenant" | "global";
   reason: string;
 };
 
@@ -143,6 +144,7 @@ async function getRewards(
       availability: items.length ? "ready" : "ready_empty",
       items,
       dataSource: "production",
+      catalogScope: body.scope === "global" ? "global" : "tenant",
       reason: "",
     };
   } catch {
@@ -167,6 +169,7 @@ export default async function RewardsPage({ searchParams }: { searchParams?: Pro
     <RewardsClient
       initialRewards={rewardsResult.items}
       tenantScope={tenantScope}
+      catalogScope={rewardsResult.catalogScope}
       isDemo={Boolean(session.isDemo)}
       canWrite={canWrite}
       dataSource={rewardsResult.dataSource}

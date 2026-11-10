@@ -130,20 +130,126 @@ interface TwilioStatus {
   mediaUrl?: string | null;
 }
 
-interface RedemptionValidation {
-  ok: boolean;
-  reason?: string;
-  action?: string;
-  redemption?: {
-    redemption_code?: string;
-    status?: string;
-    seal?: string | null;
-    expires_at?: string | null;
-    reward?: { title?: string; code?: string };
-    consumer?: { name?: string; phone_masked?: string | null; email_masked?: string | null };
-    tenant?: { slug?: string };
-    staff_instruction?: string;
+type VoucherAction = "lookup" | "redeem";
+type VoucherFeedback = {
+  tone: "success" | "neutral" | "warning";
+  title: string;
+  detail: string;
+  receipt?: {
+    rewardTitle: string | null;
+    consumerName: string | null;
+    maskedContact: string | null;
+    seal: string | null;
+    expiresAt: string | null;
   };
+};
+
+const voucherDenials: Record<string, { status: number; detail: string }> = {
+  redemption_code_required: { status: 400, detail: "Ingresá el código del comprobante." },
+  redemption_not_found: { status: 404, detail: "Revisá el código y la empresa seleccionada." },
+  seal_mismatch: { status: 409, detail: "El sello no coincide. Pedile al cliente que te muestre el comprobante." },
+  phone_mismatch: { status: 409, detail: "Los últimos cuatro dígitos del teléfono no coinciden." },
+  redemption_expired: { status: 409, detail: "La reserva venció." },
+  redemption_not_claimed: { status: 409, detail: "La reserva ya no está disponible para canje. Consultá su estado." },
+  redemption_already_processed: { status: 409, detail: "La reserva cambió durante la operación. Consultá su estado antes de volver a canjear." },
+};
+const voucherLookupCopy: Record<string, { title: string; detail: string }> = {
+  claimed: { title: "Reserva encontrada", detail: "Verificá el comprobante antes de entregar el beneficio." },
+  redeemed: { title: "Ya canjeado", detail: "El comprobante ya registra un canje." },
+  cancelled: { title: "Reserva cancelada", detail: "La reserva figura cancelada." },
+};
+const voucherFeedbackClasses: Record<VoucherFeedback["tone"], string> = {
+  success: "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-100",
+  warning: "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100",
+  neutral: "border-slate-300 bg-slate-50 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100",
+};
+
+const voucherRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+const voucherText = (value: unknown) => typeof value === "string" && value.trim() ? value : null;
+
+function unconfirmedVoucher(action: VoucherAction): VoucherFeedback {
+  return {
+    tone: "warning",
+    title: "Resultado sin confirmar",
+    detail: action === "redeem" ? "Consultá el comprobante antes de volver a canjear." : "Volvé a consultar el comprobante.",
+  };
+}
+
+export function projectVoucherFeedback(
+  action: VoucherAction,
+  status: number,
+  payload: unknown,
+  tenantScope: string,
+  code: string,
+): VoucherFeedback {
+  const body = voucherRecord(payload);
+  if (status === 401) return { tone: "warning", title: "Iniciá sesión", detail: "Volvé a iniciar sesión para consultar o canjear el comprobante." };
+  if (status === 403) return { tone: "warning", title: "Acceso restringido", detail: "Tu sesión no tiene permiso para operar sobre este comprobante." };
+  const reason = body?.reason;
+  if (body?.ok === false && typeof reason === "string" && Object.hasOwn(voucherDenials, reason)) {
+    const denial = voucherDenials[reason];
+    if (status === denial.status) return { tone: "warning", title: "Comprobante no validado", detail: denial.detail };
+  }
+
+  const redemption = voucherRecord(body?.redemption);
+  const tenant = tenantScope.trim().toLowerCase();
+  const normalizedCode = code.trim().toUpperCase().replace(/\s+/g, "");
+  if (status !== 200 || body?.ok !== true || body.action !== (action === "lookup" ? "lookup" : "redeemed")
+    || !tenant || !normalizedCode || !redemption || redemption.redemption_code !== normalizedCode
+    || voucherRecord(redemption.tenant)?.slug !== tenant) return unconfirmedVoucher(action);
+
+  const receiptStatus = redemption.status;
+  if (typeof receiptStatus !== "string" || !Object.hasOwn(voucherLookupCopy, receiptStatus)) return unconfirmedVoucher(action);
+  if (action === "redeem" && receiptStatus !== "redeemed") return unconfirmedVoucher(action);
+  const expiry = voucherText(redemption.expires_at);
+  const expiryTime = expiry ? Date.parse(expiry) : NaN;
+  const expiresAt = Number.isFinite(expiryTime) && new Date(expiryTime).toISOString() === expiry ? expiry : null;
+  if (receiptStatus === "claimed" && !expiresAt) return unconfirmedVoucher(action);
+
+  const consumer = voucherRecord(redemption.consumer);
+  const outcome: VoucherFeedback = action === "redeem"
+    ? { tone: "success", title: "Canje confirmado", detail: "El canje quedó registrado." }
+    : { tone: "neutral", ...voucherLookupCopy[receiptStatus] };
+  return {
+    ...outcome,
+    receipt: {
+      rewardTitle: voucherText(voucherRecord(redemption.reward)?.title),
+      consumerName: voucherText(consumer?.name),
+      maskedContact: [consumer?.phone_masked, consumer?.email_masked].find(
+        (value): value is string => typeof value === "string" && value.includes("***"),
+      ) ?? null,
+      seal: voucherText(redemption.seal),
+      expiresAt,
+    },
+  };
+}
+
+export function VoucherFeedbackPanel({ feedback }: { feedback: VoucherFeedback }) {
+  const receipt = feedback.receipt;
+  return (
+    <div
+      role={feedback.tone === "warning" ? "alert" : "status"}
+      className={`mt-3 rounded-xl border p-3 text-sm ${voucherFeedbackClasses[feedback.tone]}`}
+    >
+      <p className="font-semibold">{feedback.title}</p>
+      <p className="mt-1">{feedback.detail}</p>
+      {receipt ? (
+        <dl className="mt-3 grid gap-3 text-xs [overflow-wrap:anywhere] sm:grid-cols-2 lg:grid-cols-4">
+          <div><dt className="font-semibold">Beneficio</dt><dd>{receipt.rewardTitle ?? "Sin informar"}</dd></div>
+          <div>
+            <dt className="font-semibold">Consumidor</dt>
+            <dd>{receipt.consumerName ?? "Sin informar"}{receipt.maskedContact ? <span className="block">{receipt.maskedContact}</span> : null}</dd>
+          </div>
+          <div><dt className="font-semibold">Sello</dt><dd className="font-mono">{receipt.seal ?? "Sin informar"}</dd></div>
+          <div>
+            <dt className="font-semibold">Vencimiento</dt>
+            <dd>{receipt.expiresAt ? new Date(receipt.expiresAt).toLocaleString("es-AR") : "Sin informar"}</dd>
+          </div>
+        </dl>
+      ) : null}
+    </div>
+  );
 }
 
 type LoyaltyCampaignsClientProps = {
@@ -447,7 +553,9 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData, can
   const [voucherSeal, setVoucherSeal] = useState("");
   const [voucherPhoneLast4, setVoucherPhoneLast4] = useState("");
   const [voucherChecking, setVoucherChecking] = useState(false);
-  const [voucherResult, setVoucherResult] = useState<RedemptionValidation | null>(null);
+  const [voucherResult, setVoucherResult] = useState<{ context: string; feedback: VoucherFeedback } | null>(null);
+  const voucherContext = JSON.stringify([tenantScope, voucherCode, voucherSeal, voucherPhoneLast4]);
+  const voucherFeedback = voucherResult?.context === voucherContext ? voucherResult.feedback : null;
 
   // Demonstration profiles never enter the consent audience or become real recipients.
   const audienceDataIsDemo = allowDemoData;
@@ -1035,10 +1143,13 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData, can
     }
   }
 
-  async function handleValidateVoucher(action: "lookup" | "redeem") {
+  async function handleValidateVoucher(action: VoucherAction) {
     const endpoint = buildLoyaltyAdminUrl("rewards/redemptions/validate", tenantScope);
     if (!endpoint) {
-      setVoucherResult({ ok: false, reason: "tenant_scope_required" });
+      setVoucherResult({
+        context: voucherContext,
+        feedback: { tone: "warning", title: "Elegí una empresa", detail: "Seleccioná la empresa del comprobante para continuar." },
+      });
       return;
     }
     setVoucherChecking(true);
@@ -1054,18 +1165,13 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData, can
           action,
         }),
       });
-      const payload = await response.json().catch(() => ({}));
+      const payload: unknown = await response.json().catch(() => null);
       setVoucherResult({
-        ok: response.ok && payload?.ok !== false,
-        reason: payload?.reason || null,
-        action: payload?.action || action,
-        redemption: payload?.redemption || null,
+        context: voucherContext,
+        feedback: projectVoucherFeedback(action, response.status, payload, tenantScope, voucherCode),
       });
-    } catch (error) {
-      setVoucherResult({
-        ok: false,
-        reason: error instanceof Error ? error.message : "voucher_validation_failed",
-      });
+    } catch {
+      setVoucherResult({ context: voucherContext, feedback: unconfirmedVoucher(action) });
     } finally {
       setVoucherChecking(false);
     }
@@ -1542,21 +1648,13 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData, can
         </div>
 
         <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">
-                <BookmarkCheck className="h-4 w-4" />
-                Voucher desk
-              </div>
-              <h3 className="mt-1 text-sm font-black text-white">Validar código de canje en bodega / comercio</h3>
-              <p className="mt-1 text-[11px] text-slate-400">
-                Pegá el código que muestra el cliente. El sello y últimos 4 dígitos son control extra cuando el staff necesita más seguridad.
-              </p>
-            </div>
-            <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-200">
-              staff-ready
-            </span>
-          </div>
+          <h3 className="flex items-center gap-2 text-base font-bold text-white">
+            <BookmarkCheck aria-hidden="true" className="h-5 w-5 shrink-0 text-emerald-300" />
+            Comprobantes de canje
+          </h3>
+          <p className="mt-2 text-sm text-slate-300">
+            Ingresá el código que muestra el cliente. Consultá su estado y registrá el canje después de entregar el beneficio.
+          </p>
 
           <div className="mt-3 grid gap-2 md:grid-cols-[1.2fr_.9fr_.7fr_auto]">
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -1566,7 +1664,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData, can
                 placeholder="12345678"
                 value={voucherCode}
                 onChange={(event) => setVoucherCode(event.target.value.toUpperCase())}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-emerald-400"
+                className="mt-1 min-h-11 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-base normal-case tracking-normal text-white focus:border-emerald-400 md:text-sm"
               />
             </label>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -1576,7 +1674,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData, can
                 placeholder="opcional"
                 value={voucherSeal}
                 onChange={(event) => setVoucherSeal(event.target.value.toUpperCase())}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-emerald-400"
+                className="mt-1 min-h-11 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-base normal-case tracking-normal text-white focus:border-emerald-400 md:text-sm"
               />
             </label>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -1584,18 +1682,19 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData, can
               <input
                 title="Últimos cuatro dígitos del teléfono para control del staff"
                 placeholder="8608"
+                inputMode="numeric"
                 value={voucherPhoneLast4}
                 onChange={(event) => setVoucherPhoneLast4(event.target.value.replace(/[^\d]/g, "").slice(0, 4))}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-emerald-400"
+                className="mt-1 min-h-11 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-base normal-case tracking-normal text-white focus:border-emerald-400 md:text-sm"
               />
             </label>
-            <div className="flex items-end gap-2">
+            <div className="grid grid-cols-2 items-end gap-2">
               <button
                 type="button"
                 title="Consultar estado, beneficio, consumidor y vencimiento sin marcarlo como usado"
                 disabled={voucherChecking || !voucherCode.trim() || !tenantScope}
                 onClick={() => handleValidateVoucher("lookup")}
-                className="rounded-lg border border-emerald-400/30 px-3 py-2 text-xs font-black text-emerald-200 hover:bg-emerald-400/10 disabled:opacity-40"
+                className="min-h-11 rounded-lg border border-emerald-400/30 px-2 py-2 text-sm font-bold text-emerald-200 hover:bg-emerald-400/10 disabled:opacity-40"
               >
                 Consultar
               </button>
@@ -1604,52 +1703,14 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData, can
                 title="Marcar el voucher como canjeado después de entregar premio, cena, experiencia o descuento"
                 disabled={voucherChecking || !voucherCode.trim() || !tenantScope}
                 onClick={() => handleValidateVoucher("redeem")}
-                className="rounded-lg bg-emerald-400 px-3 py-2 text-xs font-black text-slate-950 hover:bg-emerald-300 disabled:opacity-40"
+                className="min-h-11 rounded-lg bg-emerald-400 px-2 py-2 text-sm font-bold text-slate-950 hover:bg-emerald-300 disabled:opacity-40"
               >
                 Canjear
               </button>
             </div>
           </div>
 
-          {voucherResult && (
-            <div className={`mt-3 rounded-xl border p-3 text-xs ${
-              voucherResult.ok
-                ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100"
-                : "border-rose-400/30 bg-rose-400/10 text-rose-100"
-            }`}>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="font-black">
-                  {voucherResult.ok ? "Voucher válido" : `No validado: ${voucherResult.reason || "error"}`}
-                </div>
-                {voucherResult.redemption?.status ? (
-                  <span className="rounded-full border border-white/10 bg-white/10 px-2 py-1 text-[10px] font-black uppercase">
-                    {voucherResult.redemption.status}
-                  </span>
-                ) : null}
-              </div>
-              {voucherResult.redemption ? (
-                <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider opacity-60">Beneficio</div>
-                    <div className="font-bold">{voucherResult.redemption.reward?.title || "Voucher nexID"}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider opacity-60">Consumidor</div>
-                    <div className="font-bold">{voucherResult.redemption.consumer?.name || "Usuario nexID"}</div>
-                    <div className="text-[10px] opacity-75">{voucherResult.redemption.consumer?.phone_masked || voucherResult.redemption.consumer?.email_masked || "contacto protegido"}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider opacity-60">Sello</div>
-                    <div className="font-mono font-bold">{voucherResult.redemption.seal || "n/a"}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider opacity-60">Vence</div>
-                    <div className="font-bold">{voucherResult.redemption.expires_at ? new Date(voucherResult.redemption.expires_at).toLocaleString("es-AR") : "sin vencimiento"}</div>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          )}
+          {voucherFeedback ? <VoucherFeedbackPanel feedback={voucherFeedback} /> : null}
         </div>
 
         {audienceDataIsDemo ? <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/60">

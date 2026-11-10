@@ -1,6 +1,6 @@
 import {loyaltyOverviewReadinessPriorHash} from './helpers/loyalty-overview-readiness-reviewed-sources.mjs';
 import {loyaltyOverviewRecoveryPriorHash} from './helpers/loyalty-overview-recovery-reviewed-sources.mjs';
-import {REWARD_DIALOG_SOURCE_BASE,REWARD_DIALOG_REVIEWED_SOURCES,rewardCatalogHistoricalPriorHash,rewardDialogHistoricalPriorHash,rewardDialogPriorHash,rewardStockDisplayHistoricalPriorHash} from './helpers/reward-dialog-reviewed-sources.mjs';
+import {REWARD_DIALOG_SOURCE_BASE,REWARD_DIALOG_REVIEWED_SOURCES,rewardCatalogHistoricalPriorHash,rewardDialogActionsHistoricalPriorHash,rewardDialogAppearanceHistoricalPriorHash,rewardDialogHistoricalPriorHash,rewardDialogPriorHash,rewardStockDisplayHistoricalPriorHash} from './helpers/reward-dialog-reviewed-sources.mjs';
 import {CUSTOMER_FEEDBACK_ADDED,customerFeedbackPriorHash,customerFeedbackPriorInventory,assertCustomerFeedbackAdded} from './helpers/customer-feedback-reviewed-sources.mjs';
 import {crmFilterContextPriorHash} from './helpers/crm-filter-context-reviewed-sources.mjs';
 import {catalogConfirmationPriorHash} from './helpers/catalog-confirmation-reviewed-sources.mjs';
@@ -172,21 +172,54 @@ test('the rewards catalog preserves exact page and historical card origins',asyn
  assert.equal(pageOrigin,baseline.expected[page]);
  const stock='9039f7d58c85752f1e431c0714965078ece8b4a604ebb01d743499c4381b2099';
  const catalogClient='9c1af29f8e415cee6c4c6084a650af70682e0ee413215d9eb89cdd784715ffcc';
- const text=(await readFile(new URL('../src/app/(app)/loyalty/rewards/page.tsx',import.meta.url),'utf8')).replaceAll('\r\n','\n');
- const pageHash=createHash('sha256').update(text).digest('hex');
- assert.equal(rewardDialogPriorHash(page,pageHash),pageOrigin);
+ const catalogPage='61ff3c475ce622ce90eac8f697a3332ee225af67c6981c2c6df1e488b3cd2b00';
+ assert.equal(rewardCatalogHistoricalPriorHash(page,catalogPage),pageOrigin);
  assert.equal(rewardCatalogHistoricalPriorHash(client,catalogClient),REWARD_DIALOG_REVIEWED_SOURCES[client].before);
- for(const [path,rejected] of [[page,[pageOrigin,createHash('sha256').update(text+'\n').digest('hex'),catalogClient]],[client,[stock,catalogClient.slice(0,-1)+'0',pageHash]]]){
+ for(const [path,rejected] of [[page,[pageOrigin,catalogPage.slice(0,-1)+'1',catalogClient]],[client,[stock,catalogClient.slice(0,-1)+'0',catalogPage]]]){
   for(const hash of rejected)assert.throws(()=>rewardCatalogHistoricalPriorHash(path,hash),/exact reviewed reward catalog/);
  }
 });
 
-test('the reward dialog appearance requires the exact current client source',async()=>{
+test('the reward dialog appearance retains its exact historical source',()=>{
  const path='apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx';
- const text=(await readFile(new URL('../src/app/(app)/loyalty/rewards/rewards-client.tsx',import.meta.url),'utf8')).replaceAll('\r\n','\n');
- const actual=createHash('sha256').update(text).digest('hex');
- assert.equal(rewardDialogPriorHash(path,actual),REWARD_DIALOG_REVIEWED_SOURCES[path].before);
+ const appearance='f09a91e2e26e57e7b7b8d9f1f8caf66676a7d35f78aa2104c57322d514d30404';
+ assert.equal(rewardDialogAppearanceHistoricalPriorHash(path,appearance),REWARD_DIALOG_REVIEWED_SOURCES[path].before);
  const priorCatalog='9c1af29f8e415cee6c4c6084a650af70682e0ee413215d9eb89cdd784715ffcc';
  const priorProposal='7f20baf68320068e1f06a7bfb7270706bc39c405c4b3a387bd29edf762603b86';
- for(const rejected of [priorCatalog,priorProposal,createHash('sha256').update(text+'\n').digest('hex')])assert.throws(()=>rewardDialogPriorHash(path,rejected),/exact reviewed reward dialog appearance/);
+ for(const rejected of [priorCatalog,priorProposal,appearance.slice(0,-1)+'0'])assert.throws(()=>rewardDialogAppearanceHistoricalPriorHash(path,rejected),/exact reviewed reward dialog appearance/);
+});
+
+test('the reward dialog actions retain their exact historical source',()=>{
+ const path='apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx';
+ const actions='e141130ad5801a345a8b2b1410648a908a9ad727be38c4b7e5c442e5ff8a9719';
+ assert.equal(rewardDialogActionsHistoricalPriorHash(path,actions),REWARD_DIALOG_REVIEWED_SOURCES[path].before);
+ const appearance='f09a91e2e26e57e7b7b8d9f1f8caf66676a7d35f78aa2104c57322d514d30404';
+ for(const rejected of [appearance,actions.slice(0,-1)+'0'])assert.throws(()=>rewardDialogActionsHistoricalPriorHash(path,rejected),/exact reviewed reward dialog actions/);
+});
+
+test('global rewards identity requires exact current page and client sources',async()=>{
+ const page='apps/dashboard/src/app/(app)/loyalty/rewards/page.tsx';
+ const client='apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx';
+ const paths=[
+  {path:page,old:'61ff3c475ce622ce90eac8f697a3332ee225af67c6981c2c6df1e488b3cd2b00',origin:'211ddba0d83e18aa6e60dc86ffd57b718e0533f67c760e88cfd6f577c92ca158'},
+  {path:client,old:'e141130ad5801a345a8b2b1410648a908a9ad727be38c4b7e5c442e5ff8a9719',origin:REWARD_DIALOG_REVIEWED_SOURCES[client].before},
+ ];
+ const sources=await Promise.all(paths.map(async ({path})=>{
+  const text=(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');
+  return {actual:createHash('sha256').update(text).digest('hex'),changed:createHash('sha256').update(text+'\n').digest('hex')};
+ }));
+ for(const [index,{path,old,origin}] of paths.entries()){
+  const {actual,changed}=sources[index];
+  assert.equal(rewardDialogPriorHash(path,actual),origin);
+  for(const rejected of [old,changed,sources[1-index].actual])assert.throws(()=>rewardDialogPriorHash(path,rejected),/exact reviewed reward company identity/);
+ }
+});
+
+test('voucher feedback preserves the independent campaign source origin',async()=>{
+ const baseline=readHistoricalBaseline('release-convergence',await readFile(new URL('./fixtures/release-convergence-baseline.json',import.meta.url),'utf8'));
+ const path='apps/dashboard/src/app/(app)/loyalty/campaigns/loyalty-campaigns-client.tsx';
+ const text=(await readFile(new URL('../src/app/(app)/loyalty/campaigns/loyalty-campaigns-client.tsx',import.meta.url),'utf8')).replaceAll('\r\n','\n');
+ const actual=createHash('sha256').update(text).digest('hex');
+ assert.equal(rewardDialogPriorHash(path,actual),baseline.expected[path]);
+ for(const rejected of [baseline.expected[path],createHash('sha256').update(text+'\n').digest('hex')])assert.throws(()=>rewardDialogPriorHash(path,rejected),/exact reviewed voucher feedback/);
 });

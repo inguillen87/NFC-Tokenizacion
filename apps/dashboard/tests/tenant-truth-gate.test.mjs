@@ -235,6 +235,7 @@ test("initial rewards retains a historical row beside modern zero-point stock", 
   const result = await renderRewardsCatalog(bff(catalog([modern, legacy])));
   assert.equal(result.availability, "ready");
   assert.equal(result.dataSource, "production");
+  assert.equal(result.catalogScope, "tenant");
   assert.equal(result.canWrite, false);
   assert.deepEqual(result.requests, [{ tenant, path: "loyalty/rewards" }]);
   assert.deepEqual(result.initialRewards[0], modern);
@@ -248,11 +249,13 @@ test("initial rewards retains a historical row beside modern zero-point stock", 
 test("initial rewards accepts confirmed empty or explicit global results", async () => {
   const empty = await renderRewardsCatalog(bff(catalog([])));
   assert.equal(empty.availability, "ready_empty");
+  assert.equal(empty.catalogScope, "tenant");
   assert.deepEqual(empty.initialRewards, []);
   const longTenantSlug = "global-company-" + "x".repeat(129);
   const global = await renderRewardsCatalog(bff(catalog([persistedReward(), persistedReward(2, { tenant_slug: longTenantSlug })], null)),
     { ...rewardReader, role: "super-admin", tenantSlug: null }, {});
   assert.equal(global.availability, "ready");
+  assert.equal(global.catalogScope, "global");
   assert.equal(global.canWrite, false);
   assert.deepEqual(global.requests, [{ tenant: "", path: "loyalty/rewards?scope=global" }]);
   assert.deepEqual(global.initialRewards.map(row => row.tenant_slug), [tenant, longTenantSlug]);
@@ -271,8 +274,13 @@ test("initial rewards rejects mismatched sources and unconfirmed row identity", 
     const result = await renderRewardsCatalog(response);
     assert.equal(result.availability, "upstream_error");
     assert.equal(result.dataSource, "unavailable");
+    assert.equal(result.catalogScope, undefined);
     assert.deepEqual(result.initialRewards, []);
   }
+  const missingGlobalScope = await renderRewardsCatalog(bff({ ...catalog([persistedReward()], null), scope: undefined }),
+    { ...rewardReader, role: "super-admin", tenantSlug: null }, {});
+  assert.equal(missingGlobalScope.availability, "upstream_error");
+  assert.equal(missingGlobalScope.catalogScope, undefined);
 });
 
 test("initial rewards keeps demo isolated and distinguishes rejected access from empty", async () => {
@@ -280,12 +288,14 @@ test("initial rewards keeps demo isolated and distinguishes rejected access from
   const demo = await renderRewardsCatalog(demoResponse(), { ...rewardReader, isDemo: true });
   assert.equal(demo.availability, "ready");
   assert.equal(demo.dataSource, "demo");
+  assert.equal(demo.catalogScope, undefined);
   assert.equal(demo.canWrite, false);
   assert.deepEqual(demo.initialRewards.map(row => row.code), ["DEG-2X1", "MIX-6B", "MAG-15L"]);
   assert.equal((await renderRewardsCatalog(demoResponse())).availability, "upstream_error");
   for (const status of [401, 403]) {
     const result = await renderRewardsCatalog(bff({ ok: false }, status));
     assert.equal(result.availability, "forbidden");
+    assert.equal(result.catalogScope, undefined);
     assert.deepEqual(result.initialRewards, []);
   }
 });

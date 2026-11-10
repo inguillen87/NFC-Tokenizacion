@@ -22,10 +22,18 @@ const before=await hashes(),observedHead=execFileSync('git',['--no-optional-lock
 if(process.env.QA_SOURCE){assert.equal(process.env.QA_SOURCE,observedHead);assert.equal(execFileSync('git',['--no-optional-locks','-C',root,'status','--porcelain'],{encoding:'utf8',windowsHide:true}).trim(),'');}
 const REWARD='10000000-0000-4000-8000-000000000001',PROGRAM='20000000-0000-4000-8000-000000000001';
 const row={id:REWARD,program_id:PROGRAM,tenant_slug:'qa-a',code:'EXISTING',title:'Beneficio guardado QA',points:40,status:'active',description:'Texto sintético',type:'TOUR',image_url:null,stock_total:12,stock_remaining:10,requires_age_gate:false,network_visible:false,reservation_requirements:{version:'portal-reservation-requirements.v1',program:{association_confirmed:true}}};
+const globalTenants=['qa-a','empresa-global-'+ 's'.repeat(140)];
+const globalRows=globalTenants.map((tenant,index)=>({...row,id:index?'10000000-0000-4000-8000-000000000002':REWARD,tenant_slug:tenant,title:'Beneficio compartido QA'}));
 const entry=`import React,{useState}from'react';import{flushSync}from'react-dom';import{createRoot}from'react-dom/client';import RewardsClient from'./src/app/(app)/loyalty/rewards/rewards-client';
 window.__rewardRefreshes=0;window.__rewardRequests=[];const realFetch=window.fetch.bind(window);window.fetch=(input,init)=>{const url=new URL(typeof input==='string'?input:input.url,location.href),record={path:url.pathname,query:url.search,method:init?.method||'GET',cache:init?.cache,credentials:init?.credentials,hasBody:init?.body!==undefined,hasSignal:Boolean(init?.signal),headers:false,bodySettled:false};if(url.origin===location.origin&&url.pathname.startsWith('/api/'))window.__rewardRequests.push(record);return realFetch(input,init).then(response=>{record.headers=true;const json=response.json.bind(response);response.json=()=>json().finally(()=>{record.bodySettled=true});return response;});};
 const initial=${JSON.stringify(row)},rowsA=new URLSearchParams(location.search).has('historical')?[{...initial,status:'archived',type:'SERVICE'},{...initial,id:'10000000-0000-4000-8000-000000000002',code:'S'.repeat(200),title:'Beneficio histórico QA',points:null,status:'legacy',type:null}]:[initial],rowsB=[{...initial,tenant_slug:'qa-b',title:'Beneficio de otra empresa QA'}];const reactRoot=createRoot(document.getElementById('root'));
-function Fixture(){const[props,setProps]=useState({initialRewards:rowsA,tenantScope:'qa-a',isDemo:false,canWrite:true,dataSource:'production',availability:'ready',sourceReason:''});window.__rewardChangeSource=kind=>flushSync(()=>setProps(old=>kind==='tenant'?{...old,tenantScope:'qa-b',initialRewards:rowsB}:kind==='permission'?{...old,canWrite:false}:{...old,dataSource:'unavailable',availability:'upstream_error',initialRewards:[]}));return <main className='dashboard-app mx-auto max-w-6xl p-4'><h1 className='text-2xl font-bold'>Beneficios · ensayo local</h1><p>Componentes reales, empresa y solicitudes sintéticas.</p><RewardsClient {...props}/></main>};window.__rewardReopenSameTurn=()=>{const previous=document.querySelector('dialog'),close=previous.querySelector('[aria-label="Cerrar edición del beneficio"]'),create=[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Nuevo Beneficio');flushSync(()=>{close.click();create.click()});window.__previousRewardDialog=previous;return previous===document.querySelector('dialog')};window.__rewardUnmount=()=>flushSync(()=>reactRoot.unmount());reactRoot.render(<Fixture/>);`;
+function Fixture(){
+ const [props,setProps]=useState({initialRewards:rowsA,tenantScope:'qa-a',catalogScope:'tenant',isDemo:false,canWrite:true,dataSource:'production',availability:'ready',sourceReason:''});
+ window.__rewardChangeSource=kind=>flushSync(()=>setProps(old=>kind==='tenant'?{...old,tenantScope:'qa-b',initialRewards:rowsB}:kind==='permission'?{...old,canWrite:false}:{...old,dataSource:'unavailable',availability:'upstream_error',initialRewards:[]}));
+ window.__rewardShowGlobal=(catalogScope,dataSource='production')=>flushSync(()=>setProps(old=>({...old,initialRewards:${JSON.stringify(globalRows)},tenantScope:'',catalogScope,isDemo:dataSource==='demo',canWrite:false,dataSource})));
+ return <main className='dashboard-app mx-auto max-w-6xl p-4'><h1 className='text-2xl font-bold'>Beneficios · ensayo local</h1><p>Componentes reales, empresa y solicitudes sintéticas.</p><RewardsClient {...props}/></main>;
+}
+window.__rewardReopenSameTurn=()=>{const previous=document.querySelector('dialog'),close=previous.querySelector('[aria-label="Cerrar edición del beneficio"]'),create=[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Nuevo Beneficio');flushSync(()=>{close.click();create.click()});window.__previousRewardDialog=previous;return previous===document.querySelector('dialog')};window.__rewardUnmount=()=>flushSync(()=>reactRoot.unmount());reactRoot.render(<Fixture/>);`;
 const report={schema:'nexid.reward-save-dialog-owner.native.v1',passed:false,releaseAcceptanceEligible:false,actualReact:true,actualComponent:true,nativeComponentCss:true,syntheticShell:true,syntheticProps:true,syntheticTransport:true,routerObserverStub:true,actualNext:false,realAuthentication:false,realDatabase:false,realProvider:false,physicalTap:false,backendReadOnlyCertified:false,notes:['No initializer or business write is added by the client GET; existing live IAM initialization/last_seen side effects are outside this synthetic fixture.','Cancellation may stop delivery of an old response; direct unit callbacks separately cover post-unmount/pre-effect ownership.'],observedHead,qaSource:process.env.QA_SOURCE||null,sourceBefore:before,sourceAfter:null,cases:[],checks:[],errors:[],blockedRequests:[],serverRequests:[],closure:{contexts:false,browser:false,server:false,esbuild:false}};
 await mkdir(output,{recursive:true});let browser,origin,js,css;const contexts=new Set(),bodyPlans=[];
 const server=createServer(async(req,res)=>{
@@ -60,6 +68,27 @@ async function checkFeedbackContrast(item,feedback){
  const ratio=(Math.max(text,background)+0.05)/(Math.min(text,background)+0.05);
  item.feedbackContrast={...colors,ratio};
  check(item,colors.opaque&&colors.foreground[3]===255&&colors.background[3]===255&&ratio>=4.5,'rendered feedback text has at least 4.5:1 contrast on an opaque surface');
+}
+async function checkDialogActions(item,dialog,key){
+ const layout=await dialog.evaluate(node=>{
+  const form=node.querySelector('form'),footer=node.querySelector('footer');
+  const save=footer.querySelector('button[type="submit"]'),cancel=footer.querySelector('button[type="button"]');
+  const visible=button=>{
+   const {left,right,top,bottom,width,height}=button.getBoundingClientRect();
+   const center=document.elementFromPoint((left+right)/2,(top+bottom)/2);
+   return width>=44&&height>=44&&left>=0&&right<=innerWidth&&top>=0&&bottom<=innerHeight&&button.contains(center);
+  };
+  const initialScroll=form.scrollTop;
+  form.scrollTop=0;
+  const top={visible:visible(save)&&visible(cancel),y:footer.getBoundingClientRect().top};
+  form.scrollTop=form.scrollHeight;
+  const bottom={visible:visible(save)&&visible(cancel),y:footer.getBoundingClientRect().top};
+  const scrolled=form.scrollTop>0;
+  form.scrollTop=initialScroll;
+  return {top,bottom,scrolled,sameForm:save.form===form,noHorizontalOverflow:form.scrollWidth<=form.clientWidth+1};
+ });
+ item[key]=layout;
+ check(item,layout.sameForm&&layout.scrolled&&layout.top.visible&&layout.bottom.visible&&Math.abs(layout.top.y-layout.bottom.y)<1&&layout.noHorizontalOverflow,'form actions stay visible and associated with the form at both scroll ends');
 }
 async function waitFor(label,predicate){const end=Date.now()+12000;while(!predicate()){assert(Date.now()<end,label);await new Promise(done=>setTimeout(done,15));}}
 async function open(width,theme,name){
@@ -103,7 +132,23 @@ async function runCase(width,theme,name){const f=await open(width,theme,name),{p
    await edit.click();await dialog.waitFor();
    check(item,await dialog.locator('#reward-edit-status').inputValue()==='archived','editor keeps archived status');
    check(item,await dialog.locator('select').evaluateAll(selects=>selects.some(select=>select.value==='SERVICE')),'editor keeps the saved service type');
-   check(item,item.posts.length===0&&item.reads.length===0,'opening the historical catalog and supported editor makes no API calls');
+   await dialog.getByRole('button',{name:'Cerrar edición del beneficio',exact:true}).click();
+   await dialog.waitFor({state:'detached'});
+   const companyLabels=page.getByText('Identificador de empresa',{exact:true});
+   check(item,await companyLabels.count()===0,'a tenant-scoped catalog does not repeat company identifiers');
+   await page.evaluate(()=>window.__rewardShowGlobal('global'));
+   check(item,await page.getByRole('heading',{name:'Beneficio compartido QA',exact:true}).count()===2&&await companyLabels.count()===2,'global catalog labels both rewards with the same code and title');
+   for(const company of globalTenants){
+    const identifier=page.getByText(company,{exact:true});
+    check(item,await identifier.count()===1&&await identifier.evaluate(node=>node.tagName==='DD'),'each global row shows its own company identifier');
+   }
+   check(item,await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'a long company identifier wraps inside the viewport');
+   check(item,await edit.count()===0&&await f.newButton.count()===0,'global catalog stays read-only');
+   await page.evaluate(()=>window.__rewardShowGlobal());
+   check(item,await companyLabels.count()===0,'missing scope cannot display company identifiers');
+   await page.evaluate(()=>window.__rewardShowGlobal('global','demo'));
+   check(item,await companyLabels.count()===0,'demo cannot display production company identifiers');
+   check(item,item.posts.length===0&&item.reads.length===0,'opening the supported editor and changing catalog scope adds no API calls');
   }else if(name==='exact-edit-route'){
    await page.getByRole('button',{name:'Editar',exact:true}).click();await dialog.waitFor();await dialog.getByLabel('Título del Beneficio',{exact:true}).fill('Edición explícita QA');await f.submit();
    check(item,item.posts.length===1&&item.posts[0].path==='/api/admin/loyalty/rewards','exact edit uses legacy endpoint once');
@@ -127,7 +172,11 @@ async function runCase(width,theme,name){const f=await open(width,theme,name),{p
    }else if(name==='success-no-timer'){
     await dialog.getByRole('button',{name:'Sin imagen',exact:true}).click();
    }
-   await f.submit();
+   if(name==='current-409-retains-fields'){
+    await dialog.getByRole('button',{name:'Guardar Beneficio',exact:true}).click();
+    await waitFor('a native footer click submits the form',()=>item.posts.length>0);
+    check(item,item.posts.length===1,'one footer click issues one deliberate save');
+   }else await f.submit();
    if(name==='double-submit'){
     await dialog.locator('form').evaluate(form=>{form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));});await settle(page);
     check(item,item.posts.length===1,'repeated current-owner submit events cannot issue another POST');await f.releasePost();
@@ -174,6 +223,13 @@ async function runCase(width,theme,name){const f=await open(width,theme,name),{p
     check(item,item.posts[0].body.image_url==='/images/wine_crate.png'&&await dialog.getByRole('button',{name:'Caja de seis botellas',pressed:true}).count()===1,'preset uses its existing asset value and survives a refused save');
     check(item,await dialog.getByLabel('Código de Control',{exact:true}).inputValue()==='NEW'&&await dialog.getByLabel('Título del Beneficio',{exact:true}).inputValue()==='Título conservado QA','current refusal preserves the typed fields');
     check(item,(await alert.innerText()).includes('otro código')&&await alert.evaluate(node=>node===document.activeElement),'current duplicate refusal offers deliberate recovery and focuses neutral feedback');
+    await checkDialogActions(item,dialog,'footerLayout');
+    const save=dialog.getByRole('button',{name:'Guardar Beneficio',exact:true}),close=dialog.getByRole('button',{name:'Cerrar edición del beneficio',exact:true});
+    await save.focus();await page.keyboard.press('Tab');
+    check(item,await close.evaluate(node=>node===document.activeElement),'Tab wraps from the footer to the first dialog control');
+    await page.keyboard.press('Shift+Tab');
+    check(item,await save.evaluate(node=>node===document.activeElement),'Shift+Tab wraps back to the footer');
+    await alert.focus();
    }else if(name==='old-api-404'){
     const call=item.posts[0];call.status=404;call.raw='<html>old deployment QA</html>';call.release();await dialog.getByRole('alert').waitFor();
     check(item,item.posts.length===1&&call.path==='/api/admin/loyalty/rewards/create','unsupported strict endpoint never falls back to the old upsert path');
@@ -200,6 +256,12 @@ async function runCase(width,theme,name){const f=await open(width,theme,name),{p
    await page.addScriptTag({content:axe});const violations=await page.evaluate(async()=>(await axe.run('dialog',{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)})));item.violations=violations;
    check(item,violations.length===0,'the current feedback/dialog has no axe violations in this fixture');check(item,await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'page has no horizontal overflow');
    const screenshot=name+'-'+width+'-'+theme+'.png';await page.screenshot({path:join(output,screenshot),fullPage:false});item.screenshot=screenshot;
+   if(name==='current-409-retains-fields'&&width===390){
+    await page.setViewportSize({width:320,height:568});
+    await page.addStyleTag({content:'html { font-size: 125% !important; }'});
+    await settle(page);
+    await checkDialogActions(item,dialog,'compactFooterLayout');
+   }
   }
   item.passed=true;
  }catch(error){item.failure=String(error.stack||error);}finally{await f.finish();}

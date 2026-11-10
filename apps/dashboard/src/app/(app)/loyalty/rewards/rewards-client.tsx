@@ -96,6 +96,7 @@ export function rewardSaveErrorCopy(code: unknown): string {
 interface RewardsClientProps {
   initialRewards: Reward[];
   tenantScope: string;
+  catalogScope?: "tenant" | "global";
   isDemo: boolean;
   canWrite: boolean;
   dataSource: "production" | "demo" | "unavailable";
@@ -199,6 +200,7 @@ export function canEditReward(reward: Reward, tenant: string): reward is Editabl
 export default function RewardsClient({
   initialRewards: serverRewards,
   tenantScope,
+  catalogScope,
   isDemo,
   canWrite,
   dataSource: serverDataSource,
@@ -212,6 +214,7 @@ export default function RewardsClient({
   const dataSource = freshCatalog ? "production" as const : serverDataSource;
   const availability = freshCatalog ? initialRewards.length ? "ready" as const : "ready_empty" as const : serverAvailability;
   const sourceReason = freshCatalog ? "" : serverSourceReason;
+  const showCompanyIdentifier = catalogScope === "global" && tenantScope === "" && dataSource === "production" && !isDemo;
   const source: RewardDialogSource = freshCatalog?.held ? serverSource : { initialRewards, tenantScope, canWrite, isDemo, dataSource, availability };
   const latestSource = useRef(source); latestSource.current = source;
   const mounted = useRef(false);
@@ -505,6 +508,8 @@ export default function RewardsClient({
           const typeLabel = REWARD_TYPES.find(({ value }) => value === item.type)?.label ?? "Tipo sin confirmar";
           const displayImage = item.image_url?.trim();
           const editable = canWrite && !isDemo && dataSource === "production" && canEditReward(item, tenantScope);
+          const companyIdentifier = showCompanyIdentifier && typeof item.tenant_slug === "string" && item.tenant_slug.trim()
+            ? item.tenant_slug : null;
           
           return (
             <div
@@ -563,6 +568,12 @@ export default function RewardsClient({
                 <h3 className="text-base font-bold text-white group-hover:text-cyan-300 transition-colors [overflow-wrap:anywhere]">
                   {item.title.trim() || "Beneficio sin título informado"}
                 </h3>
+                {companyIdentifier ? (
+                  <dl className="mt-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs leading-relaxed text-slate-300">
+                    <dt className="font-semibold">Identificador de empresa</dt>
+                    <dd className="font-mono [overflow-wrap:anywhere]">{companyIdentifier}</dd>
+                  </dl>
+                ) : null}
                 <p className="text-xs text-slate-400 mt-2 line-clamp-3 leading-relaxed flex-1">
                   {item.description || "Sin descripción disponible."}
                 </p>
@@ -602,8 +613,8 @@ export default function RewardsClient({
       {/* MODAL */}
       {isModalOpen && canWrite && currentOwner && (
         <dialog key={currentOwner.id} ref={dialogRef} aria-labelledby="reward-edit-heading" onKeyDown={containModalFocus} onCancel={(event) => { event.preventDefault(); closeModal(); }} onClose={() => closeOwner(currentOwner, true)} className="fixed inset-0 z-50 m-0 h-dvh max-h-none w-screen max-w-none border-0 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl animate-in fade-in zoom-in duration-200">
-            <header className="flex items-center justify-between border-b border-white/10 bg-slate-900/50 px-6 py-4">
+          <div className="relative flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl animate-in fade-in zoom-in duration-200 sm:max-h-[min(100%,calc(75dvh+4rem))]">
+            <header className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-slate-900/50 px-4 py-2 sm:px-6">
               <h2 id="reward-edit-heading" className="text-lg font-bold text-white flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-cyan-400" />
                 {editingReward ? "Editar Beneficio" : "Crear Nuevo Beneficio"}
@@ -612,13 +623,13 @@ export default function RewardsClient({
                 type="button"
                 aria-label="Cerrar edición del beneficio"
                 onClick={closeModal}
-                className="rounded-lg p-1 text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
+                className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
             </header>
 
-            <form onSubmit={handleSubmit} aria-busy={loading} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+            <form id="reward-edit-form" onSubmit={handleSubmit} aria-busy={loading} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 sm:p-6">
               {loading && <p role="status" className="text-sm leading-relaxed text-slate-300">Guardando los cambios. Si cerrás esta ventana, consultá el catálogo antes de volver a guardar.</p>}
               {editingReward && <section aria-label="Condiciones guardadas del beneficio" className="space-y-3">
                 <p className="text-sm leading-relaxed text-slate-300">Esta edición conserva la asociación con el programa, la vigencia y las condiciones personalizadas. Guardar no garantiza que una persona pueda reservar; se validan los requisitos del programa y del beneficio.</p>
@@ -851,24 +862,25 @@ export default function RewardsClient({
               </div>
 
               </fieldset>
-              <footer className="flex flex-wrap items-center justify-end gap-3 pt-6 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  aria-disabled={saveBlocked}
-                  className="flex items-center gap-2 px-5 py-2 bg-cyan-800 hover:bg-cyan-700 disabled:opacity-50 text-[#ffffff] text-sm font-semibold rounded-xl transition-all shadow-[0_4px_15px_rgba(6,182,212,0.1)]"
-                >
-                  {loading ? "Guardando..." : currentOwner.phase === "confirmed" ? "Guardado" : currentOwner.phase === "uncertain" ? "Resultado sin confirmar" : "Guardar Beneficio"}
-                </button>
-                {(currentOwner.phase === "confirmed" || currentOwner.phase === "uncertain") && <button type="button" onClick={() => void consultCatalog()} aria-disabled={readingCurrentCatalog} className="inline-flex min-h-11 items-center rounded-xl border border-cyan-300/40 px-3 text-sm font-semibold text-cyan-100 underline underline-offset-4">{readingCurrentCatalog ? "Consultando catálogo…" : "Consultar catálogo"}</button>}
-              </footer>
             </form>
+            <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-white/10 bg-[#f8fafc] px-4 py-2 dark:bg-[#020617] sm:px-6">
+              <button
+                type="button"
+                onClick={closeModal}
+                className="min-h-11 rounded-lg px-3 text-sm text-slate-400 hover:text-white transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                form="reward-edit-form"
+                aria-disabled={saveBlocked}
+                className="min-h-11 max-w-full rounded-xl bg-cyan-800 px-4 py-2 text-sm font-semibold text-[#ffffff] transition-colors hover:bg-cyan-700 aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+              >
+                {loading ? "Guardando..." : currentOwner.phase === "confirmed" ? "Guardado" : currentOwner.phase === "uncertain" ? "Resultado sin confirmar" : "Guardar Beneficio"}
+              </button>
+              {(currentOwner.phase === "confirmed" || currentOwner.phase === "uncertain") && <button type="button" onClick={() => void consultCatalog()} aria-disabled={readingCurrentCatalog} className="inline-flex min-h-11 max-w-full items-center rounded-xl border border-cyan-300/40 px-3 text-sm font-semibold text-cyan-100 underline underline-offset-4">{readingCurrentCatalog ? "Consultando catálogo…" : "Consultar catálogo"}</button>}
+            </footer>
           </div>
         </dialog>
       )}
