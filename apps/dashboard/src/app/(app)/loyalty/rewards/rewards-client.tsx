@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Badge, Card, StatusChip } from "@product/ui";
 import RewardReservationNotice from "../../../../components/reward-reservation-notice";
-import { rewardProgramConfigurationLink } from "../../../../lib/reward-reservation-notices";
+import { REWARD_REQUIREMENTS_VERSION, rewardProgramConfigurationLink } from "../../../../lib/reward-reservation-notices";
 import {
   Plus,
   Edit2,
@@ -16,8 +16,7 @@ import {
   AlertCircle,
   CheckCircle2,
   X,
-  Sparkles,
-  Wine
+  Sparkles
 } from "lucide-react";
 
 interface Reward {
@@ -26,11 +25,11 @@ interface Reward {
   tenant_slug?: string;
   code: string;
   title: string;
-  points: number;
+  points: number | null;
   status: string;
-  description?: string;
-  type?: string;
-  image_url?: string;
+  description?: string | null;
+  type?: string | null;
+  image_url?: string | null;
   stock_total?: number | null;
   stock_remaining?: number | null;
   requires_age_gate?: boolean;
@@ -39,11 +38,11 @@ interface Reward {
 }
 
 type RewardForm = { code: string; title: string; description: string; type: string; points_cost: number; stock_total: number | null; image_url: string; status: string; requires_age_gate: boolean; network_visible: boolean };
+const isStockCount = (value: unknown): value is number =>
+  typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= 2_147_483_647;
 
 export function rewardStockLabel(remaining: unknown, total: unknown): string {
   if (remaining === null && total === null) return "Sin límite de stock registrado";
-  const isStockCount = (value: unknown): value is number =>
-    typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= 2_147_483_647;
   if ((remaining != null && !isStockCount(remaining)) || (total != null && !isStockCount(total))) {
     return "Stock inconsistente";
   }
@@ -64,9 +63,10 @@ export function buildRewardSavePayload(tenant: string, form: RewardForm, editing
   if (editing && (!uuid.test(editing.id || "") || !uuid.test(editing.program_id || "")
     || typeof editing.requires_age_gate !== "boolean" || typeof editing.network_visible !== "boolean")) throw new Error("reward_configuration_unavailable");
   if (!editing && form.stock_total === null) throw new Error("invalid_stock_total");
-  const { stock_total, ...metadata } = form;
+  const { stock_total, description, ...metadata } = form;
   return {
     tenant_slug: scope, ...metadata,
+    ...(editing?.description === null && description === "" ? {} : { description }),
     ...(editing ? { reward_id: editing.id, program_id: editing.program_id } : { creationIntent: "admin-reward-first-create.v1" }),
     ...(!editing || stock_total !== (editing.stock_total ?? null) ? { stock_total } : {}),
     ...(!editing ? { stock_remaining: stock_total } : {}),
@@ -151,8 +151,49 @@ const REWARD_TYPES = [
   { value: "EARLY_ACCESS", label: "Acceso Anticipado ⏳" },
   { value: "VIP_ACCESS", label: "Acceso VIP 👑" },
   { value: "DIGITAL_COLLECTIBLE", label: "Coleccionable Digital (NFT) 🌐" },
-  { value: "GIFT", label: "Regalo de la Casa 🎁" }
+  { value: "GIFT", label: "Regalo de la Casa 🎁" },
+  { value: "CONTENT_UNLOCK", label: "Contenido exclusivo" },
+  { value: "SERVICE", label: "Servicio" },
+  { value: "WARRANTY_EXTENSION", label: "Extensión de garantía" },
+  { value: "REFILL", label: "Recarga" },
 ];
+const REWARD_STATUSES = {
+  active: "Activo",
+  paused: "Pausado",
+  draft: "Borrador",
+  archived: "Archivado",
+} as const;
+
+type EditableReward = Reward & {
+  points: number;
+  type: string;
+  description: string | null;
+  image_url: string | null;
+  stock_total: number | null;
+  requires_age_gate: boolean;
+  network_visible: boolean;
+};
+
+const rewardUuid = /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i;
+const hasControl = /[\u0000-\u001f\u007f]/;
+const hasDescriptionControl = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
+
+export function canEditReward(reward: Reward, tenant: string): reward is EditableReward {
+  const requirements = reward.reservation_requirements as { version?: unknown; program?: { association_confirmed?: unknown } } | null | undefined;
+  const stock = (reward.stock_total === null && reward.stock_remaining === null)
+    || (isStockCount(reward.stock_total) && isStockCount(reward.stock_remaining) && reward.stock_remaining <= reward.stock_total);
+  return Boolean(tenant && reward.tenant_slug === tenant && rewardUuid.test(reward.id ?? "") && rewardUuid.test(reward.program_id ?? "")
+    && requirements?.version === REWARD_REQUIREMENTS_VERSION && requirements.program?.association_confirmed === true
+    && reward.code.length > 0 && reward.code.length <= 100 && !hasControl.test(reward.code) && reward.code.trim().toUpperCase() === reward.code
+    && reward.title.length > 0 && reward.title.length <= 300 && !hasControl.test(reward.title) && reward.title.trim() === reward.title
+    && isStockCount(reward.points) && stock && typeof reward.status === "string" && Object.hasOwn(REWARD_STATUSES, reward.status)
+    && REWARD_TYPES.some(({ value }) => value === reward.type)
+    && typeof reward.requires_age_gate === "boolean" && typeof reward.network_visible === "boolean"
+    && (reward.description === null || (typeof reward.description === "string" && reward.description.length <= 4000
+      && reward.description.trim() === reward.description && !hasDescriptionControl.test(reward.description)))
+    && (reward.image_url === null || (typeof reward.image_url === "string" && reward.image_url.length <= 2048
+      && reward.image_url.trim() === reward.image_url && !hasControl.test(reward.image_url))));
+}
 
 export default function RewardsClient({
   initialRewards: serverRewards,
@@ -273,10 +314,10 @@ export default function RewardsClient({
     setStockTotal(100); setImageUrl("/images/wine_tasting.png"); setStatus("active"); setRequiresAgeGate(false); setNetworkVisible(true);
   };
   const openEditModal = (reward: Reward) => {
-    if (!beginDialog()) return;
-    setEditingReward(reward); setCode(reward.code); setTitle(reward.title); setDescription(reward.description || "");
-    setType(reward.type || "WINE_BOX"); setPointsCost(reward.points); setStockTotal(reward.stock_total ?? null); setImageUrl(reward.image_url ?? "");
-    setStatus(reward.status || "active"); setRequiresAgeGate(!!reward.requires_age_gate); setNetworkVisible(reward.network_visible !== false);
+    if (isDemo || dataSource !== "production" || !canEditReward(reward, tenantScope) || !beginDialog()) return;
+    setEditingReward(reward); setCode(reward.code); setTitle(reward.title); setDescription(reward.description ?? "");
+    setType(reward.type); setPointsCost(reward.points); setStockTotal(reward.stock_total); setImageUrl(reward.image_url ?? "");
+    setStatus(reward.status); setRequiresAgeGate(reward.requires_age_gate); setNetworkVisible(reward.network_visible);
   };
   const consultCatalog = async () => {
     if (!mounted.current || !tenantScope.trim() || !sameRewardDialogSource(source, latestSource.current) || isDemo || !effectiveScope || owner.current !== currentOwner
@@ -334,6 +375,7 @@ export default function RewardsClient({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); const candidate = currentOwner;
     if (!owns(candidate) || !latestSource.current.canWrite || !latestSource.current.tenantScope.trim() || candidate.phase !== "idle" || catalogReader.current) return;
+    if (editingReward && (latestSource.current.isDemo || latestSource.current.dataSource !== "production" || !canEditReward(editingReward, latestSource.current.tenantScope))) return;
     let payload: ReturnType<typeof buildRewardSavePayload>;
     try {
       payload = buildRewardSavePayload(tenantScope || customTenant, { code, title, description, type, points_cost: pointsCost, stock_total: stockTotal,
@@ -457,32 +499,30 @@ export default function RewardsClient({
 
       {availability === "ready" ? <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {initialRewards.map((item, idx) => {
-          const isPaused = item.status === "paused" || item.status === "draft";
-          const displayImage = item.image_url || "/images/wine_tasting.png";
+          const statusLabel = typeof item.status === "string" && Object.hasOwn(REWARD_STATUSES, item.status)
+            ? REWARD_STATUSES[item.status as keyof typeof REWARD_STATUSES] : "Estado sin confirmar";
+          const typeLabel = REWARD_TYPES.find(({ value }) => value === item.type)?.label ?? "Tipo sin confirmar";
+          const displayImage = item.image_url?.trim();
+          const editable = canWrite && !isDemo && dataSource === "production" && canEditReward(item, tenantScope);
           
           return (
             <div
-              key={`${item.code}-${idx}`}
-              className={`rounded-2xl border border-white/10 bg-slate-950/40 overflow-hidden flex flex-col group transition-all duration-300 hover:border-cyan-500/50 hover:bg-slate-900/40 shadow-lg ${
-                isPaused ? "opacity-60 grayscale-[40%]" : ""
-              }`}
+              key={item.id ?? `${item.code}-${idx}`}
+              className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/40 overflow-hidden flex flex-col group transition-colors duration-300 hover:border-cyan-500/50 hover:bg-slate-900/40 shadow-lg"
             >
               {/* Card Header Image */}
               <div className="h-44 bg-slate-900 relative overflow-hidden flex items-center justify-center">
-                <img
-                  src={displayImage}
-                  alt={item.title}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  onError={(e) => {
-                    // Fallback to Wine Icon if image fails to load
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-                
-                {/* Fallback container with icon */}
-                <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center group-hover:bg-slate-800/85 transition-colors -z-10">
-                  <Wine className="h-12 w-12 text-slate-600 group-hover:text-cyan-500 transition-colors" />
+                <div aria-hidden="true" className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-900 text-slate-400">
+                  <ImageIcon className="h-8 w-8" />
+                  <span className="text-xs">Sin imagen disponible</span>
                 </div>
+                {displayImage ? <img
+                  key={displayImage}
+                  src={displayImage}
+                  alt=""
+                  className="relative w-full h-full object-cover motion-safe:transition-transform motion-safe:duration-500 motion-safe:group-hover:scale-105"
+                  onError={(event) => { event.currentTarget.style.display = "none"; }}
+                /> : null}
 
                 <div className="absolute top-3 right-3 flex gap-1.5">
                   {item.requires_age_gate && (
@@ -492,33 +532,35 @@ export default function RewardsClient({
                   )}
                   <span
                     className={`px-2 py-0.5 border text-[10px] font-bold rounded-lg uppercase tracking-wider backdrop-blur-md ${
-                      isPaused
-                        ? "bg-slate-500/20 border-slate-500/30 text-slate-400"
-                        : "bg-cyan-500/20 border-cyan-500/30 text-cyan-400"
+                      item.status === "active"
+                        ? "bg-slate-950/85 border-cyan-300/45 text-cyan-100"
+                        : "bg-slate-950/85 border-slate-500/65 text-slate-200"
                     }`}
                   >
-                    {item.status || "active"}
+                    {statusLabel}
                   </span>
                 </div>
                 
                 {/* Type Tag */}
                 <div className="absolute bottom-3 left-3">
                   <span className="px-2 py-0.5 bg-slate-950/80 border border-white/10 text-white text-[9px] font-medium rounded-md uppercase tracking-wider backdrop-blur-md">
-                    {item.type || "EXPERIENCE"}
+                    {typeLabel}
                   </span>
                 </div>
               </div>
 
               {/* Card Body */}
               <div className="p-5 flex-1 flex flex-col">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">
-                    {item.points >= 1000 ? "PREMIO MAYOR" : "BENEFICIO"}
+                <div className="flex items-start justify-between gap-3 mb-1">
+                  <p className="shrink-0 text-[10px] font-black text-cyan-400 uppercase tracking-widest">
+                    {item.points !== null && item.points >= 1000 ? "PREMIO MAYOR" : "BENEFICIO"}
                   </p>
-                  <span className="text-xs text-slate-500 font-mono">#{item.code}</span>
+                  <span className="min-w-0 text-right text-xs text-slate-400 font-mono [overflow-wrap:anywhere]">
+                    {item.code.trim() ? `#${item.code}` : "Código sin informar"}
+                  </span>
                 </div>
-                <h3 className="text-base font-bold text-white group-hover:text-cyan-300 transition-colors line-clamp-1">
-                  {item.title}
+                <h3 className="text-base font-bold text-white group-hover:text-cyan-300 transition-colors [overflow-wrap:anywhere]">
+                  {item.title.trim() || "Beneficio sin título informado"}
                 </h3>
                 <p className="text-xs text-slate-400 mt-2 line-clamp-3 leading-relaxed flex-1">
                   {item.description || "Sin descripción disponible."}
@@ -526,25 +568,28 @@ export default function RewardsClient({
 
                 <RewardReservationNotice reward={item} tenantScope={tenantScope} dataSource={dataSource} />
 
-                <div className="mt-5 pt-4 border-t border-white/5 flex items-center justify-between">
+                <div className="mt-5 pt-4 border-t border-white/5 flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-lg font-black text-white">{item.points} <span className="text-xs font-normal text-slate-400">pts</span></p>
+                    {item.points === null ? <p className="text-sm text-slate-300">Puntos sin confirmar</p>
+                      : <p className="text-lg font-black text-white">{item.points} <span className="text-xs font-normal text-slate-400">pts</span></p>}
                     <p className="text-xs leading-snug text-slate-400">
                       {rewardStockLabel(item.stock_remaining, item.stock_total)}
                     </p>
                   </div>
-                  {canWrite ? (
+                  {editable ? (
                     <button
                       type="button"
                       onClick={() => openEditModal(item)}
                       aria-disabled={reviewBlocked || readingCurrentCatalog}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/30 text-xs text-slate-300 hover:text-cyan-400 font-semibold transition-all"
+                      className="flex min-h-11 items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/30 text-xs text-slate-300 hover:text-cyan-400 font-semibold transition-colors"
                     >
                       <Edit2 className="h-3 w-3" />
                       Editar
                     </button>
                   ) : (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Solo lectura</span>
+                    <span className="text-xs font-semibold text-slate-400">
+                      {canWrite && dataSource === "production" ? "Solo lectura · configuración por revisar" : "Solo lectura"}
+                    </span>
                   )}
                 </div>
               </div>
@@ -770,9 +815,7 @@ export default function RewardsClient({
                     onChange={(e) => setStatus(e.target.value)}
                     className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                   >
-                    <option value="active">Activo (Publicado)</option>
-                    <option value="paused">Pausado</option>
-                    <option value="draft">Borrador</option>
+                    {Object.entries(REWARD_STATUSES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                   </select>
                 </div>
 

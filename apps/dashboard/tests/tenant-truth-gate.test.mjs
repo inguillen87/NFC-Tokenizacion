@@ -10,7 +10,7 @@ import { canDemoSandboxAccess } from "../src/lib/admin-proxy-policy.ts";
 import { customerRecordQuantity } from "../src/lib/customer-inbox-state.ts";
 import { resolveDashboardTenantScope } from "../src/lib/dashboard-tenant-scope-policy.ts";
 import { readDemoDataMetaFromResponse } from "../src/lib/demo-data-mode.ts";
-import { requiredPermissionForAdminResource } from "../src/lib/permission-policy.ts";
+import { dashboardPermissionDenied, dashboardPermissionMatches, requiredPermissionForAdminResource } from "../src/lib/permission-policy.ts";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 const [rewardsPage, rewardsClient, loyaltyPage, overviewPage, campaignsPage, offersPage] = await Promise.all([
@@ -184,4 +184,108 @@ test("loyalty hub retains the explicit global rewards path and super-admin portf
     { tenant: "", path: "/admin/loyalty/overview" },
   ]);
   assert.equal(indicator(result.page, "Recompensas configuradas").value, "2");
+});
+
+const compiledRewardsPage = ts.transpileModule(rewardsPage, { compilerOptions: {
+  target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true,
+} }).outputText;
+const RewardsClientStub = () => null;
+const rewardReader = { role: "marketing-manager", tenantSlug: tenant, permissions: ["rewards:read"] };
+
+function persistedReward(index = 1, overrides = {}) {
+  return {
+    id: "10000000-0000-4000-8000-" + String(index).padStart(12, "0"),
+    program_id: "20000000-0000-4000-8000-000000000001",
+    tenant_slug: tenant, code: "REWARD-" + index, title: "Beneficio de prueba", points: 0,
+    status: "active", type: "SERVICE", requires_age_gate: false, network_visible: false,
+    stock_total: null, stock_remaining: null, description: null, image_url: null,
+    ...overrides,
+  };
+}
+
+async function renderRewardsCatalog(response, session = rewardReader, query = { tenant: "different-company" }) {
+  const requests = [];
+  const permissions = [];
+  const dependencies = new Map([
+    ["./rewards-client", RewardsClientStub],
+    ["../../../../lib/session", { requireDashboardSession: async capability => { permissions.push(capability); return session; } }],
+    ["../../../../lib/admin-page-access", {
+      createAdminPageContext: async (actor, requestedTenant) => resolveDashboardTenantScope(actor, requestedTenant),
+      fetchAdminPage: async (scope, path) => { requests.push({ tenant: scope.tenantSlug, path }); return response; },
+    }],
+    ["../../../../lib/demo-data-mode", { readDemoDataMetaFromResponse }],
+    ["../../../../lib/permission-policy", { dashboardPermissionDenied, dashboardPermissionMatches }],
+  ]);
+  const module = { exports: {} };
+  new Function("module", "exports", "require", compiledRewardsPage)(module, module.exports, name => {
+    if (dependencies.has(name)) return dependencies.get(name);
+    assert.equal(name, "react/jsx-runtime");
+    return require(name);
+  });
+  const result = await module.exports.default({ searchParams: Promise.resolve(query) });
+  assert.equal(result.type, RewardsClientStub);
+  assert.deepEqual(permissions, ["rewards:read"]);
+  return { ...result.props, requests };
+}
+
+test("initial rewards retains a historical row beside modern zero-point stock", async () => {
+  const requirements = { version: "portal-reservation-requirements.v1", program: { association_confirmed: true } };
+  const modern = persistedReward(1, { status: "archived", reservation_requirements: requirements });
+  const legacy = persistedReward(2, { code: "S".repeat(200), status: "legacy", points: "0", type: null, requires_age_gate: undefined });
+  const result = await renderRewardsCatalog(bff(catalog([modern, legacy])));
+  assert.equal(result.availability, "ready");
+  assert.equal(result.dataSource, "production");
+  assert.equal(result.canWrite, false);
+  assert.deepEqual(result.requests, [{ tenant, path: "loyalty/rewards" }]);
+  assert.deepEqual(result.initialRewards[0], modern);
+  assert.equal(result.initialRewards[1].code, legacy.code);
+  assert.equal(result.initialRewards[1].status, "legacy");
+  assert.equal(result.initialRewards[1].points, null);
+  assert.equal(result.initialRewards[1].type, null);
+  assert.equal(result.initialRewards[1].requires_age_gate, undefined);
+});
+
+test("initial rewards accepts confirmed empty or explicit global results", async () => {
+  const empty = await renderRewardsCatalog(bff(catalog([])));
+  assert.equal(empty.availability, "ready_empty");
+  assert.deepEqual(empty.initialRewards, []);
+  const longTenantSlug = "global-company-" + "x".repeat(129);
+  const global = await renderRewardsCatalog(bff(catalog([persistedReward(), persistedReward(2, { tenant_slug: longTenantSlug })], null)),
+    { ...rewardReader, role: "super-admin", tenantSlug: null }, {});
+  assert.equal(global.availability, "ready");
+  assert.equal(global.canWrite, false);
+  assert.deepEqual(global.requests, [{ tenant: "", path: "loyalty/rewards?scope=global" }]);
+  assert.deepEqual(global.initialRewards.map(row => row.tenant_slug), [tenant, longTenantSlug]);
+});
+
+test("initial rewards rejects mismatched sources and unconfirmed row identity", async () => {
+  const cases = [
+    bff({ rewards: [] }), bff(catalog([], "different-company")), bff(catalog([], null)),
+    bff(catalog([null])), bff(catalog([persistedReward(1, { tenant_slug: undefined })])),
+    bff(catalog([persistedReward(1, { tenant_slug: "other" })])),
+    bff(catalog([persistedReward(1, { program_id: "unknown" })])),
+    bff(catalog([persistedReward(), persistedReward()])),
+    bff(catalog([]), 200, null), bff({ ...catalog([]), demoMode: true }),
+  ];
+  for (const response of cases) {
+    const result = await renderRewardsCatalog(response);
+    assert.equal(result.availability, "upstream_error");
+    assert.equal(result.dataSource, "unavailable");
+    assert.deepEqual(result.initialRewards, []);
+  }
+});
+
+test("initial rewards keeps demo isolated and distinguishes rejected access from empty", async () => {
+  const demoResponse = () => bff({ ok: true, demo: true, path: "loyalty/rewards" }, 200, "demo");
+  const demo = await renderRewardsCatalog(demoResponse(), { ...rewardReader, isDemo: true });
+  assert.equal(demo.availability, "ready");
+  assert.equal(demo.dataSource, "demo");
+  assert.equal(demo.canWrite, false);
+  assert.deepEqual(demo.initialRewards.map(row => row.code), ["DEG-2X1", "MIX-6B", "MAG-15L"]);
+  assert.equal((await renderRewardsCatalog(demoResponse())).availability, "upstream_error");
+  for (const status of [401, 403]) {
+    const result = await renderRewardsCatalog(bff({ ok: false }, status));
+    assert.equal(result.availability, "forbidden");
+    assert.deepEqual(result.initialRewards, []);
+  }
 });

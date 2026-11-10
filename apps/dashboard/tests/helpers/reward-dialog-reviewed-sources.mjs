@@ -5,8 +5,19 @@ import {ENGAGEMENT_GOVERNANCE_CHANGED} from './engagement-governance-reviewed-so
 // Only the exact reviewed R7 successor is projected to the independently pinned
 // D531 origin. Historical fixtures and every previous overlay remain unchanged.
 export const REWARD_DIALOG_SOURCE_BASE='a38a432e96cea93df53f1fca6bd58335b42a290a';
+const rewardsPagePath='apps/dashboard/src/app/(app)/loyalty/rewards/page.tsx';
 const rewardsClientPath='apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx';
 const rewardStockDisplayAfter='9039f7d58c85752f1e431c0714965078ece8b4a604ebb01d743499c4381b2099';
+const rewardCatalogSources=Object.freeze({
+ [rewardsPagePath]:Object.freeze({
+  before:'211ddba0d83e18aa6e60dc86ffd57b718e0533f67c760e88cfd6f577c92ca158',
+  after:'61ff3c475ce622ce90eac8f697a3332ee225af67c6981c2c6df1e488b3cd2b00',
+ }),
+ [rewardsClientPath]:Object.freeze({
+  before:rewardStockDisplayAfter,
+  after:'9c1af29f8e415cee6c4c6084a650af70682e0ee413215d9eb89cdd784715ffcc',
+ }),
+});
 export const REWARD_DIALOG_REVIEWED_SOURCES=Object.freeze({
  'apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx':Object.freeze({
   before:'68e5c9f6d4ab1a4f707ee3a3cb650ec6632063b0721e8a644c53102231dff221',
@@ -30,8 +41,15 @@ export function rewardDialogHistoricalPriorHash(path,actual){
  return pin.before;
 }
 
-export function rewardDialogPriorHash(path,actual){
+export function rewardStockDisplayHistoricalPriorHash(path,actual){
  if(path!==rewardsClientPath)return rewardDialogHistoricalPriorHash(path,actual);
  assert.equal(actual,rewardStockDisplayAfter,path+' exact reviewed reward-stock display');
  return rewardDialogHistoricalPriorHash(path,REWARD_DIALOG_REVIEWED_SOURCES[path].after);
+}
+
+export function rewardDialogPriorHash(path,actual){
+ if(!Object.hasOwn(rewardCatalogSources,path))return rewardStockDisplayHistoricalPriorHash(path,actual);
+ const pin=rewardCatalogSources[path];
+ assert.equal(actual,pin.after,path+' exact reviewed reward catalog');
+ return rewardStockDisplayHistoricalPriorHash(path,pin.before);
 }
