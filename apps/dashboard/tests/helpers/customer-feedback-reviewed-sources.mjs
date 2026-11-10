@@ -66,10 +66,21 @@ export const CUSTOMER_FEEDBACK_CHANGED=Object.freeze({
 export const CUSTOMER_FEEDBACK_ADDED=Object.freeze({
   "apps/dashboard/src/lib/data-table-copy.ts": "4114408402eb0a8a1e2572f1497d7ad1594ea5ea992e961fe0a012cca6844613"
 });
+export const LOYALTY_HUB_TRUTH_SOURCE=Object.freeze({
+ path:'apps/dashboard/src/app/(app)/loyalty/page.tsx',
+ base:'a279286b51d9fa464e2808e3039ae5bf07c04209',
+ before:'404ed711c6f2920567405392cc65d1a321be479a5c0a44addae7652688bbf1bf',
+ after:'96e83871ea75729355219405042bc839cb315202c4cfb43ce9640d792847a716',
+});
+export function loyaltyHubTruthPriorHash(name,actual){
+ if(name!==LOYALTY_HUB_TRUTH_SOURCE.path||actual!==LOYALTY_HUB_TRUTH_SOURCE.after)return actual;
+ assert.equal(LOYALTY_HUB_TRUTH_SOURCE.before,CUSTOMER_FEEDBACK_CHANGED[name].after,name+' exact preceding loyalty hub source');
+ return LOYALTY_HUB_TRUTH_SOURCE.before;
+}
 export function customerFeedbackPriorHash(name,actual){
  if(!Object.hasOwn(CUSTOMER_FEEDBACK_CHANGED,name))return actual;
  const pin=CUSTOMER_FEEDBACK_CHANGED[name];
- assert.equal(actual,pin.after,name+' exact reviewed customer feedback increment');
+ assert.equal(loyaltyHubTruthPriorHash(name,actual),pin.after,name+' exact reviewed customer feedback increment');
  return pin.before;
 }
 export function customerFeedbackPriorInventory(actual){

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { CUSTOMER_FEEDBACK_BASE, CUSTOMER_FEEDBACK_CHANGED, CUSTOMER_FEEDBACK_ADDED, customerFeedbackPriorHash, customerFeedbackPriorInventory, assertCustomerFeedbackAdded } from './helpers/customer-feedback-reviewed-sources.mjs';
+import { CUSTOMER_FEEDBACK_BASE, CUSTOMER_FEEDBACK_CHANGED, CUSTOMER_FEEDBACK_ADDED, LOYALTY_HUB_TRUTH_SOURCE, customerFeedbackPriorHash, customerFeedbackPriorInventory, assertCustomerFeedbackAdded, loyaltyHubTruthPriorHash } from './helpers/customer-feedback-reviewed-sources.mjs';
 import { readHistoricalBaseline } from './helpers/tenant-sync-reviewed-sources.mjs';
 import { ENGAGEMENT_GOVERNANCE_ADDED } from './helpers/engagement-governance-reviewed-sources.mjs';
 import { TENANT_MARKETPLACE_ADDED } from './helpers/tenant-marketplace-reviewed-sources.mjs';
@@ -47,13 +47,24 @@ test('customer feedback overlay pins exactly fifteen Production origins and one 
 
 for (const [name, pin] of Object.entries(CUSTOMER_FEEDBACK_CHANGED)) {
   test('customer feedback accepts only reviewed successor bytes: ' + name, async () => {
-    assert.equal(crmFilterContextPriorHash(name, catalogConfirmationPriorHash(name, hash(await readSource(name)))), pin.after);
+    const actual = crmFilterContextPriorHash(name, catalogConfirmationPriorHash(name, hash(await readSource(name))));
+    assert.equal(loyaltyHubTruthPriorHash(name, actual), pin.after);
+    assert.equal(customerFeedbackPriorHash(name, actual), productionBefore[name]);
     assert.equal(customerFeedbackPriorHash(name, pin.after), productionBefore[name]);
     for (const wrong of [pin.before, '0'.repeat(64), '', undefined]) {
       assert.throws(() => customerFeedbackPriorHash(name, wrong), /exact reviewed customer feedback increment/);
     }
   });
 }
+
+test('loyalty hub successor keeps the exact preceding customer-feedback source pin', async () => {
+  const { path, base, before, after } = LOYALTY_HUB_TRUTH_SOURCE;
+  assert.equal(base, 'a279286b51d9fa464e2808e3039ae5bf07c04209');
+  assert.equal(before, CUSTOMER_FEEDBACK_CHANGED[path].after);
+  assert.equal(hash(await readSource(path)), after);
+  assert.equal(loyaltyHubTruthPriorHash(path, after), before);
+  assert.throws(() => customerFeedbackPriorHash(path, hash('unreviewed hub bytes')), /exact reviewed customer feedback increment/);
+});
 
 test('unknown source bytes pass through unchanged and cannot impersonate a reviewed origin', () => {
   const name = 'apps/dashboard/src/lib/future-unreviewed.ts', value = 'unknown-future-bytes';
