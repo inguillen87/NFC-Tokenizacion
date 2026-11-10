@@ -206,13 +206,18 @@ async function securityNavigation(width,theme){
   await page.evaluate(()=>document.fonts.ready.then(()=>undefined));
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   const measured=await page.evaluate(()=>{
-   const header=document.querySelector('.consumer-portal-root > header'),main=document.querySelector('#consumer-portal-content'),heading=main?.querySelector('h1'),root=header?.closest('.consumer-portal-root');
-   if(!header||!main||!heading||!root)throw Error('Owned portal heading/header unavailable');
+   const header=document.querySelector('.consumer-portal-root > header'),main=document.querySelector('#consumer-portal-content'),heading=main?.querySelector('h1'),root=header?.closest('.consumer-portal-root'),dock=root?.querySelector('nav.consumer-bottom-nav');
+   if(!header||!main||!heading||!root||!dock)throw Error('Owned portal heading or navigation unavailable');
    const box=element=>{const r=element.getBoundingClientRect();return{top:r.top,bottom:r.bottom,height:r.height,left:r.left,right:r.right};};
-   return{header:box(header),main:box(main),heading:box(heading),innerWidth,clientWidth:document.documentElement.clientWidth,innerHeight,scrollY,mainFocused:document.activeElement===main,headerOffset:root.style.getPropertyValue('--portal-header-block-size'),scrollMargin:getComputedStyle(main).scrollMarginBlockStart};
+   const headerPosition=getComputedStyle(header).position,dockPosition=getComputedStyle(dock).position;
+   return{header:box(header),dock:box(dock),headerPosition,dockPosition,desktop:matchMedia('(min-width: 64rem)').matches,main:box(main),heading:box(heading),innerWidth,clientWidth:document.documentElement.clientWidth,innerHeight,scrollY,mainFocused:document.activeElement===main,headerOffset:root.style.getPropertyValue('--portal-header-block-size'),scrollMargin:getComputedStyle(main).scrollMarginBlockStart};
   });
-  report.securityNavigation??=[];report.securityNavigation.push({width,theme,phase,...measured});
-  check(measured.heading.top>=measured.header.bottom-1&&measured.heading.bottom<=measured.innerHeight+1,name+'/'+phase+': complete account heading stays below sticky header and visible');
+  const visibleTop=Math.max(0,measured.header.bottom);
+  const visibleBottom=measured.dockPosition==='fixed'?Math.min(measured.innerHeight,measured.dock.top):measured.innerHeight;
+  report.securityNavigation??=[];report.securityNavigation.push({width,theme,phase,...measured,visibleTop,visibleBottom});
+  check(measured.headerPosition===(measured.desktop?'sticky':'static')&&measured.dockPosition===(measured.desktop?'static':'fixed'),name+'/'+phase+': persistent navigation matches the viewport layout');
+  check(measured.heading.top>=visibleTop-1&&measured.heading.bottom<=visibleBottom+1&&measured.heading.left>=-1&&measured.heading.right<=measured.clientWidth+1,name+'/'+phase+': complete account heading stays in the visible area between header and navigation');
+  if(phase!=='next-link')check(measured.mainFocused,name+'/'+phase+': skip link moves keyboard focus to main content');
  };
  try{
   await page.goto(origin+'/me/products',{waitUntil:'networkidle'});

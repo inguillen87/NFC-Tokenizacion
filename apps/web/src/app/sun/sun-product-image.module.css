@@ -2,8 +2,7 @@
 .fallback { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 100%; min-height: 88px; padding: 8px; color: var(--passport-muted, #52657a); text-align: center; }
 .fallback > span { font-size: 12px; line-height: 1.4; max-width: 160px; }
 .fallback > svg { flex-shrink: 0; }
-.loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; background: var(--passport-media, #eef4f1); color: var(--passport-muted, #52657a); font-size: 11px; line-height: 1.45; text-align: center; pointer-events: none; }
-.loading > span { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--passport-accent, #086f62); }
+.loading { position: absolute; inset-inline: 6px; inset-block-end: 6px; padding: 4px; border: 1px solid var(--passport-line, #d6e1de); border-radius: 8px; background: var(--passport-surface, #fff); color: var(--passport-ink, #17313b); font-size: 11px; line-height: 1.35; text-align: center; overflow-wrap: anywhere; pointer-events: none; }
 .zoomButton, .closeButton { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; border: 1px solid var(--passport-line, #d6e1de); border-radius: 12px; background: var(--passport-surface, #fff); color: var(--passport-ink, #17313b); cursor: pointer; }
 .zoomButton { position: absolute; top: 0; right: 0; isolation: isolate; border: 0; background: transparent; }
 .zoomButton::before { content: ""; position: absolute; inset: 8px; z-index: -1; border: 1px solid var(--passport-line, #d6e1de); border-radius: 9px; background: var(--passport-surface, #fff); box-shadow: 0 2px 8px rgb(8 32 33 / 12%); }
