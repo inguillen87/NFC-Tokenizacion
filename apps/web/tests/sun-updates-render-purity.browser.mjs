@@ -37,6 +37,7 @@ async function measureUpdatesReadingLayout(panel) {
  return panel.evaluate(section=>{
   const heading=section.querySelector('h3');
   const toggle=section.querySelector('button[aria-controls="sun-updates-form"]');
+  const notice=section.querySelector('#sun-updates-request-status p');
   const [whatsapp,email]=section.querySelectorAll('fieldset button[aria-pressed]');
   const wordLines=(node,word)=>{
    const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);
@@ -54,7 +55,8 @@ async function measureUpdatesReadingLayout(panel) {
   const first=whatsapp.getBoundingClientRect(),second=email.getBoundingClientRect(),formToggle=toggle.getBoundingClientRect();
   return {
    words:{heading:wordLines(heading,'Novedades'),toggle:wordLines(toggle,'formulario'),
-    whatsapp:wordLines(whatsapp,'WhatsApp'),email:wordLines(email,'Email')},
+    whatsapp:wordLines(whatsapp,'WhatsApp'),email:wordLines(email,'Email'),
+    ...(notice?{noticeConfirmation:wordLines(notice,'confirmación'),noticeEnd:wordLines(notice,'pedís.')}: {})},
    channels:first.bottom<=second.top+1?'stacked':first.right<=second.left+1&&Math.abs(first.top-second.top)<=1?'row':'overlap',
    minimumTargetSize:Math.min(first.width,first.height,second.width,second.height,formToggle.width,formToggle.height),
   };
@@ -196,7 +198,7 @@ async function runSunUpdatesPendingNoticeScenarios({scenario,assess,report,check
    check(await status.getAttribute('role')==='status'&&await status.getAttribute('aria-live')==='polite'&&await status.getAttribute('aria-atomic')==='true'&&await status.evaluate(el=>!el.closest('form')&&!el.closest('[aria-busy="true"]')),label+': stable polite atomic status is outside the busy form');
    check(!(await status.innerText()).includes('Seguimos esperando la confirmación')&&await t.page.evaluate(()=>window.__updatesPendingProbe.timers.length===1&&window.__updatesPendingProbe.timers[0].requestedDelayMs===8000&&!window.__updatesPendingProbe.timers[0].fired),label+': the one8000ms notice callback is captured and has not been triggered; exact threshold belongs to unit coverage');
    await t.page.evaluate(()=>window.__updatesFirePendingNotice());
-   await status.getByText('Seguimos esperando la confirmación de tu solicitud. Podría haberse guardado; no enviamos otra automáticamente.',{exact:true}).waitFor();
+   await status.getByText('Seguimos esperando la confirmación de tu solicitud. Podría haberse guardado. Sólo la reenviamos si lo pedís.',{exact:true}).waitFor();
    check(await privacyDisclosure.evaluate(el=>el===document.activeElement),label+': the timer never moves focus');
    check(await panel.locator('#sun-updates-form').getAttribute('aria-busy')==='true'&&await panel.getByRole('button',{name:'Enviando solicitud...',exact:true}).isDisabled()&&await panel.getByRole('textbox',{name:'Correo electrónico',exact:true}).inputValue()==='a@example.test'&&await panel.getByRole('checkbox').isChecked(),label+': pending notice retains the same draft and explicit consent without unlocking');
    const link=status.getByRole('link',{name:'Volver a la ficha',exact:true});
@@ -217,7 +219,7 @@ async function runSunUpdatesPendingNoticeScenarios({scenario,assess,report,check
    });
    const reading=await measureUpdatesReadingLayout(panel);
    report.sunUpdatesPendingNotice.layout.push({width,height,textSize,theme,phase,...layout,reading});
-   check(Object.values(reading.words).every(word=>word.lines===1&&word.fits),label+': heading and control words remain whole');
+   check(reading.words.noticeEnd&&Object.values(reading.words).every(word=>word.lines===1&&word.fits),label+': heading, controls and final notice punctuation stay whole');
    check(reading.channels===(textSize===32?'stacked':'row')&&reading.minimumTargetSize>=44,label+': channels reflow and retain 44px touch targets');
    check(layout.notice.scroll<=layout.notice.content+1,label+': pending notice stays within its width');
    check(layout.viewport.scroll<=layout.viewport.content+1,label+': pending form stays within the viewport');
@@ -229,7 +231,7 @@ async function runSunUpdatesPendingNoticeScenarios({scenario,assess,report,check
    check(await panel.getByRole('textbox',{name:'Correo electrónico',exact:true}).inputValue()==='a@example.test'&&await panel.getByRole('checkbox').isChecked()&&await panel.locator('#sun-updates-form').getAttribute('aria-busy')==='true'&&t.calls.length===1,label+': anchor navigation preserves the pending form and never submits again');
    await t.page.getByRole('button',{name:'Mostrar producto B',exact:true}).click();
    await panel.getByRole('heading',{name:'Novedades de Marca B de ensayo',exact:true}).waitFor();
-   await status.getByText('Seguimos esperando la confirmación de una solicitud anterior. Podría haberse guardado; este producto todavía necesita una nueva autorización.',{exact:true}).waitFor();
+   await status.getByText('Seguimos esperando la confirmación de una solicitud anterior. Podría haberse guardado. Este producto todavía necesita una nueva autorización.',{exact:true}).waitFor();
    check(await panel.getByRole('button',{name:'Elegir canal de contacto',exact:true}).isDisabled()&&!((await panel.innerText()).includes('a@example.test'))&&await panel.locator('#sun-updates-form').count()===0&&t.calls.length===1,label+': B is blocked by the older flight and inherits neither contact nor authorization');
    if(releaseHeaders)await releaseHeaders();else await t.page.evaluate(()=>{if(typeof window.__updatesReleasePendingBody!=='function')throw Error('Owned pending body unavailable');window.__updatesReleasePendingBody();});
    await t.page.waitForFunction(()=>{const button=document.querySelector('#sun-updates-opt-in button[aria-controls="sun-updates-form"]');return button instanceof HTMLButtonElement&&!button.disabled;});

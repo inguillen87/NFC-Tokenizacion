@@ -259,8 +259,8 @@ function SunUpdatesForm({ contextKey, locale, brandName, productName, tenantSlug
         <div id="sun-updates-request-status" role="status" aria-live="polite" aria-atomic="true">
           {showDelay ? <div className="mt-3 text-sm leading-relaxed text-slate-200">
             <p>{previousRequestPending
-              ? "Seguimos esperando la confirmación de una solicitud anterior. Podría haberse guardado; este producto todavía necesita una nueva autorización."
-              : "Seguimos esperando la confirmación de tu solicitud. Podría haberse guardado; no enviamos otra automáticamente."}</p>
+              ? "Seguimos esperando la confirmación de una solicitud anterior. Podría haberse guardado. Este producto todavía necesita una nueva autorización."
+              : "Seguimos esperando la confirmación de tu solicitud. Podría haberse guardado. Sólo la reenviamos si lo pedís."}</p>
             <a href="#sun-summary" className="mt-1 inline-flex min-h-11 items-center underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-300">Volver a la ficha</a>
           </div> : previousRequestPending ? <p className="mt-3 text-xs text-slate-300">Estamos terminando una solicitud anterior. Este producto necesita una nueva autorización.</p> : null}
         </div>
