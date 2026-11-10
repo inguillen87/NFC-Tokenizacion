@@ -4,10 +4,6 @@
   color: #10233f;
 }
 
-:global(#main-content) {
-  scroll-margin-top: 4.75rem;
-}
-
 .inner {
   display: flex;
   width: min(100%, 80rem);

@@ -530,7 +530,7 @@ function SdkIndustryShowcase({ activeVertical, theme }: { activeVertical: Platfo
 }
 
 type SdkPageProps = {
-  searchParams?: Promise<{ vertical?: string | string[] }> | { vertical?: string | string[] };
+  searchParams?: Promise<{ vertical?: string | string[] }>;
 };
 
 export default async function SdkPage({ searchParams }: SdkPageProps) {
