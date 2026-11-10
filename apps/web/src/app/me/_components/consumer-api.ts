@@ -16,7 +16,8 @@ function jsonRecord(value: unknown): JsonMap | null {
 
 async function readJson(path: string) {
   const incomingHeaders = await headers();
-  const cookie = stripConsumerTapCapabilityCookies(incomingHeaders.get("cookie"));
+  const cookie = stripConsumerTapCapabilityCookies(incomingHeaders.get("cookie")).split("; ")
+    .filter(part => part.split("=", 1)[0].trim() !== "nexid_consumer_reward_receipt").join("; ");
   return fetchConsumerJson(`${API_BASE}${path}`, {
     cache: "no-store",
     headers: {

@@ -74,6 +74,7 @@ function loadPage(payload, options = {}) {
     "../_components/me-portal-interactive-client": { ConsumerDataRetryButton: () => React.createElement("button", { type: "button" }, "Reintentar carga") },
     "../_components/portal-shell": { PortalShell: ({ children }) => React.createElement("main", null, children) },
     "./rewards-client": { ConsumerRewardsClient: (props) => { clientProps.push(props); return React.createElement(ConsumerRewardsClient, props); } },
+    "./last-receipt": { readLastRewardReceipt: async () => options.lastReceipt ?? null },
   }).default;
   return { page, calls, clientProps };
 }
@@ -85,6 +86,68 @@ async function render(payload, options = {}) {
 
 const renderClient = (items, props = {}) => renderToStaticMarkup(React.createElement(ConsumerRewardsClient, { items, initialTenant: "", selectedVoucher: null, ...props }));
 const pointsSection = (html) => html.match(/<section aria-labelledby="benefits-points-title"[\s\S]*?<\/section>/)?.[0] || "";
+
+test("the server checks a browser receipt selector through the private API and keeps it out of forwarded cookies", async () => {
+  const helper = compile(read("../api/_lib/consumer-reward-receipt.ts"));
+  const id = "1a000000-0000-4000-8000-000000000002";
+  const reward_id = "1a000000-0000-4000-8000-000000000001";
+  const receipt = { id, reward_id, tenant_slug: "demobodega", status: "claimed", expires_at: FUTURE };
+  let pointer = id.toUpperCase();
+  let answer = { ok: true, receipt };
+  const reads = [];
+  const transport = compile(read("_components/consumer-api.ts"), {
+    "next/headers": { headers: async () => new Headers({ cookie: `consumer_session=opaque; ${helper.CONSUMER_REWARD_RECEIPT_COOKIE}=${pointer}` }) },
+    "./consumer-bounded-fetch": boundedFetch,
+    "@product/config": { productUrls: { api: "https://api.nexid.lat" } },
+    "../../api/_lib/server-api-transport": { fetchRuntimeApi: async (url, init) => {
+      reads.push({ url, cookie: init.headers.cookie, cache: init.cache, method: init.method || "GET" });
+      return Response.json(answer);
+    } },
+  });
+  const { readLastRewardReceipt } = compile(read("rewards/last-receipt.ts"), {
+    "next/headers": { cookies: async () => ({ get: name => name === helper.CONSUMER_REWARD_RECEIPT_COOKIE ? { value: pointer } : undefined }) },
+    "../../api/_lib/consumer-reward-receipt": helper,
+    "../_components/consumer-api": transport,
+    "../_components/consumer-rewards-model": model,
+  });
+  assert.deepEqual(await readLastRewardReceipt(), { id, rewardId: reward_id, tenant: "demobodega", status: "claimed", expiresAt: FUTURE });
+  assert.deepEqual(reads, [{ url: "https://api.nexid.lat/consumer/redemptions/" + id, cookie: "consumer_session=opaque", cache: "no-store", method: "GET" }]);
+  for (const malformed of [
+    { ...receipt, id: reward_id }, { ...receipt, reward_id: "other" },
+    { ...receipt, status: "available" }, { ...receipt, expires_at: "yesterday" },
+  ]) {
+    answer = { ok: true, receipt: malformed };
+    assert.equal(await readLastRewardReceipt(), null);
+  }
+  answer = { ok: false, error: "receipt_not_found" };
+  assert.equal(await readLastRewardReceipt(), null);
+  const count = reads.length;
+  pointer = "unexpected";
+  assert.equal(await readLastRewardReceipt(), null);
+  assert.equal(reads.length, count);
+});
+
+test("only the account-verified receipt survives a reload and highlights its exact owned voucher", async () => {
+  const claimId = "1a000000-0000-4000-8000-000000000002";
+  const rewardId = "1a000000-0000-4000-8000-000000000001";
+  const lastReceipt = { id: claimId, rewardId, tenant: "demobodega", status: "claimed", expiresAt: FUTURE };
+  const owned = claim({ id: rewardId, claim_id: claimId });
+  const result = await render(list([owned]), { lastReceipt });
+  const receipt = html => html.match(/<section[^>]*aria-labelledby="last-reward-receipt-title"[\s\S]*?<\/section>/)?.[0] || "";
+  assert.match(receipt(result.html), /Última reserva en este navegador[\s\S]*Voucher emitido/);
+  assert.match(receipt(result.html), new RegExp("href=\"#voucher-claim-" + claimId + "\""));
+  assert.doesNotMatch(receipt(result.html), /BALMEC-1234/);
+  assert.equal(result.clientProps[0].selectedVoucher, "claim-" + claimId);
+  const beyondCollection = await render(list([]), { lastReceipt });
+  assert.match(receipt(beyondCollection.html), /Voucher emitido/);
+  assert.doesNotMatch(receipt(beyondCollection.html), /href=/);
+  const conflict = await render(list([owned]), { lastReceipt: { ...lastReceipt, status: "cancelled" } });
+  assert.match(receipt(conflict.html), /Cancelado/);
+  assert.doesNotMatch(receipt(conflict.html), /href=/);
+  for (const params of [{ tenant: "another-brand" }, { tenant: ["demobodega"] }, { voucher: "BALMEC-1234" }]) {
+    assert.equal(receipt((await render(list([owned]), { lastReceipt, params })).html), "");
+  }
+});
 
 test("canonical API tenant slugs retain dots and underscores without collapsing homonymous brands or widening voucher lookup", () => {
   const slugs = ["brand-a", "branda", "brand_a", "brand.a", "a".repeat(120)];

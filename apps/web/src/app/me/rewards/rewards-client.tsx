@@ -49,6 +49,9 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
   const displayedItems = collection && sameSource(collection.source, identity) ? collection.items : items;
   const selectedKey = active?.claimKey ?? selectedVoucher;
   const busy = active?.phase === "pending" || active?.phase === "checking";
+  const reservationTenant = active?.quote.tenant;
+  const reservationPath = reservationTenant && /^[A-Za-z0-9_-]{1,120}$/.test(reservationTenant)
+    ? "/me/rewards?tenant=" + encodeURIComponent(reservationTenant) : "/me/rewards";
   useEffect(() => {
     owner.current = { items, initialTenant, selectedVoucher };
     sequence.current += 1; controller.current?.abort(); controller.current = null;
@@ -134,7 +137,8 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
         <span>{active.message}</span>
       </p>
       {active.phase === "uncertain" ? <button type="button" className={styles.primaryLink} onClick={checkReservation}>Comprobar mi reserva</button> : null}
-      {active.phase === "authentication-required" ? <Link className={styles.primaryLink} href="/login?consumer=1&next=%2Fme%2Frewards">Volver a ingresar</Link> : null}
+      {active.phase === "authentication-required" ? <Link className={styles.primaryLink} href={"/login?consumer=1&next=" + encodeURIComponent(reservationPath)}>Volver a ingresar</Link> : null}
+      {active.phase === "uncertain" && active.claimId ? <a className={styles.copyButton} href={reservationPath}>Consultar la última reserva</a> : null}
       {active.phase === "confirmed" && active.claimKey ? <a className={styles.primaryLink} href={"#voucher-" + active.claimKey}>Ver mi voucher</a> : null}
     </div> : null}
     <div className={styles.filters}>
