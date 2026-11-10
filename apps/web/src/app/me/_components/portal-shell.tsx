@@ -1,17 +1,18 @@
 import { Suspense, type ReactNode } from "react";
 import { ThemeToggle } from "@product/ui";
 import { BrandHomeLink } from "../../../components/brand-home-link";
-import { TapAssociationBanner } from "./tap-association-banner";
+import { TapAssociationBanner, type TapSaveHandoffFallback } from "./tap-association-banner";
 import { ConsumerLogoutButton } from "./consumer-logout-button";
 import { PortalNavigation } from "./portal-navigation";
 import styles from "./portal-shell.module.css";
 
-export function PortalShell({ title, subtitle, children }: {
+export function PortalShell({ title, subtitle, children, tapSaveHandoffFallback }: {
   title: string;
   subtitle: string;
   // Kept for existing callers. Some pass product totals, not unread notifications.
   notificationCount?: number;
   children: ReactNode;
+  tapSaveHandoffFallback?: TapSaveHandoffFallback;
 }) {
   return (
     <div className={`consumer-portal-root ${styles.portal}`}>
@@ -38,7 +39,7 @@ export function PortalShell({ title, subtitle, children }: {
           <p>{subtitle}</p>
         </header>
         <div className={styles.content}>
-          <Suspense fallback={null}><TapAssociationBanner /></Suspense>
+          <Suspense fallback={null}><TapAssociationBanner saveHandoffFallback={tapSaveHandoffFallback} /></Suspense>
           {children}
         </div>
       </main>

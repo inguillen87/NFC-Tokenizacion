@@ -5,6 +5,8 @@ import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
+import * as associationModel from "../src/app/me/_components/tap-association-model.ts";
+import * as associationStrings from "../src/app/me/_components/tap-association-copy.ts";
 
 const require = createRequire(import.meta.url);
 const dir = new URL("../src/app/me/_components/", import.meta.url);
@@ -309,19 +311,33 @@ const library = compile(readFileSync(new URL('../products/product-library.tsx',d
 });
 const productsSource = readFileSync(new URL("../products/page.tsx", dir), "utf8");
 const productsCss = readFileSync(new URL("../products/products.module.css", dir), "utf8");
-function loadProductsPage(payload, denied = false) {
+function loadProductsPage(payload, denied = false, handoffPresent = true, locale = "es-AR") {
   const calls = [];
   const page = compile(productsSource, {
     "./product-library":library,
+    "./product-library-model": libraryModel,
     "../_components/consumer-api": {
-      buildConsumerNextPath: (path) => path,
+      buildConsumerNextPath: (path, params) => {
+        const query = new URLSearchParams();
+        for (const [key, value] of Object.entries(params || {})) {
+          for (const item of Array.isArray(value) ? value : [value]) {
+            if (typeof item === "string") query.append(key, item);
+          }
+        }
+        return query.size ? path + "?" + query.toString() : path;
+      },
       readConsumerSession: async () => { calls.push("session"); if (denied) throw new Error("redirect-login"); return { status: "ready" }; },
+      readConsumerTapHandoffPresence: async (eventId) => { calls.push("handoff:" + eventId); return handoffPresent; },
       fetchConsumerPath: async (path) => { calls.push(path); return payload; },
     },
     "../_components/consumer-portal-recovery": { ConsumerPortalUnavailable: () => null },
     "../_components/consumer-home-model": model,
     "../_components/me-portal-interactive-client": client,
-    "../_components/portal-shell": { PortalShell: ({ title, subtitle, children }) => React.createElement("main", null, React.createElement("h1", null, title), React.createElement("p", null, subtitle), children) },
+    "../_components/portal-shell": { PortalShell: ({ title, subtitle, children, tapSaveHandoffFallback }) => React.createElement("main", null, React.createElement("h1", null, title), React.createElement("p", null, subtitle), tapSaveHandoffFallback?.content, children) },
+    "../_components/tap-association-model": associationModel,
+    "../_components/tap-association-copy": associationStrings,
+    "../_components/tap-association-banner.module.css": { __esModule: true, default: styles },
+    "../../../lib/locale": { getWebI18n: async () => ({ locale }) },
     "./products.module.css": { __esModule: true, default: styles },
     "next/link": { __esModule: true, default: ({ children, ...props }) => React.createElement("a", props, children) },
   }).default;
@@ -335,6 +351,67 @@ test("products page preserves auth-first and reads only the source it actually r
   const denied = loadProductsPage(list(), true);
   await assert.rejects(() => denied.page({}), /redirect-login/);
   assert.deepEqual(denied.calls, ["session"]);
+});
+
+test("product return with a missing save handoff gives localized recovery while retaining the collection", async () => {
+  const query = { fromTap: "1", eventId: "715", action: "products" };
+  const render = async (read, params = query) => renderToStaticMarkup(await read.page({ searchParams: Promise.resolve(params) }));
+  const missing = loadProductsPage(list(), false, false);
+  const html = await render(missing);
+  assert.deepEqual(missing.calls, ["session", "products", "handoff:715"]);
+  assert.match(html, /data-testid="save-handoff-required"[\s\S]*?Necesitás otra lectura[\s\S]*?Guardar en mi cuenta/);
+  assert.match(html, /Todavía no hay productos guardados/);
+  const portuguese = loadProductsPage(list(), false, false, "pt-BR");
+  assert.match(await render(portuguese, { ...query, action: "save" }), /É necessária outra leitura[\s\S]*?Salvar na minha conta/);
+  const english = loadProductsPage(list(), false, false, "en");
+  assert.match(await render(english, { ...query, action: "save" }), /Save to my account/);
+  for (const result of [true, null]) assert.doesNotMatch(await render(loadProductsPage(list(), false, result)), /save-handoff-required/);
+  for (const params of [{ ...query, action: "join" }, { ...query, eventId: ["715", "716"] }, { eventId: "715" }]) {
+    const unrelated = loadProductsPage(list(), false, false);
+    assert.doesNotMatch(await render(unrelated, params), /save-handoff-required/);
+    assert.deepEqual(unrelated.calls, ["session", "products"]);
+  }
+  const denied = loadProductsPage(list(), true, false);
+  await assert.rejects(() => render(denied), /redirect-login/);
+  assert.deepEqual(denied.calls, ["session"]);
+});
+
+test("a missing save handoff can open only the exact saved product already reported by this account", async () => {
+  const query = { fromTap: "1", eventId: "715", tenant: "bodega.qa", action: "products" };
+  const item = { product_name: "Vino de ensayo guardado", brand_name: "Bodega de ensayo", tenant_slug: "bodega.qa",
+    bid: "LOT-WINE-QA", latest_tap_event_id: "715", latest_verdict: "VALID_OPENED", ownership_status: "viewed" };
+  const render = async (read, params = query) => renderToStaticMarkup(await read.page({ searchParams: Promise.resolve(params) }));
+  for (const [locale, title, action] of [
+    ["es-AR", "Este producto ya está en tu cuenta", "Abrir ficha guardada"],
+    ["en", "This product is already in your account", "Open saved product details"],
+    ["pt-BR", "Este produto já está na sua conta", "Abrir ficha salva"],
+  ]) {
+    const matched = loadProductsPage(list([item]), false, false, locale);
+    const html = await render(matched);
+    assert.match(html, /data-testid="save-handoff-existing-product"/);
+    assert.ok(html.includes(title));
+    assert.ok(html.includes(`href="/me/products?focus=715">${action}</a>`));
+    assert.match(html, /Vino de ensayo guardado/);
+    assert.doesNotMatch(html, /save-handoff-required|tap-association-confirm/);
+    assert.deepEqual(matched.calls, ["session", "products", "handoff:715"]);
+  }
+  const scoped = await render(loadProductsPage(list([item]), false, false), { ...query, bid: "LOT-WINE-QA" });
+  assert.match(scoped, /href="\/me\/products\?focus=715"/);
+  for (const [payload, params] of [
+    [list([{ ...item, tenant_slug: "otra.qa" }]), query],
+    [list([{ ...item, bid: null }]), query],
+    [list([{ ...item, latest_tap_event_id: "716" }]), query],
+    [list([item, { ...item, tenant_slug: "otra.qa" }]), query],
+    [list([item]), { ...query, tenant: "" }],
+    [list([item]), { ...query, bid: "LOTE-DISTINTO" }],
+    [null, query],
+  ]) {
+    const html = await render(loadProductsPage(payload, false, false), params);
+    assert.match(html, /data-testid="save-handoff-required"/);
+    assert.doesNotMatch(html, /save-handoff-existing-product|href="\/me\/products\?focus=715"/);
+  }
+  const present = await render(loadProductsPage(list([item]), false, true));
+  assert.doesNotMatch(present, /save-handoff-(existing-product|required)/);
 });
 
 test("products unavailable is not an empty collection and supports a manual retry", async () => {

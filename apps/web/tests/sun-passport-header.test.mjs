@@ -80,7 +80,7 @@ test("SUN passport header preserves identity, evidence labels and the existing p
   assert.match(header, /\{translatedLivePillLabel\}/);
   assert.doesNotMatch(header, /fetch\(|getCurrentPosition|freshToken|cmac|telemetry|<img|<Image/);
   assert.match(page, /<SunLocaleProvider initialLocale=\{locale\}>[\s\S]*?<SunPassportHeader[\s\S]*?pulseClass=\{pulseClass\}[\s\S]*?\/>/);
-  assert.match(page, /!isDemoPreview && <ConsumerPassportLink href=\{isFreshCommercialTap && freshToken \? withTapQuery\("\/me\/products","products"\) : "\/me\/products"\} eventId=\{eventId\} freshToken=\{isFreshCommercialTap \? freshToken : ""\}/);
+  assert.match(page, /!isDemoPreview && <ConsumerPassportLink save=\{saveToAccount\}/);
 });
 
 // Render the production header, brand, documentary account anchor and ThemeToggle. The

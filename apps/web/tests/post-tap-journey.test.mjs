@@ -44,6 +44,7 @@ test("quick post-tap CTAs independently honor allow and block policy", () => {
 
   assert.deepEqual(available, {
     primary: true,
+    save: false,
     warranty: false,
     trace: true,
     certificate: true,
@@ -58,6 +59,7 @@ test("quick post-tap CTAs independently honor allow and block policy", () => {
   });
   assert.deepEqual(provenanceOnly, {
     primary: false,
+    save: false,
     warranty: false,
     trace: true,
     certificate: true,
@@ -65,6 +67,16 @@ test("quick post-tap CTAs independently honor allow and block policy", () => {
     marketplace: false,
     wallet: false,
   });
+});
+
+test("the SUN save offer needs explicit save and join grants for the verified brand", () => {
+  const ready = { verifiedTenant: true, allowedActions: [" SAVE ", "join", "provenance"] };
+  assert.equal(resolvePostTapQuickActionAvailability(ready).save, true);
+  for (const restrictions of [
+    { allowedActions: [] }, { allowedActions: ["save"] }, { allowedActions: ["join"] },
+    { blockedActions: ["save"] }, { blockedActions: ["join"] },
+    { verifiedTenant: false }, { canEngage: false }, { isDemoPreview: true },
+  ]) assert.equal(resolvePostTapQuickActionAvailability({ ...ready, ...restrictions }).save, false);
 });
 
 test("post-tap journey adapts the next action without implying ownership from a tap", async () => {

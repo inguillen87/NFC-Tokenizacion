@@ -117,6 +117,15 @@
   line-height: 1.35;
 }
 
+.historicalReadingLabel {
+  display: block;
+  color: var(--passport-muted);
+  font-size: .75rem;
+  font-weight: 650;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
 .passport :global(.sun-summary-status__headline) {
   font-size: clamp(1.22rem, 5.3vw, 1.5rem) !important;
   line-height: 1.18 !important;
