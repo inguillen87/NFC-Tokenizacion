@@ -58,6 +58,17 @@ test("email continuation preserves product selection without transmitting TAP or
   assert.deepEqual(consumerAuthStartPayload({ phone: "+5491155551234" }, next), { phone: "+5491155551234" });
 });
 
+test("email returns to the same product reading for a tenant slug with a dot", () => {
+  const contact = { email: "persona@example.test" };
+  const next = "/me/products?fromTap=1&eventId=715&tenant=bodega.qa&action=products";
+  assert.equal(normalizeConsumerAuthReturnPath(next), next);
+  assert.deepEqual(consumerAuthStartPayload(contact, next), { ...contact, next });
+  assert.equal(normalizeConsumerAuthReturnPath(`${next}&freshToken=fixture-private&uid=fixture-tag`), next);
+  for (const invalid of ["bodega.qa%2Fotra", "bodega.qa&tenant=otra.qa", ".bodega", "Bodega.QA", "bodega.qa%0A", "bodega.qa%3Fnext%3Devil"]) {
+    assert.equal(normalizeConsumerAuthReturnPath(next.replace("bodega.qa", invalid)), "/me", invalid);
+  }
+});
+
 test("normal consumer and legacy nonconsumer destinations do not change the OTP start contract", () => {
   for (const next of [undefined, null, "/me", "/docs", "/sun?uid=secret&mac=signature", "/login?t=private", "https://evil.example", "//evil.example", "/\\evil.example", "/%2e%2e//evil.example"]) {
     assert.equal(normalizeConsumerAuthReturnPath(next), "/me");

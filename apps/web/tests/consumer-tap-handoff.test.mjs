@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import {
   CONSUMER_TAP_CAPABILITY_COOKIE_PREFIX,
+  hasConsumerTapHandoffCookie,
   inspectConsumerTapCapability,
   prepareConsumerTapHandoff,
   proxyConsumerTapAction,
@@ -39,6 +40,22 @@ function assertPrivate(response) {
   assert.match(response.headers.get('vary'), /(?:^|,\s*)Cookie(?:,|$)/i);
   assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
 }
+
+test('read-only handoff presence is exact, bounded and discloses no cookie metadata', () => {
+  const url = new URL(ORIGIN);
+  const value = token();
+  assert.equal(hasConsumerTapHandoffCookie(`session=fixture; ${COOKIE}=${value}`, url, EVENT_ID, NOW), true);
+  for (const cookie of [
+    null,
+    `nexid_tap_${EVENT_ID}=${value}`,
+    `${CONSUMER_TAP_CAPABILITY_COOKIE_PREFIX}716=${value}`,
+    `${COOKIE}=${token({ eventId: '716' })}`,
+    `${COOKIE}=${token({ exp: NOW / 1000 })}`,
+    `${COOKIE}=${value}; ${COOKIE}=${value}`,
+    `${COOKIE}=malformed`,
+  ]) assert.equal(hasConsumerTapHandoffCookie(cookie, url, EVENT_ID, NOW), false);
+  assert.equal(hasConsumerTapHandoffCookie(`${COOKIE}=${value}`, url, "715\n", NOW), false);
+});
 
 test('preparation stores an event-named host-only HttpOnly capability cookie with bounded lifetime', async () => {
   const freshToken = token();
@@ -286,7 +303,7 @@ test('production ignores unprefixed cookies and strips every capability namespac
 test('all Cookie forwarders explicitly strip capability namespaces', async () => {
   for (const path of ['api/_lib/runtime-proxy.ts', 'me/_components/consumer-api.ts', 'api/public-cta/[action]/route.ts', 'api/consumer/taps/history/route.ts', 'me/taps/page.tsx']) {
     const source = await readFile(new URL(`../src/app/${path}`, import.meta.url), 'utf8');
-    assert.match(source, /import\s*\{\s*stripConsumerTapCapabilityCookies\s*\}/);
+    assert.match(source, /import\s*\{[^}]*\bstripConsumerTapCapabilityCookies\b[^}]*\}\s*from/);
     assert.match(source, /stripConsumerTapCapabilityCookies\((?:req\.headers|incomingHeaders|h)\.get\(["']cookie["']\)\)/);
   }
 });

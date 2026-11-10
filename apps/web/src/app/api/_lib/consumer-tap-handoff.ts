@@ -99,11 +99,19 @@ export function stripConsumerTapCapabilityCookies(value: string | null) {
     && !name.startsWith(DEV_COOKIE_PREFIX)).map(({ part }) => part).join("; ");
 }
 
-function cookieConfiguration(req: Request) {
-  const url = new URL(req.url);
+function cookieConfiguration(req: Request | URL) {
+  const url = req instanceof URL ? req : new URL(req.url);
   const localDevelopment = process.env.NODE_ENV !== "production" && !process.env.VERCEL
     && url.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   return { prefix: localDevelopment ? DEV_COOKIE_PREFIX : CONSUMER_TAP_CAPABILITY_COOKIE_PREFIX, secure: !localDevelopment };
+}
+
+/** Advisory only. This neither authenticates nor consumes a capability. */
+export function hasConsumerTapHandoffCookie(cookieHeader: string | null, url: URL, eventId: string, nowMs = Date.now()) {
+  if (!EVENT_ID.test(eventId)) return false;
+  const { prefix } = cookieConfiguration(url);
+  const matches = parsedCookies(cookieHeader).filter(({ name }) => name === `${prefix}${eventId}`);
+  return matches.length === 1 && Boolean(inspectConsumerTapCapability(matches[0].value, eventId, nowMs));
 }
 
 function serializeCookie(name: string, value: string, maxAge: number, secure: boolean) {

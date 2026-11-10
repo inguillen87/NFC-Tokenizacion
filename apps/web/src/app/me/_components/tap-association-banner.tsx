@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { associationCopy, associationLocale, type AssociationLocale } from "./tap-association-copy";
 import { createTapAssociationRunner, normalizeTapAssociationClaimPin, TAP_ASSOCIATION_ACTIONS, tapAssociationContext, tapAssociationLoginHref, tapAssociationSession,
@@ -180,10 +180,14 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
   </section>;
 }
 
-export function TapAssociationBanner() {
+export type TapSaveHandoffFallback = { eventId: string; content: ReactNode };
+
+export function TapAssociationBanner({ saveHandoffFallback }: { saveHandoffFallback?: TapSaveHandoffFallback } = {}) {
   const params = useSearchParams();
   const context = tapAssociationContext(new URLSearchParams(params.toString()));
   // Changing context unmounts the old runner and clears results before paint.
   // Query parameters select UI; they never grant authenticity or permissions.
-  return context ? <AssociationCard key={context.key} context={context} /> : null;
+  if (!context) return null;
+  if (context.preferred === "save" && context.eventId === saveHandoffFallback?.eventId) return saveHandoffFallback.content;
+  return <AssociationCard key={context.key} context={context} />;
 }
