@@ -30,7 +30,7 @@
   --portal-shadow: 0 12px 34px rgba(0, 0, 0, .18);
 }
 
-.header { position: sticky; top: 0; z-index: 50; width: 100%; border-bottom: 1px solid var(--portal-border); background: var(--portal-surface); box-shadow: var(--portal-shadow); }
+.header { width: 100%; border-bottom: 1px solid var(--portal-border); background: var(--portal-surface); box-shadow: var(--portal-shadow); }
 .headerRow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .65rem; width: min(100%, 88rem); min-height: 4.75rem; margin-inline: auto; padding: .55rem max(.85rem, env(safe-area-inset-right)) .55rem max(.85rem, env(safe-area-inset-left)); }
 .brandArea { display: flex; align-items: center; gap: 1rem; min-width: 0; }
 .header .brand { display: inline-flex; min-width: 0; min-height: 3.5rem; border-radius: .85rem; }
@@ -59,7 +59,7 @@
 .portal .logoutControl button > span { display: none; }
 .portal .accountControls button:hover { border-color: var(--portal-accent); }
 
-.main { scroll-margin-block-start: calc(var(--portal-header-block-size, 6rem) + 0.75rem); width: min(100%, 88rem); min-width: 0; margin-inline: auto; padding: 1.5rem max(1rem, env(safe-area-inset-right)) calc(6rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); }
+.main { scroll-margin-block-start: .75rem; width: min(100%, 88rem); min-width: 0; margin-inline: auto; padding: 1.5rem max(1rem, env(safe-area-inset-right)) calc(6rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); }
 .pageHeading { max-width: 60rem; margin-bottom: 1.4rem; }
 .pageHeading h1 { margin: 0; color: var(--portal-text); font-size: clamp(1.7rem, 3.5vw, 2.7rem); font-weight: 800; line-height: 1.12; letter-spacing: -.035em; overflow-wrap: anywhere; }
 .pageHeading p { margin: .65rem 0 0; color: var(--portal-muted); font-size: .95rem; line-height: 1.65; }
@@ -105,6 +105,7 @@
 }
 
 @media (min-width: 64rem) {
+  .header { position: sticky; top: 0; z-index: 50; }
   .headerRow { min-height: 5.25rem; }
   .portal .logoutControl button { padding-inline: .85rem; }
   .portal .logoutControl button > span { display: inline; }
