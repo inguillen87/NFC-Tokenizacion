@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import ts from 'typescript';
+import * as permissions from '../src/lib/permission-policy.ts';
+import * as scopePolicy from '../src/lib/dashboard-tenant-scope-policy.ts';
+import * as proxyPolicy from '../src/lib/admin-proxy-policy.ts';
+import * as runtimeRbac from '../src/lib/enterprise-runtime-rbac.ts';
 
 import {
   isSupplierManifestQuantityOverrideRequest,
@@ -102,4 +108,86 @@ test('strict reward creation uses the existing exact write permission without wi
   assert.equal(requiredPermissionForAdminResource('POST', 'loyalty/rewards'), 'rewards:write');
   for (const [method, resource] of [['GET', 'loyalty/rewards/create'], ['POST', 'loyalty/rewards/create/other'], ['POST', 'loyalty/rewards/create-extra']]) assert.equal(requiredPermissionForAdminResource(method, resource), null);
   assert.equal(requiresSuperAdminForAdminResource('POST', 'loyalty/rewards/create'), false);
+});
+
+test('program options keep the same rewards read permission on the exact GET route', () => {
+  assert.equal(requiredPermissionForAdminResource('GET', 'loyalty/programs'), 'rewards:read');
+  for (const method of ['POST', 'PATCH', 'DELETE', 'HEAD']) {
+    assert.equal(requiredPermissionForAdminResource(method, 'loyalty/programs'), null);
+  }
+  assert.equal(requiredPermissionForAdminResource('GET', 'loyalty/programs/other'), null);
+});
+
+test('the real BFF handler only forwards enabled, exact-tenant program reads with a server credential', async t => {
+  const source = await readFile(new URL('../src/app/api/admin/[...path]/route.ts', import.meta.url), 'utf8');
+  const compiled = ts.transpileModule(source, {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
+  }).outputText;
+  const nativeRequire = createRequire(import.meta.url);
+  const session = { role: 'tenant-admin', tenantSlug: 'qa-a', permissions: ['rewards:read'], deniedPermissions: [] };
+  const credential = { session, bearerToken: 'synthetic-session-bearer' };
+  const cases = [
+    { name: 'flag disabled', enabled: false, status: 404 },
+    { name: 'method unsupported', method: 'POST', status: 405 },
+    { name: 'global scope rejected', query: '?scope=global', status: 400 },
+    { name: 'duplicate tenant rejected', query: '?tenant=qa-a&tenant=qa-a', status: 400 },
+    { name: 'sandbox control rejected', query: '?tenant=qa-a&sandbox=true', status: 400 },
+    { name: 'noncanonical tenant rejected', query: '?tenant=QA-A', status: 403 },
+    { name: 'cross-tenant rejected', query: '?tenant=qa-b', status: 403 },
+    { name: 'anonymous rejected', credential: null, status: 401 },
+    { name: 'demo rejected', credential: { ...credential, session: { ...session, isDemo: true } }, status: 403 },
+    { name: 'write-only grant rejected', credential: { ...credential, session: { ...session, permissions: ['rewards:write'] } }, status: 403 },
+    { name: 'explicit denial wins', credential: { ...credential, session: { ...session, deniedPermissions: ['rewards:read'] } }, status: 403 },
+    { name: 'tenant reader permitted', status: 200 },
+    { name: 'super-admin explicitly selects a tenant', query: '?tenant=qa-b', credential: { ...credential, session: { ...session, role: 'super-admin' } }, status: 200 },
+    { name: 'upstream absence stays unavailable', status: 404, upstreamStatus: 404 },
+    { name: 'upstream service unavailable is not replaced by a demo', status: 503, upstreamStatus: 503 },
+  ];
+  for (const testCase of cases) await t.test(testCase.name, async () => {
+    const method = testCase.method ?? 'GET';
+    const query = testCase.query ?? '?tenant=qa-a';
+    const calls = [];
+    const request = new Request('https://dashboard.example.invalid/api/admin/loyalty/programs' + query, {
+      method,
+      headers: { authorization: 'Bearer browser-placeholder', 'x-nexid-trace-id': 'synthetic-browser-trace', 'x-nexid-permissions': 'rewards:read' },
+    });
+    const module = { exports: {} };
+    const imports = {
+      'next/server': nativeRequire('next/server'),
+      '@product/config': { productUrls: { api: 'https://api.example.invalid' } },
+      '../../../../lib/session': {
+        getDashboardSessionCredential: async () => Object.hasOwn(testCase, 'credential') ? testCase.credential : credential,
+        isDashboardSessionUpstreamUnavailable: () => false,
+      },
+      '../../../../lib/permission-policy': permissions,
+      '../../../../lib/dashboard-tenant-scope-policy': scopePolicy,
+      '../../../../lib/admin-proxy-policy': proxyPolicy,
+      '../../../../lib/enterprise-runtime-rbac': runtimeRbac,
+    };
+    const env = { NODE_ENV: 'production', DASHBOARD_REWARD_PROGRAM_SELECTION_ENABLED: testCase.enabled === false ? undefined : 'true' };
+    const tenant = new URLSearchParams(query).get('tenant');
+    const payload = { ok: true, version: 'admin-loyalty-program-options.v1', tenant, limit: 100, truncated: false, programs: [] };
+    new Function('require', 'module', 'exports', 'process', 'fetch', compiled)(
+      name => imports[name] ?? {}, module, module.exports, { env }, async (target, init) => {
+        calls.push({ target, init });
+        return Response.json(testCase.upstreamStatus ? { ok: false } : payload, { status: testCase.upstreamStatus ?? 200 });
+      },
+    );
+    const response = await module.exports[method](request, { params: Promise.resolve({ path: ['loyalty', 'programs'] }) });
+    assert.equal(response.status, testCase.status);
+    if (testCase.status !== 200 && !testCase.upstreamStatus) {
+      assert.equal(calls.length, 0);
+      return;
+    }
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].target, 'https://api.example.invalid/admin/loyalty/programs' + query);
+    assert.equal(calls[0].init.method, 'GET');
+    assert.equal(calls[0].init.redirect, 'error');
+    assert.deepEqual(Object.fromEntries(calls[0].init.headers), {
+      authorization: 'Bearer synthetic-session-bearer', 'content-type': 'application/json',
+    });
+    assert.equal(response.headers.get('cache-control'), 'private, no-store');
+    assert.equal(response.headers.get('x-nexid-data-mode'), 'production');
+    if (testCase.status === 200) assert.deepEqual(await response.json(), payload);
+  });
 });

@@ -7,9 +7,20 @@ import ts from "typescript";
 // response bodies and DOM references are fixtures. This is not Next or a browser.
 const source = readFileSync(new URL("../src/app/(app)/loyalty/rewards/rewards-client.tsx", import.meta.url), "utf8");
 const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText;
-const createProps = () => ({ initialRewards: [], tenantScope: "tenant-a", isDemo: false, canWrite: true, dataSource: "production", availability: "ready_empty", sourceReason: "" });
+const createProps = () => ({ initialRewards: [], tenantScope: "tenant-a", isDemo: false, canWrite: true, dataSource: "production", availability: "ready_empty", sourceReason: "", explicitProgramSelection: true });
+const activeProgramId = "20000000-0000-4000-8000-000000000001";
+const draftProgramId = "20000000-0000-4000-8000-000000000002";
+const unnamedProgramId = "20000000-0000-4000-8000-000000000003";
+const rewardId = "10000000-0000-4000-8000-000000000001";
+function programs(tenant) {
+  return { ok: true, version: "admin-loyalty-program-options.v1", tenant, limit: 100, truncated: false, programs: [
+    { id: activeProgramId, name: "Programa activo", status: "active" },
+    { id: draftProgramId, name: "Borrador reciente", status: "draft" },
+    { id: unnamedProgramId, name: "", status: "paused" },
+  ] };
+}
 function fixture() {
-  const slots = [], effects = new Map(), calls = [], pending = [];
+  const slots = [], effects = new Map(), calls = [], programReads = [], pending = [];
   let cursor = 0, props = createProps(), refreshes = 0, closes = 0, focusCalls = 0;
   const hooks = {
     useRef(value) { const index = cursor++; if (!slots[index]) slots[index] = { current: value }; return slots[index]; },
@@ -32,8 +43,12 @@ function fixture() {
   const nodes = node => Array.isArray(node) ? node.flatMap(nodes) : node && typeof node === "object" && node.props ? [node, ...nodes(node.props.children)] : [];
   const text = node => (Array.isArray(node) ? node.map(text).join(" ") : typeof node === "string" || typeof node === "number" ? String(node) : node?.props ? text(node.props.children) : "").replace(/\s+/g, " ").trim();
   const dialog = { open: false, showModal() { this.open = true; }, close() { this.open = false; closes++; } };
-  const fetch = (url, init) => new Promise(resolve => calls.push({ url, init, release: (status, body) => resolve(new Response(typeof body === "string" ? body : JSON.stringify(body), { status, headers: { "content-type": typeof body === "string" ? "text/html" : "application/json" } })) }));
-  const h = { calls, fetch, nodes, text, event: { preventDefault() {} },
+  const fetch = (url, init) => new Promise(resolve => {
+    const destination = init.method === "GET" && url.startsWith("/api/admin/loyalty/programs?") ? programReads : calls;
+    destination.push({ url, init, release: (status, body, mode = "production") => resolve(new Response(typeof body === "string" ? body : JSON.stringify(body),
+      { status, headers: { "content-type": typeof body === "string" ? "text/html" : "application/json", "x-nexid-data-mode": mode } })) });
+  });
+  const h = { calls, programReads, fetch, nodes, text, event: { preventDefault() {} },
     track(value) { pending.push(value); return value; },
     render(next = props) { props = next; cursor = 0; const tree = module.exports.default(props);
       for (const node of nodes(tree)) if (node.props.ref) node.props.ref.current = node.type === "dialog" ? dialog : { focus() { focusCalls++; } };
@@ -45,18 +60,27 @@ function fixture() {
     form(tree) { const node = nodes(tree).find(node => node.type === "form"); assert.ok(node, "current form"); return node; },
     props: () => props, refreshes: () => refreshes, closes: () => closes, focusCalls: () => focusCalls,
     cleanup() { effects.clear(); for (const slot of slots) if (slot?.effect) { slot.cleanup?.(); slot.cleanup = null; } },
-    async finish() { for (const call of calls) call.release(409, { ok: false, error: "reward_create_conflict" }); h.cleanup(); await Promise.allSettled(pending); },
+    async finish() { for (const call of [...calls, ...programReads]) call.release(409, { ok: false, error: "reward_create_conflict" }); h.cleanup(); await Promise.allSettled(pending); },
   };
   return h;
 }
-function open(h) { h.render(); h.flush(); h.button(h.render(), "Nuevo Beneficio").props.onClick(); let tree = h.render(); h.flush();
+function startCreate(h) {
+  h.render(); h.flush();
+  return h.button(h.render(), "Nuevo Beneficio").props.onClick();
+}
+async function open(h, select = true) {
+  const read = startCreate(h);
+  h.programReads.at(-1).release(200, programs(h.props().tenantScope));
+  await read;
+  const tree = h.render(); h.flush();
   for (const [id, value] of [["reward-edit-code", "DUPLICATE"], ["reward-edit-title", "Título conservado"], ["reward-edit-points", "40"], ["reward-edit-stock", "12"]]) h.field(tree, id).props.onChange({ target: { value } });
+  if (select) h.field(tree, "reward-edit-program").props.onChange({ target: { value: activeProgramId } });
   return h.render();
 }
 
 test("the same-turn submit callback can issue only one request for its dialog owner", async t => {
   const h = fixture(); t.mock.method(globalThis, "fetch", h.fetch); let pending;
-  try { const tree = open(h), submit = h.form(tree).props.onSubmit; pending = h.track(submit(h.event)); const duplicate = h.track(submit(h.event));
+  try { const tree = await open(h), submit = h.form(tree).props.onSubmit; pending = h.track(submit(h.event)); const duplicate = h.track(submit(h.event));
     assert.equal(h.calls.length, 1); assert.equal(h.calls[0].url, "/api/admin/loyalty/rewards/create");
     h.calls[0].release(409, { ok: false, error: "reward_create_conflict" }); await Promise.all([pending, duplicate]);
   } finally { await h.finish(); }
@@ -64,17 +88,17 @@ test("the same-turn submit callback can issue only one request for its dialog ow
 
 test("retained submit callbacks cannot write after source replacement before effects or after unmount", async t => {
   const h = fixture(); t.mock.method(globalThis, "fetch", h.fetch);
-  try { const oldSubmit = h.form(open(h)).props.onSubmit;
+  try { const oldSubmit = h.form(await open(h)).props.onSubmit;
     h.render({ ...h.props(), tenantScope: "tenant-b", initialRewards: [] });
     const ignored = h.track(oldSubmit(h.event)); assert.equal(h.calls.length, 0, "new scope is fenced before passive cleanup"); await ignored;
-    h.flush(); const current = open(h), afterUnmount = h.form(current).props.onSubmit; h.cleanup();
+    h.flush(); const current = await open(h), afterUnmount = h.form(current).props.onSubmit; h.cleanup();
     const ignoredUnmount = h.track(afterUnmount(h.event)); assert.equal(h.calls.length, 0, "unmounted owner cannot start a write"); await ignoredUnmount;
   } finally { await h.finish(); }
 });
 
 test("an unsupported strict create route preserves the form and never falls back to legacy upsert", async t => {
   const h = fixture(); t.mock.method(globalThis, "fetch", h.fetch); let pending;
-  try { pending = h.track(h.form(open(h)).props.onSubmit(h.event)); assert.equal(h.calls.length, 1); h.calls[0].release(404, "<html>old deployment</html>"); await pending;
+  try { pending = h.track(h.form(await open(h)).props.onSubmit(h.event)); assert.equal(h.calls.length, 1); h.calls[0].release(404, "<html>old deployment</html>"); await pending;
     let tree = h.render(); h.flush(); tree = h.render();
     assert.equal(h.field(tree, "reward-edit-code").props.value, "DUPLICATE"); assert.equal(h.field(tree, "reward-edit-title").props.value, "Título conservado");
     assert.match(h.text(tree), /creación segura no está disponible/); assert.doesNotMatch(h.text(tree), /old deployment|creado con éxito/);
@@ -84,7 +108,7 @@ test("an unsupported strict create route preserves the form and never falls back
 
 test("a success arriving after unmount cannot schedule a timer that refreshes or closes another view", async t => {
   t.mock.timers.enable({ apis: ["setTimeout"] }); const h = fixture(); t.mock.method(globalThis, "fetch", h.fetch); let pending;
-  try { pending = h.track(h.form(open(h)).props.onSubmit(h.event)); assert.equal(h.calls.length, 1); h.cleanup(); h.calls[0].release(200, { ok: true, reward: { id: "synthetic" } }); await pending;
+  try { pending = h.track(h.form(await open(h)).props.onSubmit(h.event)); assert.equal(h.calls.length, 1); h.cleanup(); h.calls[0].release(200, { ok: true, reward: { id: rewardId, program_id: activeProgramId } }); await pending;
     t.mock.timers.tick(2000); assert.equal(h.refreshes(), 0); assert.equal(h.closes(), 0);
   } finally { await h.finish(); }
 });
@@ -98,13 +122,97 @@ test("read-only and demo page props cannot write through retained client callbac
         assert.equal(h.nodes(tree).some(node => node.type === "button" && h.text(node) === "Nuevo Beneficio"), false);
         assert.equal(h.nodes(tree).some(node => node.type === "form"), false); assert.equal(h.calls.length, 0);
         h.render({ ...h.props(), isDemo: false, canWrite: true, dataSource: "production" }); h.flush();
-        tree = open(h); const retainedSubmit = h.form(tree).props.onSubmit, retainedCreate = h.button(tree, "Nuevo Beneficio").props.onClick;
+        tree = await open(h); const retainedSubmit = h.form(tree).props.onSubmit, retainedCreate = h.button(tree, "Nuevo Beneficio").props.onClick;
         h.render({ ...h.props(), ...patch });
         await h.track(retainedSubmit(h.event)); retainedCreate();
         tree = h.render(); h.flush(); tree = h.render();
         assert.equal(h.calls.length, 0, "permission/demo replacement fences old callbacks before effects without any POST");
+        assert.equal(h.programReads.length, 1, "a retained callback cannot read programs after permission or demo replacement");
         assert.equal(h.nodes(tree).some(node => node.type === "form"), false);
       } finally { await h.finish(); }
     });
   }
+});
+
+test("creating requires the explicitly chosen persisted program and acknowledges only the same program", async t => {
+  const h = fixture(); t.mock.method(globalThis, "fetch", h.fetch);
+  try {
+    const tree = await open(h, false);
+    assert.equal(h.programReads[0].url, "/api/admin/loyalty/programs?tenant=tenant-a");
+    assert.equal(h.programReads[0].init.method, "GET");
+    assert.equal(h.programReads[0].init.cache, "no-store");
+    const select = h.field(tree, "reward-edit-program");
+    assert.equal(select.props.value, "");
+    assert.match(h.text(select), /Programa activo · Activo.*Borrador reciente · Borrador/);
+    assert.ok(h.text(select).includes(`Programa sin nombre · ${unnamedProgramId} · Pausado`));
+    await h.form(tree).props.onSubmit(h.event);
+    assert.equal(h.calls.length, 0);
+    select.props.onChange({ target: { value: activeProgramId } });
+    const pending = h.track(h.form(h.render()).props.onSubmit(h.event));
+    assert.equal(h.calls.length, 1);
+    assert.equal(JSON.parse(h.calls[0].init.body).program_id, activeProgramId);
+    h.calls[0].release(200, { ok: true, reward: { id: rewardId, program_id: draftProgramId } });
+    await pending;
+    assert.match(h.text(h.render()), /No pudimos confirmar el resultado/);
+    assert.equal(h.calls.length, 1);
+  } finally { await h.finish(); }
+});
+
+test("creation programs reject unverified sources and are aborted when the dialog closes", async t => {
+  const h = fixture(); t.mock.method(globalThis, "fetch", h.fetch);
+  try {
+    const untrusted = startCreate(h);
+    h.programReads[0].release(200, programs("tenant-a"), "demo");
+    await untrusted;
+    let tree = h.render();
+    assert.match(h.text(tree), /No pudimos confirmar los programas/);
+    await h.form(tree).props.onSubmit(h.event);
+    assert.equal(h.calls.length, 0);
+    const retry = h.button(h.render(), "Volver a consultar programas").props.onClick();
+    tree = h.render(); h.flush();
+    h.button(tree, "Cancelar").props.onClick();
+    assert.equal(h.programReads[1].init.signal.aborted, true);
+    h.programReads[1].release(200, programs("tenant-a"));
+    await retry;
+    assert.equal(h.nodes(h.render()).some(node => node.props.id === "reward-edit-program"), false);
+    assert.equal(h.calls.length, 0);
+  } finally { await h.finish(); }
+});
+
+test("a removed program requires an explicit new program read while keeping the draft", async t => {
+  const h = fixture(); t.mock.method(globalThis, "fetch", h.fetch);
+  try {
+    const pending = h.track(h.form(await open(h)).props.onSubmit(h.event));
+    h.calls[0].release(409, { ok: false, error: "loyalty_program_not_found" });
+    await pending;
+    const tree = h.render();
+    assert.equal(h.field(tree, "reward-edit-title").props.value, "Título conservado");
+    assert.equal(h.field(tree, "reward-edit-program").props.value, "");
+    assert.equal(h.programReads.length, 1, "the refusal does not automatically repeat a request");
+    const retry = h.button(tree, "Volver a consultar programas").props.onClick();
+    h.programReads[1].release(200, programs("tenant-a"));
+    await retry;
+    assert.equal(h.field(h.render(), "reward-edit-program").props.value, "", "another selection is required");
+    assert.equal(h.calls.length, 1);
+  } finally { await h.finish(); }
+});
+
+test("default-off creation preserves the existing strict writer with no program lookup", async t => {
+  const h = fixture(); t.mock.method(globalThis, "fetch", h.fetch);
+  try {
+    h.render({ ...h.props(), explicitProgramSelection: undefined });
+    await startCreate(h);
+    const tree = h.render();
+    assert.equal(h.programReads.length, 0);
+    assert.equal(h.nodes(tree).some(node => node.props.id === "reward-edit-program"), false);
+    const submitted = h.track(h.form(tree).props.onSubmit(h.event));
+    assert.equal(h.calls.length, 1);
+    assert.equal(h.calls[0].url, "/api/admin/loyalty/rewards/create");
+    const payload = JSON.parse(h.calls[0].init.body);
+    assert.equal(payload.creationIntent, "admin-reward-first-create.v1");
+    assert.equal(Object.hasOwn(payload, "program_id"), false);
+    h.calls[0].release(200, { ok: true });
+    await submitted;
+    assert.match(h.text(h.render()), /Nuevo beneficio creado/);
+  } finally { await h.finish(); }
 });

@@ -10,6 +10,12 @@ const rewardsClientPath='apps/dashboard/src/app/(app)/loyalty/rewards/rewards-cl
 const voucherFeedbackPath='apps/dashboard/src/app/(app)/loyalty/campaigns/loyalty-campaigns-client.tsx';
 const voucherFeedbackBefore='edd60aecfa61e88535da081576fa42804d46d1958a732f07bcee7cb66eb2f13f';
 const voucherFeedbackAfter='5aca893ae00f91b1d81414d802ff693fd50f36466821d129e9cfc42200e62da4';
+export const REWARD_EXPLICIT_PROGRAM_SOURCES=Object.freeze({
+ 'apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx':Object.freeze({before:'1c5c6f220bc25b6200a3701af3aacdcf0c66ed63fdb199b051f1b05e335c91c5',after:'a5058cb9b59b1167945e2a56c906802d3faae6fd7240ebf435f0a4407d177526'}),
+ 'apps/dashboard/src/app/(app)/loyalty/rewards/page.tsx':Object.freeze({before:'930d1c5a52d1eb927337bc2809e786899409a23b529010a24bc422c8580d5669',after:'cb07ea7c7f7c299af0c2d1baa52e4cdab3ecd43b2250224d7fb2912fcf34797a'}),
+ 'apps/dashboard/src/lib/permission-policy.ts':Object.freeze({before:'57eab8597c1be95e611f41590e9008aeb957b6e83423384501ebecbe574951d3',after:'b4b40061c969fbd078424fc08162e2bec9045b23b5e8de4ebf3f3a13d8002455'}),
+ 'apps/dashboard/src/app/api/admin/[...path]/route.ts':Object.freeze({before:'978ca471ba17573c4bff8b34eb1ea8ad2a2789c6105d8930f24c1bea4af5e409',after:'d69bbe728f11fe5aee87c95b8a03b02fdab0330c159aedd67996d8ea3192bebf'}),
+});
 const rewardStockDisplayAfter='9039f7d58c85752f1e431c0714965078ece8b4a604ebb01d743499c4381b2099';
 const rewardDialogAppearanceAfter='f09a91e2e26e57e7b7b8d9f1f8caf66676a7d35f78aa2104c57322d514d30404';
 const rewardDialogActionsAfter='e141130ad5801a345a8b2b1410648a908a9ad727be38c4b7e5c442e5ff8a9719';
@@ -81,13 +87,20 @@ export function rewardDialogActionsHistoricalPriorHash(path,actual){
  return rewardDialogAppearanceHistoricalPriorHash(path,rewardDialogAppearanceAfter);
 }
 
+export function rewardCompanyIdentityHistoricalPriorHash(path,actual){
+ if(!Object.hasOwn(rewardCompanyIdentitySources,path))return rewardDialogActionsHistoricalPriorHash(path,actual);
+ const pin=rewardCompanyIdentitySources[path];
+ assert.equal(actual,pin.after,path+' exact reviewed reward company identity');
+ return rewardDialogActionsHistoricalPriorHash(path,pin.before);
+}
+
 export function rewardDialogPriorHash(path,actual){
  if(path===voucherFeedbackPath){
   assert.equal(actual,voucherFeedbackAfter,path+' exact reviewed voucher feedback');
   return voucherFeedbackBefore;
  }
- if(!Object.hasOwn(rewardCompanyIdentitySources,path))return rewardDialogActionsHistoricalPriorHash(path,actual);
- const pin=rewardCompanyIdentitySources[path];
- assert.equal(actual,pin.after,path+' exact reviewed reward company identity');
- return rewardDialogActionsHistoricalPriorHash(path,pin.before);
+ const pin=REWARD_EXPLICIT_PROGRAM_SOURCES[path];
+ if(!Object.hasOwn(REWARD_EXPLICIT_PROGRAM_SOURCES,path))return rewardCompanyIdentityHistoricalPriorHash(path,actual);
+ assert.equal(actual,pin.after,path+' exact reviewed reward program selection');
+ return rewardCompanyIdentityHistoricalPriorHash(path,pin.before);
 }

@@ -7,8 +7,11 @@ import { REWARD_REQUIREMENTS_VERSION } from "../src/lib/reward-reservation-notic
 const source = readFileSync(new URL("../src/app/(app)/loyalty/rewards/rewards-client.tsx", import.meta.url), "utf8");
 const code = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText;
 const module = { exports: {} };
-new Function("require", "module", "exports", code)(name => name.endsWith("/reward-reservation-notices") ? { REWARD_REQUIREMENTS_VERSION } : {}, module, module.exports);
-const { buildRewardSavePayload, canEditReward, rewardSaveErrorCopy, rewardStockLabel } = module.exports;
+new Function("require", "module", "exports", code)(name => {
+  if (name.endsWith("/reward-reservation-notices")) return { REWARD_REQUIREMENTS_VERSION };
+  return {};
+}, module, module.exports);
+const { buildRewardSavePayload, canEditReward, parseRewardCreationPrograms, rewardSaveErrorCopy, rewardStockLabel } = module.exports;
 const reward = { id: "10000000-0000-4000-8000-000000000001", program_id: "20000000-0000-4000-8000-000000000001", tenant_slug: "tenant-a", code: "VISIT", title: "Visita", stock_total: 10, stock_remaining: 2, requires_age_gate: true, network_visible: false };
 const form = overrides => ({ code: "VISIT", title: "Título editado", description: "Descripción", type: "TOUR", points_cost: 0, stock_total: 10, image_url: "", status: "active", requires_age_gate: true, network_visible: false, ...overrides });
 
@@ -76,10 +79,16 @@ test("zero and unlimited saved stocks retain their meaning during metadata edits
   }
   assert.match(source, /setStockTotal\(reward\.stock_total\)/);
 });
-test("new benefits initialize stock explicitly but require a selected company", () => {
+test("new benefits initialize stock explicitly but require a company and an exact program", () => {
   assert.throws(() => buildRewardSavePayload("", form(), null), /tenant_required/);
-  const payload = buildRewardSavePayload(" Tenant-A ", form({ stock_total: 0 }), null);
+  const legacy = buildRewardSavePayload("tenant-a", form(), null);
+  assert.equal(Object.hasOwn(legacy, "program_id"), false);
+  assert.equal(legacy.creationIntent, "admin-reward-first-create.v1");
+  assert.throws(() => buildRewardSavePayload("tenant-a", form(), null, ""), /reward_program_required/);
+  assert.throws(() => buildRewardSavePayload("tenant-a", form(), null, "latest-program"), /reward_program_required/);
+  const payload = buildRewardSavePayload(" Tenant-A ", form({ stock_total: 0 }), null, reward.program_id);
   assert.equal(payload.tenant_slug, "tenant-a"); assert.equal(payload.stock_total, 0); assert.equal(payload.stock_remaining, 0);
+  assert.equal(payload.program_id, reward.program_id);
   assert.doesNotMatch(source, /setCustomTenant\("demobodega"\)|useState\("demobodega"\)/);
 });
 test("missing saved identifiers or policy cannot be silently defaulted into a mutation", () => {
@@ -96,7 +105,8 @@ test("invalid numeric input remains visible for correction and is never coerced 
 });
 test("stock/program errors explain recovery and preserve the edit form", () => {
   assert.match(rewardSaveErrorCopy("stock_total_below_consumed"), /consumidas|canjes/);
-  assert.match(rewardSaveErrorCopy("loyalty_program_not_found"), /programa.*configurado/);
+  assert.match(rewardSaveErrorCopy("loyalty_program_not_found"), /programa de beneficios configurado/);
+  assert.match(rewardSaveErrorCopy("loyalty_program_not_found", true), /programa seleccionado.*consultar los programas.*formulario sigue aquí/);
   assert.match(rewardSaveErrorCopy("reward_update_conflict"), /formulario sigue aquí/);
   assert.match(rewardSaveErrorCopy("private-database-error"), /No se pudo confirmar/);
   assert.doesNotMatch(rewardSaveErrorCopy("private-database-error"), /private-database-error/);
@@ -105,12 +115,28 @@ test("stock/program errors explain recovery and preserve the edit form", () => {
 
 
 test("the new-benefit payload carries an explicit creation intent while exact edits do not", () => {
-  const creating = buildRewardSavePayload("tenant-a", form(), null);
+  const creating = buildRewardSavePayload("tenant-a", form(), null, reward.program_id);
   assert.equal(creating.creationIntent, "admin-reward-first-create.v1");
   assert.equal(Object.hasOwn(creating, "reward_id"), false);
-  const editing = buildRewardSavePayload("tenant-a", form(), reward);
+  const editing = buildRewardSavePayload("tenant-a", form(), reward, "20000000-0000-4000-8000-000000000002");
   assert.equal(Object.hasOwn(editing, "creationIntent"), false);
   assert.equal(editing.reward_id, reward.id); assert.equal(editing.program_id, reward.program_id);
+});
+
+test("creation choices preserve scoped persisted programs, states and truncation", () => {
+  const draft = { id: "a0000000-0000-4000-8000-000000000002", name: "Borrador reciente", status: "draft" };
+  const active = { id: reward.program_id, name: "Programa activo", status: "active" };
+  const unnamed = { id: "a0000000-0000-4000-8000-000000000003", name: "", status: "paused" };
+  const response = { ok: true, version: "admin-loyalty-program-options.v1", tenant: "tenant-a", limit: 100, truncated: true,
+    programs: [active, draft, unnamed] };
+  assert.deepEqual(parseRewardCreationPrograms(response, "tenant-a"), { programs: [active, draft, unnamed], truncated: true });
+  assert.deepEqual(parseRewardCreationPrograms({ ...response, programs: [] }, "tenant-a")?.programs, []);
+  for (const invalid of [
+    { ...response, tenant: "tenant-b" }, { ...response, demoMode: true }, { ...response, dataSource: "demo" },
+    { ...response, version: undefined }, { ...response, limit: 101 }, { ...response, truncated: "true" },
+    { ...response, programs: [{ ...draft, status: ["draft"] }] }, { ...response, programs: [{ ...draft, status: "published" }] },
+    { ...response, programs: [draft, { ...draft, id: draft.id.toUpperCase() }] },
+  ]) assert.equal(parseRewardCreationPrograms(invalid, "tenant-a"), null);
 });
 
 test("a duplicate new code explains deliberate recovery and keeps the current form", () => {

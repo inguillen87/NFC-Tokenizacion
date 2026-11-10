@@ -54,26 +54,29 @@ export function rewardStockLabel(remaining: unknown, total: unknown): string {
   return `Disponibles: ${remaining} de ${total}`;
 }
 
-export function buildRewardSavePayload(tenant: string, form: RewardForm, editing: Reward | null) {
-  const uuid = /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i;
+const rewardUuid = /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i;
+
+export function buildRewardSavePayload(tenant: string, form: RewardForm, editing: Reward | null, creationProgramId?: string) {
   const scope = (editing?.tenant_slug || tenant).trim().toLowerCase();
   if (!scope) throw new Error("tenant_required");
   if (!Number.isSafeInteger(form.points_cost) || form.points_cost < 0 || form.points_cost > 2_147_483_647) throw new Error("invalid_points_cost");
   if (form.stock_total !== null && (!Number.isSafeInteger(form.stock_total) || form.stock_total < 0 || form.stock_total > 2_147_483_647)) throw new Error("invalid_stock_total");
-  if (editing && (!uuid.test(editing.id || "") || !uuid.test(editing.program_id || "")
+  if (editing && (!rewardUuid.test(editing.id || "") || !rewardUuid.test(editing.program_id || "")
     || typeof editing.requires_age_gate !== "boolean" || typeof editing.network_visible !== "boolean")) throw new Error("reward_configuration_unavailable");
   if (!editing && form.stock_total === null) throw new Error("invalid_stock_total");
+  if (!editing && creationProgramId !== undefined && !rewardUuid.test(creationProgramId)) throw new Error("reward_program_required");
   const { stock_total, description, ...metadata } = form;
   return {
     tenant_slug: scope, ...metadata,
     ...(editing?.description === null && description === "" ? {} : { description }),
-    ...(editing ? { reward_id: editing.id, program_id: editing.program_id } : { creationIntent: "admin-reward-first-create.v1" }),
+    ...(editing ? { reward_id: editing.id, program_id: editing.program_id }
+      : { creationIntent: "admin-reward-first-create.v1", ...(creationProgramId === undefined ? {} : { program_id: creationProgramId.toLowerCase() }) }),
     ...(!editing || stock_total !== (editing.stock_total ?? null) ? { stock_total } : {}),
     ...(!editing ? { stock_remaining: stock_total } : {}),
   };
 }
 
-export function rewardSaveErrorCopy(code: unknown): string {
+export function rewardSaveErrorCopy(code: unknown, explicitProgramSelection = false): string {
   const messages: Record<string, string> = {
     tenant_required: "Seleccioná la empresa antes de guardar. Tu formulario sigue aquí.",
     invalid_points_cost: "El costo debe ser un número entero desde cero. Revisalo; tu formulario sigue aquí.",
@@ -82,8 +85,11 @@ export function rewardSaveErrorCopy(code: unknown): string {
     stock_total_below_consumed: "El total no puede ser menor que las unidades ya consumidas. Puede haber nuevos canjes; revisá el stock y conservá tu formulario.",
     reward_stock_unavailable: "No pudo confirmarse el stock guardado. Volvé a consultar; tu formulario sigue aquí.",
     reward_configuration_unavailable: "Falta la configuración guardada del beneficio. Volvé a consultar antes de editar; tu formulario sigue aquí.",
+    reward_program_required: "Elegí el programa del beneficio antes de guardar.",
     reward_program_ambiguous: "Este código existe en más de un programa. Volvé a consultar y elegí el beneficio exacto.",
-    loyalty_program_not_found: "La empresa necesita un programa de beneficios configurado. Contactá al administrador; tu formulario sigue aquí.",
+    loyalty_program_not_found: explicitProgramSelection
+      ? "El programa seleccionado ya no está disponible. Volvé a consultar los programas. Tu formulario sigue aquí."
+      : "La empresa necesita un programa de beneficios configurado. Contactá al administrador; tu formulario sigue aquí.",
     reward_not_found: "El beneficio ya no está disponible en este programa. Volvé a consultar; tu formulario sigue aquí.",
     reward_update_conflict: "El beneficio cambió mientras guardabas. Volvé a consultar; tu formulario sigue aquí.",
     reward_creation_unavailable: "La creación segura no está disponible en esta versión. Tu formulario sigue aquí; consultá el catálogo y volvé a intentar cuando el servicio esté actualizado.",
@@ -102,12 +108,52 @@ interface RewardsClientProps {
   dataSource: "production" | "demo" | "unavailable";
   availability: "ready" | "ready_empty" | "forbidden" | "upstream_error";
   sourceReason: string;
+  explicitProgramSelection?: boolean;
 }
 
-type RewardDialogSource = Pick<RewardsClientProps, "initialRewards" | "tenantScope" | "canWrite" | "isDemo" | "dataSource" | "availability">;
+type RewardDialogSource = Pick<RewardsClientProps, "initialRewards" | "tenantScope" | "canWrite" | "isDemo" | "dataSource" | "availability" | "explicitProgramSelection">;
 type RewardDialogOwner = { id: number; source: RewardDialogSource; phase: "idle" | "pending" | "confirmed" | "uncertain"; action: number; scope: string; retired: boolean; controller: AbortController | null; timer: ReturnType<typeof setTimeout> | null; stop: (() => void) | null };
 type RewardDialogResult = { kind: "confirmed" } | { kind: "refused"; error: unknown } | { kind: "uncertain" };
+const REWARD_PROGRAM_STATUSES = { draft: "Borrador", active: "Activo", paused: "Pausado", archived: "Archivado" } as const;
+type RewardProgramOption = { id: string; name: string; status: keyof typeof REWARD_PROGRAM_STATUSES };
+type RewardCreationPrograms = { programs: RewardProgramOption[]; truncated: boolean };
+type RewardCreationProgramsState = {
+  owner: RewardDialogOwner;
+  phase: "loading" | "unavailable";
+} | { owner: RewardDialogOwner; phase: "ready"; options: RewardCreationPrograms };
 const REWARD_SAVE_DEADLINE_MS = 6000;
+
+function rewardCreationProgramHelp(state: RewardCreationProgramsState | null): string {
+  if (state?.phase === "loading") return "Consultando los programas de la empresa…";
+  if (state?.phase === "unavailable") return "No pudimos confirmar los programas de la empresa.";
+  if (state?.phase === "ready" && !state.options.programs.length) return "Configurá un programa en Fidelización para continuar.";
+  const guidance = "Las reservas dependen del programa elegido y de las condiciones de cada persona.";
+  return state?.phase === "ready" && state.options.truncated ? "La consulta muestra hasta 100 programas. " + guidance : guidance;
+}
+
+export function parseRewardCreationPrograms(value: unknown, tenant: string): RewardCreationPrograms | null {
+  if (!tenant || !value || typeof value !== "object" || Array.isArray(value)) return null;
+  const envelope = value as Record<string, unknown>;
+  if (envelope.ok !== true || envelope.version !== "admin-loyalty-program-options.v1" || envelope.tenant !== tenant
+    || envelope.limit !== 100 || typeof envelope.truncated !== "boolean" || !Array.isArray(envelope.programs)
+    || envelope.programs.length > envelope.limit) return null;
+  if ((Object.hasOwn(envelope, "demo") && envelope.demo !== false)
+    || (Object.hasOwn(envelope, "demoMode") && envelope.demoMode !== false)
+    || (Object.hasOwn(envelope, "dataSource") && envelope.dataSource !== "production")) return null;
+  const programs: RewardProgramOption[] = [];
+  const ids = new Set<string>();
+  for (const value of envelope.programs) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const row = value as Record<string, unknown>;
+    if (typeof row.id !== "string" || !rewardUuid.test(row.id) || typeof row.name !== "string"
+      || typeof row.status !== "string" || !Object.hasOwn(REWARD_PROGRAM_STATUSES, row.status)) return null;
+    const id = row.id.toLowerCase();
+    if (ids.has(id)) return null;
+    ids.add(id);
+    programs.push({ id, name: row.name, status: row.status as RewardProgramOption["status"] });
+  }
+  return { programs, truncated: envelope.truncated };
+}
 function parseRewardCatalogReview(value: unknown, tenant: string): Reward[] | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const body = value as Record<string, unknown>;
@@ -133,7 +179,7 @@ function parseRewardCatalogReview(value: unknown, tenant: string): Reward[] | nu
   return body.rewards as Reward[];
 }
 
-const sameRewardDialogSource = (a: RewardDialogSource, b: RewardDialogSource) => a.initialRewards === b.initialRewards && a.tenantScope === b.tenantScope && a.canWrite === b.canWrite && a.isDemo === b.isDemo && a.dataSource === b.dataSource && a.availability === b.availability;
+const sameRewardDialogSource = (a: RewardDialogSource, b: RewardDialogSource) => a.initialRewards === b.initialRewards && a.tenantScope === b.tenantScope && a.canWrite === b.canWrite && a.isDemo === b.isDemo && a.dataSource === b.dataSource && a.availability === b.availability && a.explicitProgramSelection === b.explicitProgramSelection;
 
 const REWARD_IMAGE_OPTIONS = [
   { label: "Degustación en bodega", value: "/images/wine_tasting.png" },
@@ -176,7 +222,6 @@ type EditableReward = Reward & {
   network_visible: boolean;
 };
 
-const rewardUuid = /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i;
 const hasControl = /[\u0000-\u001f\u007f]/;
 const hasDescriptionControl = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 
@@ -206,8 +251,9 @@ export default function RewardsClient({
   dataSource: serverDataSource,
   availability: serverAvailability,
   sourceReason: serverSourceReason,
+  explicitProgramSelection = false,
 }: RewardsClientProps) {
-  const serverSource: RewardDialogSource = { initialRewards: serverRewards, tenantScope, canWrite, isDemo, dataSource: serverDataSource, availability: serverAvailability };
+  const serverSource: RewardDialogSource = { initialRewards: serverRewards, tenantScope, canWrite, isDemo, dataSource: serverDataSource, availability: serverAvailability, explicitProgramSelection };
   const [catalogSnapshot, setCatalogSnapshot] = useState<{ base: RewardDialogSource; rewards: Reward[]; held: boolean } | null>(null);
   const freshCatalog = catalogSnapshot && sameRewardDialogSource(catalogSnapshot.base, serverSource) ? catalogSnapshot : null;
   const initialRewards = freshCatalog?.rewards ?? serverRewards;
@@ -215,7 +261,7 @@ export default function RewardsClient({
   const availability = freshCatalog ? initialRewards.length ? "ready" as const : "ready_empty" as const : serverAvailability;
   const sourceReason = freshCatalog ? "" : serverSourceReason;
   const showCompanyIdentifier = catalogScope === "global" && tenantScope === "" && dataSource === "production" && !isDemo;
-  const source: RewardDialogSource = freshCatalog?.held ? serverSource : { initialRewards, tenantScope, canWrite, isDemo, dataSource, availability };
+  const source: RewardDialogSource = freshCatalog?.held ? serverSource : { initialRewards, tenantScope, canWrite, isDemo, dataSource, availability, explicitProgramSelection };
   const latestSource = useRef(source); latestSource.current = source;
   const mounted = useRef(false);
   const ownerSequence = useRef(0);
@@ -228,6 +274,8 @@ export default function RewardsClient({
   const [catalogNotice, setCatalogNotice] = useState<{ source: RewardDialogSource; text: string } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReward, setEditingReward] = useState<Reward | null>(null);
+  const [creationPrograms, setCreationPrograms] = useState<RewardCreationProgramsState | null>(null);
+  const [creationProgramId, setCreationProgramId] = useState("");
   
   // Form State
   const [code, setCode] = useState("");
@@ -247,6 +295,9 @@ export default function RewardsClient({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const feedbackRef = useRef<HTMLDivElement>(null);
   const currentOwner = owner.current && !owner.current.retired && sameRewardDialogSource(owner.current.source, source) ? owner.current : null;
+  const currentCreationPrograms = creationPrograms?.owner === currentOwner ? creationPrograms : null;
+  const selectedCreationProgram = currentCreationPrograms?.phase === "ready"
+    ? currentCreationPrograms.options.programs.find(program => program.id === creationProgramId) : undefined;
   const effectiveScope = (tenantScope || customTenant).trim().toLowerCase();
   const reviewBlocked = reviewRequired.includes(effectiveScope);
   const readingCurrentCatalog = Boolean(catalogReading && catalogReader.current && sameRewardDialogSource(catalogReader.current.source, source));
@@ -284,7 +335,7 @@ export default function RewardsClient({
       if (previous.phase === "pending" || previous.phase === "uncertain") requireReview(previous);
       retire(previous); setIsModalOpen(false); setLoading(false); setMessage(null);
     }
-  }, [initialRewards, tenantScope, canWrite, isDemo, dataSource, availability]);
+  }, [initialRewards, tenantScope, canWrite, isDemo, dataSource, availability, explicitProgramSelection]);
   useEffect(() => {
     if (isModalOpen && owns(currentOwner) && !dialogRef.current?.open) dialogRef.current?.showModal();
   }, [isModalOpen, currentOwner]);
@@ -312,10 +363,41 @@ export default function RewardsClient({
     owner.current = { id: ++ownerSequence.current, source, phase: "idle", action: 0, scope: effectiveScope, retired: false, controller: null, timer: null, stop: null };
     setLoading(false); setMessage(null); setIsModalOpen(true); return true;
   };
+  async function loadCreationPrograms(candidate: RewardDialogOwner | null) {
+    if (!owns(candidate) || !candidate.source.explicitProgramSelection || candidate.source.isDemo || candidate.phase !== "idle" || candidate.controller) return;
+    const tenant = candidate.source.tenantScope;
+    const action = ++candidate.action;
+    const controller = new AbortController();
+    candidate.controller = controller;
+    setCreationProgramId("");
+    setCreationPrograms({ owner: candidate, phase: "loading" });
+    const deadline = new Promise<RewardCreationPrograms | null>(resolve => {
+      candidate.stop = () => resolve(null);
+      candidate.timer = setTimeout(() => { controller.abort(); resolve(null); }, REWARD_SAVE_DEADLINE_MS);
+    });
+    const request = (async (): Promise<RewardCreationPrograms | null> => {
+      try {
+        const response = await fetch("/api/admin/loyalty/programs?" + new URLSearchParams({ tenant }), {
+          method: "GET", credentials: "same-origin", cache: "no-store", signal: controller.signal,
+        });
+        if (!response.ok || response.headers.get("x-nexid-data-mode")?.trim().toLowerCase() !== "production") {
+          void response.body?.cancel().catch(() => {});
+          return null;
+        }
+        return parseRewardCreationPrograms(await response.json(), tenant);
+      } catch { return null; }
+    })();
+    const options = await Promise.race([request, deadline]);
+    if (!owns(candidate, action)) return;
+    if (candidate.timer !== null) clearTimeout(candidate.timer);
+    candidate.timer = null; candidate.stop = null; candidate.controller = null;
+    setCreationPrograms(options ? { owner: candidate, phase: "ready", options } : { owner: candidate, phase: "unavailable" });
+  }
   const openCreateModal = () => {
-    if (!beginDialog()) return;
+    if (isDemo || !beginDialog()) return;
     setEditingReward(null); setCode(""); setTitle(""); setDescription(""); setType("WINE_BOX"); setPointsCost(500);
     setStockTotal(100); setImageUrl("/images/wine_tasting.png"); setStatus("active"); setRequiresAgeGate(false); setNetworkVisible(true);
+    if (explicitProgramSelection) return loadCreationPrograms(owner.current);
   };
   const openEditModal = (reward: Reward) => {
     if (isDemo || dataSource !== "production" || !canEditReward(reward, tenantScope) || !beginDialog()) return;
@@ -383,7 +465,8 @@ export default function RewardsClient({
     let payload: ReturnType<typeof buildRewardSavePayload>;
     try {
       payload = buildRewardSavePayload(tenantScope || customTenant, { code, title, description, type, points_cost: pointsCost, stock_total: stockTotal,
-        image_url: imageUrl, status, requires_age_gate: requiresAgeGate, network_visible: networkVisible }, editingReward);
+        image_url: imageUrl, status, requires_age_gate: requiresAgeGate, network_visible: networkVisible }, editingReward,
+        explicitProgramSelection ? selectedCreationProgram?.id ?? "" : undefined);
     } catch (error) { setMessage({ type: "error", text: rewardSaveErrorCopy(error instanceof Error ? error.message : null) }); return; }
     if (reviewScopes.current.has(payload.tenant_slug)) return;
     candidate.scope = payload.tenant_slug; candidate.phase = "pending"; const action = ++candidate.action;
@@ -404,7 +487,14 @@ export default function RewardsClient({
         if (creating && response.status === 404) { void response.body?.cancel().catch(() => {}); return { kind: "refused", error: "reward_creation_unavailable" }; }
         const data: unknown = await response.json();
         const body = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : null;
-        if (response.ok && body?.ok === true) return { kind: "confirmed" };
+        if (response.ok && body?.ok === true) {
+          if (!creating || !explicitProgramSelection) return { kind: "confirmed" };
+          const reward = body.reward;
+          if (reward && typeof reward === "object" && !Array.isArray(reward)
+            && "id" in reward && typeof reward.id === "string" && rewardUuid.test(reward.id)
+            && "program_id" in reward && typeof reward.program_id === "string" && reward.program_id.toLowerCase() === payload.program_id) return { kind: "confirmed" };
+          return { kind: "uncertain" };
+        }
         return [400, 401, 403, 404, 409].includes(response.status) && body?.ok === false
           ? { kind: "refused", error: body.error } : { kind: "uncertain" };
       } catch { return { kind: "uncertain" }; }
@@ -418,7 +508,11 @@ export default function RewardsClient({
       candidate.phase = "confirmed";
       setMessage({ type: "success", text: creating ? "Nuevo beneficio creado. Consultá el catálogo para ver su estado actualizado." : "Beneficio actualizado. Consultá el catálogo para ver su estado actualizado." });
     } else if (result.kind === "refused") {
-      candidate.phase = "idle"; setMessage({ type: "error", text: rewardSaveErrorCopy(result.error) });
+      candidate.phase = "idle"; setMessage({ type: "error", text: rewardSaveErrorCopy(result.error, creating && explicitProgramSelection) });
+      if (creating && explicitProgramSelection && result.error === "loyalty_program_not_found") {
+        setCreationProgramId("");
+        setCreationPrograms({ owner: candidate, phase: "unavailable" });
+      }
     } else {
       requireReview(candidate);
       setMessage({ type: "error", text: "No pudimos confirmar el resultado. El guardado puede haberse completado. Conservamos tu formulario. Podés consultar el catálogo, pero la edición sigue en pausa porque esa consulta no confirma el guardado anterior." });
@@ -659,6 +753,26 @@ export default function RewardsClient({
               {/* Scope Selection for Super Admin */}
               {currentReadMessage && <p role="alert" className="text-sm text-amber-100">{currentReadMessage}</p>}
               <fieldset disabled={saveBlocked} aria-label="Datos del beneficio" className="min-w-0 space-y-4 border-0 p-0">
+              {explicitProgramSelection && !editingReward && <div className="space-y-2">
+                <label htmlFor="reward-edit-program" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Programa del beneficio
+                </label>
+                <select id="reward-edit-program" value={creationProgramId} required
+                  onChange={event => setCreationProgramId(event.target.value)}
+                  disabled={currentCreationPrograms?.phase !== "ready" || !currentCreationPrograms.options.programs.length}
+                  aria-describedby="reward-edit-program-help"
+                  className="w-full min-h-11 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-cyan-500">
+                  <option value="">Elegí un programa</option>
+                  {currentCreationPrograms?.phase === "ready" ? currentCreationPrograms.options.programs.map(program => (
+                    <option key={program.id} value={program.id}>{program.name.trim() || `Programa sin nombre · ${program.id}`} · {REWARD_PROGRAM_STATUSES[program.status]}</option>
+                  )) : null}
+                </select>
+                <p id="reward-edit-program-help" className="text-xs leading-relaxed text-slate-400" role="status">
+                  {rewardCreationProgramHelp(currentCreationPrograms)}
+                </p>
+                {currentCreationPrograms?.phase === "unavailable" ? <button type="button" onClick={() => loadCreationPrograms(currentOwner)}
+                  className="min-h-11 rounded-lg px-3 text-sm font-semibold text-cyan-100 underline underline-offset-4">Volver a consultar programas</button> : null}
+              </div>}
               {!tenantScope && !editingReward && (
                 <div>
                   <label htmlFor="reward-edit-tenant" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
@@ -874,7 +988,7 @@ export default function RewardsClient({
               <button
                 type="submit"
                 form="reward-edit-form"
-                aria-disabled={saveBlocked}
+                aria-disabled={saveBlocked || (explicitProgramSelection && !editingReward && !selectedCreationProgram)}
                 className="min-h-11 max-w-full rounded-xl bg-cyan-800 px-4 py-2 text-sm font-semibold text-[#ffffff] transition-colors hover:bg-cyan-700 aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
               >
                 {loading ? "Guardando..." : currentOwner.phase === "confirmed" ? "Guardado" : currentOwner.phase === "uncertain" ? "Resultado sin confirmar" : "Guardar Beneficio"}
