@@ -152,8 +152,11 @@ try {
       await page.keyboard.press("Enter");
       const heading = quick.getByRole("heading", { name: "Ubicación del TAP", exact: true });
       assert.ok(await heading.evaluate(node => node === document.activeElement), "Reopening returns focus to the expanded card heading");
+      const privacy = quick.locator("summary");
       await page.keyboard.press("Tab");
-      assert.ok(await firstButton.evaluate(node => node === document.activeElement), "Share location is the next keyboard action");
+      assert.ok(await privacy.evaluate(node => node === document.activeElement), "Privacy is reachable first from the reopened heading");
+      await page.keyboard.press("Tab");
+      assert.ok(await firstButton.evaluate(node => node === document.activeElement), "Share location follows the privacy disclosure");
       assert.equal(await page.evaluate(()=>window.fixtureGeoCalls),0,"Reopening is not consent");
       assert.equal(posts.length, 0, "Declining and reopening never submit location");
       assert.ok((await quick.locator("summary").boundingBox()).height>=44,"Privacy disclosure target remains at least 44px");
@@ -309,9 +312,9 @@ try {
     await context.close();
   }
   for (const copy of [
-    { locale: "es-AR", retry: "Reintentar", retryMessage: "La zona no se guardó esta vez", details: "Qué se comparte", conditional: "cuando esté disponible" },
-    { locale: "en", retry: "Try again", retryMessage: "The area was not saved this time", details: "What is shared", conditional: "when available" },
-    { locale: "pt-BR", retry: "Tentar novamente", retryMessage: "A área não foi salva desta vez", details: "O que é compartilhado", conditional: "quando disponível" },
+    { locale: "es-AR", retry: "Reintentar", retryMessage: "La zona no se guardó esta vez", privacyLabel: "Privacidad", details: "Qué se comparte", conditional: "cuando esté disponible" },
+    { locale: "en", retry: "Try again", retryMessage: "The area was not saved this time", privacyLabel: "Privacy", details: "What is shared", conditional: "when available" },
+    { locale: "pt-BR", retry: "Tentar novamente", retryMessage: "A área não foi salva desta vez", privacyLabel: "Privacidade", details: "O que é compartilhado", conditional: "quando disponível" },
   ]) {
     activeScenario = "localized_manual_retry"; activeLocale = copy.locale; recordPhase("scenario_start");
     const context = await browser.newContext({ viewport: { width: 320, height: 844 } }), page = await context.newPage();
@@ -342,8 +345,56 @@ try {
     const quick = page.getByTestId("sun-location-quick-action"), button = quick.getByTestId("sun-location-consent-cta");
     await page.waitForFunction(() => !document.querySelector('[data-testid="sun-location-consent-cta"]').disabled);
     recordPhase("fixture_ready");
-    await quick.locator("summary").filter({ hasText: copy.details }).click();
-    assert.ok((await quick.innerText()).includes(copy.conditional), "IP copy makes availability conditional in " + copy.locale);
+    const privacy = quick.locator("details > summary");
+    const privacyLabel = privacy.locator("span");
+    assert.ok(await privacyLabel.isVisible(), "The closed disclosure has a visible privacy label");
+    assert.equal(await privacyLabel.innerText(), copy.privacyLabel);
+    const accessibility = await context.newCDPSession(page);
+    try {
+      const { root } = await accessibility.send("DOM.getDocument", { depth: 0 });
+      const { nodeId } = await accessibility.send("DOM.querySelector", {
+        nodeId: root.nodeId, selector: '[data-testid="sun-location-quick-action"] details > summary',
+      });
+      assert.ok(nodeId, "The native disclosure is present");
+      const { nodes } = await accessibility.send("Accessibility.getPartialAXTree", { nodeId, fetchRelatives: false });
+      assert.equal(nodes[0]?.name?.value, `${copy.privacyLabel}. ${copy.details}`, "Native disclosure name starts with its visible label");
+    } finally {
+      await accessibility.detach();
+    }
+    const rootFont = await page.evaluate(() => {
+      const style = document.documentElement.style;
+      const saved = { value: style.getPropertyValue("font-size"), priority: style.getPropertyPriority("font-size") };
+      style.setProperty("font-size", "200%");
+      return saved;
+    });
+    try {
+      const geometry = await privacy.evaluate(node => {
+        const card = node.closest('[data-testid="sun-location-quick-action"]');
+        const copy = card.querySelector("h2").parentElement.getBoundingClientRect();
+        const box = node.getBoundingClientRect();
+        return {
+          touch: box.width >= 44 && box.height >= 44,
+          overlap: box.left < copy.right && box.right > copy.left && box.top < copy.bottom && box.bottom > copy.top,
+          overflow: node.scrollWidth > node.clientWidth + 1 ||
+            card.scrollWidth > card.clientWidth + 1 || document.documentElement.scrollWidth > window.innerWidth + 1,
+        };
+      });
+      assert.deepEqual(geometry, { touch: true, overlap: false, overflow: false }, "Privacy and heading fit at 200% root text in " + copy.locale);
+      await privacy.focus();
+      await page.keyboard.press("Enter");
+      assert.equal(await quick.locator("details").getAttribute("open"), "");
+      assert.ok(await privacy.evaluate(node => node === document.activeElement), "Opening preserves the native disclosure focus");
+      assert.ok((await quick.innerText()).includes(copy.conditional), "IP copy makes availability conditional in " + copy.locale);
+      assert.ok(await quick.evaluate(node => node.scrollWidth <= node.clientWidth + 1), "Expanded privacy text fits the card");
+      await page.keyboard.press("Enter");
+      assert.equal(await quick.locator("details").getAttribute("open"), null);
+    } finally {
+      await page.evaluate(saved => {
+        const style = document.documentElement.style;
+        if (saved.value) style.setProperty("font-size", saved.value, saved.priority);
+        else style.removeProperty("font-size");
+      }, rootFont);
+    }
     assert.equal(await page.evaluate(() => window.fixtureGeoCalls), 0, "Reading privacy is not location consent");
     assert.equal(posts.length, 0);
     recordPhase("consent");
