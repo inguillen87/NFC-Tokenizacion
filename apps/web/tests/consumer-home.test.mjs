@@ -149,8 +149,11 @@ test("verdict and membership states do not infer verification or an active club 
 });
 
 test("a real empty account shows actionable empty states, not an error, invented collection or default brand", () => {
-  const text = renderedText(render(empty()));
+  const payloads = empty();
+  payloads.account.stats = { products: 0, taps: 0 };
+  const text = renderedText(render(payloads));
   assert.match(text, /Tu próximo producto empieza con un tap/);
+  assert.match(text, /Aún no guardaste productos/);
   assert.match(text, /Aún no hay lecturas vinculadas/);
   assert.match(text, /Elegí con qué marcas conectar/);
   assert.match(text, /Tu cuenta/);
@@ -162,7 +165,7 @@ test("unavailable sources show retry and do not claim the account is empty or in
   assert.match(text, /No pudimos cargar algunos datos/);
   assert.match(text, /Reintentar carga/);
   assert.match(text, /No se pudo cargar el historial/);
-  assert.doesNotMatch(text, /Tu próximo producto|Aún no hay lecturas|Elegí con qué marcas|0 en tu cuenta|0 registradas/);
+  assert.doesNotMatch(text, /Tu próximo producto|Aún no guardaste productos|Aún no hay lecturas|Elegí con qué marcas|0 productos|0 lecturas/);
 });
 
 test("partial failures preserve real products and links; email is rendered once in the account card", () => {
