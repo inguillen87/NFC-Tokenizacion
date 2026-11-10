@@ -1078,6 +1078,16 @@ async function forward(req: Request, path: string[]) {
   const ticketPatch = req.method === "PATCH" && /^tickets\/[^/]+$/.test(normalizedPath);
   const criticalGet = req.method === "GET" && (normalizedPath === "analytics" || normalizedPath === "sun/physical-taps" || normalizedPath === "security-alerts" || normalizedPath === "alerts" || normalizedPath === "alert-rules" || normalizedPath === "tokenization/requests" || normalizedPath === "polygon/wallet");
   const reqUrl = new URL(req.url);
+  const rewardPrograms = normalizedPath === "loyalty/programs";
+  const requestedProgramTenant = rewardPrograms ? reqUrl.searchParams.get("tenant") : null;
+  if (rewardPrograms) {
+    const headers = { "cache-control": "private, no-store" };
+    if (req.method !== "GET") return NextResponse.json({ ok: false, reason: "reward_programs_method_not_allowed" }, { status: 405, headers: { ...headers, allow: "GET" } });
+    if (process.env.DASHBOARD_REWARD_PROGRAM_SELECTION_ENABLED !== "true") return NextResponse.json({ ok: false, reason: "reward_programs_unavailable" }, { status: 404, headers });
+    if (!requestedProgramTenant || [...reqUrl.searchParams.keys()].length !== 1) {
+      return NextResponse.json({ ok: false, reason: "reward_programs_tenant_required" }, { status: 400, headers });
+    }
+  }
   const forceSandbox = ["1", "true", "sandbox"].includes(String(reqUrl.searchParams.get("sandbox") || reqUrl.searchParams.get("demoFallback") || "").toLowerCase());
   reqUrl.searchParams.delete("sandbox");
   reqUrl.searchParams.delete("demoFallback");
@@ -1105,6 +1115,9 @@ async function forward(req: Request, path: string[]) {
   const demoSession = Boolean(dashboardSession?.isDemo) || isDemoSession(req);
   const scopedRole = demoSession ? "readonly_demo" : dashboardSession?.role ? dashboardRoleToScope(dashboardSession.role) : null;
   const allowDemoFallbackForRequest = policy.allowDemoFallback || (demoSession && !isProduction);
+  if (rewardPrograms && (!credential?.bearerToken || !dashboardSession || demoSession)) {
+    return NextResponse.json({ ok: false, reason: "reward_programs_session_required" }, { status: demoSession ? 403 : 401, headers: { "cache-control": "private, no-store" } });
+  }
 
   if ((req.method === "GET" && /^tickets\/[^/]+(?:\/history)?$/.test(normalizedPath)) || ticketPatch) {
     if (ticketPatch && (req.headers.get("origin") !== reqUrl.origin || (req.headers.has("sec-fetch-site") && req.headers.get("sec-fetch-site") !== "same-origin"))) {
@@ -1138,6 +1151,9 @@ async function forward(req: Request, path: string[]) {
   if (dashboardSession) {
     try {
       const tenantScope = resolveDashboardTenantScope(dashboardSession, reqUrl.searchParams.get("tenant"));
+      if (rewardPrograms && tenantScope.tenantSlug !== requestedProgramTenant) {
+        return NextResponse.json({ ok: false, reason: "reward_programs_tenant_forbidden" }, { status: 403, headers: { "cache-control": "private, no-store" } });
+      }
       if (tenantScope.tenantSlug) reqUrl.searchParams.set("tenant", tenantScope.tenantSlug);
       else reqUrl.searchParams.delete("tenant");
     } catch (error) {
@@ -1368,7 +1384,7 @@ async function forward(req: Request, path: string[]) {
       "Content-Type": "application/json",
       Authorization: `Bearer ${credential?.bearerToken || ""}`,
     });
-    for (const header of ["idempotency-key", "x-nexid-trace-id", "if-match"]) {
+    for (const header of rewardPrograms ? [] : ["idempotency-key", "x-nexid-trace-id", "if-match"]) {
       const value = req.headers.get(header);
       if (value) forwardedHeaders.set(header, value);
     }
@@ -1377,6 +1393,7 @@ async function forward(req: Request, path: string[]) {
       headers: forwardedHeaders,
       body,
       cache: "no-store",
+      ...(rewardPrograms ? { redirect: "error", signal: req.signal } : {}),
     });
   } catch {
     return unavailable("Admin upstream unreachable.");
@@ -1408,7 +1425,8 @@ async function forward(req: Request, path: string[]) {
     return unavailable("Admin upstream returned invalid payload.");
   }
   const headers = new Headers({ "Content-Type": response.headers.get("content-type") || "application/json" });
-  headers.set("Cache-Control", response.headers.get("cache-control") || "no-store");
+  if (rewardPrograms) headers.set("Cache-Control", "private, no-store");
+  else headers.set("Cache-Control", response.headers.get("cache-control") || "no-store");
   for (const header of [
     "content-disposition",
     "x-nexid-artifact-sha256",

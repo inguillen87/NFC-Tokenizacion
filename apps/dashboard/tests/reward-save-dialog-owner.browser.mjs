@@ -21,6 +21,13 @@ const hashes=async()=>Object.fromEntries(await Promise.all(sourcePaths.map(async
 const before=await hashes(),observedHead=execFileSync('git',['--no-optional-locks','-C',root,'rev-parse','HEAD'],{encoding:'utf8',windowsHide:true}).trim();
 if(process.env.QA_SOURCE){assert.equal(process.env.QA_SOURCE,observedHead);assert.equal(execFileSync('git',['--no-optional-locks','-C',root,'status','--porcelain'],{encoding:'utf8',windowsHide:true}).trim(),'');}
 const REWARD='10000000-0000-4000-8000-000000000001',PROGRAM='20000000-0000-4000-8000-000000000001';
+const DRAFT='20000000-0000-4000-8000-000000000002',PROGRAM_B='20000000-0000-4000-8000-000000000003',DRAFT_B='20000000-0000-4000-8000-000000000004';
+function programConfiguration(tenant){
+ return {ok:true,version:'admin-loyalty-program-options.v1',tenant,limit:100,truncated:false,programs:[
+  {id:tenant==='qa-b'?PROGRAM_B:PROGRAM,name:'Programa activo QA',status:'active'},
+  {id:tenant==='qa-b'?DRAFT_B:DRAFT,name:'Borrador reciente QA',status:'draft'},
+ ]};
+}
 const row={id:REWARD,program_id:PROGRAM,tenant_slug:'qa-a',code:'EXISTING',title:'Beneficio guardado QA',points:40,status:'active',description:'Texto sintético',type:'TOUR',image_url:null,stock_total:12,stock_remaining:10,requires_age_gate:false,network_visible:false,reservation_requirements:{version:'portal-reservation-requirements.v1',program:{association_confirmed:true}}};
 const globalTenants=['qa-a','empresa-global-'+ 's'.repeat(140)];
 const globalRows=globalTenants.map((tenant,index)=>({...row,id:index?'10000000-0000-4000-8000-000000000002':REWARD,tenant_slug:tenant,title:'Beneficio compartido QA'}));
@@ -28,7 +35,7 @@ const entry=`import React,{useState}from'react';import{flushSync}from'react-dom'
 window.__rewardRefreshes=0;window.__rewardRequests=[];const realFetch=window.fetch.bind(window);window.fetch=(input,init)=>{const url=new URL(typeof input==='string'?input:input.url,location.href),record={path:url.pathname,query:url.search,method:init?.method||'GET',cache:init?.cache,credentials:init?.credentials,hasBody:init?.body!==undefined,hasSignal:Boolean(init?.signal),headers:false,bodySettled:false};if(url.origin===location.origin&&url.pathname.startsWith('/api/'))window.__rewardRequests.push(record);return realFetch(input,init).then(response=>{record.headers=true;const json=response.json.bind(response);response.json=()=>json().finally(()=>{record.bodySettled=true});return response;});};
 const initial=${JSON.stringify(row)},rowsA=new URLSearchParams(location.search).has('historical')?[{...initial,status:'archived',type:'SERVICE'},{...initial,id:'10000000-0000-4000-8000-000000000002',code:'S'.repeat(200),title:'Beneficio histórico QA',points:null,status:'legacy',type:null}]:[initial],rowsB=[{...initial,tenant_slug:'qa-b',title:'Beneficio de otra empresa QA'}];const reactRoot=createRoot(document.getElementById('root'));
 function Fixture(){
- const [props,setProps]=useState({initialRewards:rowsA,tenantScope:'qa-a',catalogScope:'tenant',isDemo:false,canWrite:true,dataSource:'production',availability:'ready',sourceReason:''});
+ const [props,setProps]=useState({initialRewards:rowsA,tenantScope:'qa-a',catalogScope:'tenant',isDemo:false,canWrite:true,dataSource:'production',availability:'ready',sourceReason:'',explicitProgramSelection:true});
  window.__rewardChangeSource=kind=>flushSync(()=>setProps(old=>kind==='tenant'?{...old,tenantScope:'qa-b',initialRewards:rowsB}:kind==='permission'?{...old,canWrite:false}:{...old,dataSource:'unavailable',availability:'upstream_error',initialRewards:[]}));
  window.__rewardShowGlobal=(catalogScope,dataSource='production')=>flushSync(()=>setProps(old=>({...old,initialRewards:${JSON.stringify(globalRows)},tenantScope:'',catalogScope,isDemo:dataSource==='demo',canWrite:false,dataSource})));
  return <main className='dashboard-app mx-auto max-w-6xl p-4'><h1 className='text-2xl font-bold'>Beneficios · ensayo local</h1><p>Componentes reales, empresa y solicitudes sintéticas.</p><RewardsClient {...props}/></main>;
@@ -93,7 +100,7 @@ async function checkDialogActions(item,dialog,key){
 async function waitFor(label,predicate){const end=Date.now()+12000;while(!predicate()){assert(Date.now()<end,label);await new Promise(done=>setTimeout(done,15));}}
 async function open(width,theme,name){
  const context=await browser.newContext({viewport:{width,height:950},locale:'es-AR',colorScheme:theme,reducedMotion:'reduce',serviceWorkers:'block'});contexts.add(context);const page=await context.newPage();page.setDefaultTimeout(10000);
- const item={width,theme,name,posts:[],reads:[],passed:false,errors:[]},tasks=new Set();report.cases.push(item);let closing=false;
+ const item={width,theme,name,posts:[],reads:[],programReads:[],passed:false,errors:[]},tasks=new Set();report.cases.push(item);let closing=false;
  page.on('pageerror',error=>report.errors.push({name,width,theme,message:error.message}));
  const handler=async route=>{const request=route.request(),url=new URL(request.url());if(closing)return route.abort();
   if(url.origin!==origin){report.blockedRequests.push({name,method:request.method(),origin:url.origin,path:url.pathname});return route.abort();}
@@ -108,13 +115,28 @@ async function open(width,theme,name){
    let release;const gate=new Promise(done=>{release=done});const call={path:url.pathname,query:url.search,status:200,response:{ok:true,tenant,scope:'tenant',rewards:[{...row,tenant_slug:tenant,title:'Estado consultado QA'}]},release};item.reads.push(call);await gate;if(closing)return route.abort();
    return route.fulfill({status:call.status,contentType:'application/json',headers:{'x-nexid-data-mode':'production'},body:JSON.stringify(call.response)});
   }
+  if(request.method()==='GET'&&url.pathname==='/api/admin/loyalty/programs'){
+   assert.equal(url.searchParams.size,1);const tenant=url.searchParams.get('tenant');assert(['qa-a','qa-b'].includes(tenant));
+   item.programReads.push({path:url.pathname,query:url.search});
+   return route.fulfill({status:200,contentType:'application/json',headers:{'x-nexid-data-mode':'production'},body:JSON.stringify(programConfiguration(tenant))});
+  }
   if(request.method()==='GET'&&['/','/fixture.js','/favicon.ico','/images/wine_tasting.png'].includes(url.pathname))return route.continue();
   report.blockedRequests.push({name,method:request.method(),path:url.pathname});return route.abort();
  };
  await page.route('**/*',route=>{const task=handler(route);tasks.add(task);task.finally(()=>tasks.delete(task)).catch(error=>{if(!closing)report.errors.push({name,width,theme,message:String(error)})});return task;});
  await page.goto(origin+'/?theme='+theme+(name==='historical-catalog'?'&historical=1':''),{waitUntil:'networkidle'});
  const dialog=page.getByRole('dialog'),newButton=page.getByRole('button',{name:'Nuevo Beneficio',exact:true});
- async function fillNew(code='NEW',title='Título conservado QA'){await newButton.click();await dialog.waitFor();await dialog.getByLabel('Código de Control',{exact:true}).fill(code);await dialog.getByLabel('Título del Beneficio',{exact:true}).fill(title);await dialog.getByLabel('Costo en Puntos',{exact:true}).fill('40');await dialog.getByLabel('Stock total',{exact:true}).fill('12');}
+ async function fillNew(code='NEW',title='Título conservado QA'){
+  await newButton.click();await dialog.waitFor();
+  const program=dialog.getByLabel('Programa del beneficio',{exact:true});
+  await program.locator('option').filter({hasText:'Programa activo QA'}).waitFor({state:'attached'});
+  if(name==='current-409-retains-fields'){
+   check(item,await program.inputValue()===''&&await dialog.getByRole('button',{name:'Guardar Beneficio',exact:true}).isDisabled(),'new reward cannot infer the first or latest program');
+   check(item,(await program.locator('option').allTextContents()).includes('Borrador reciente QA · Borrador'),'the recent draft is explicitly identified');
+  }
+  await program.selectOption({label:'Programa activo QA · Activo'});
+  await dialog.getByLabel('Código de Control',{exact:true}).fill(code);await dialog.getByLabel('Título del Beneficio',{exact:true}).fill(title);await dialog.getByLabel('Costo en Puntos',{exact:true}).fill('40');await dialog.getByLabel('Stock total',{exact:true}).fill('12');
+ }
  async function submit(){await dialog.locator('form').evaluate(form=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));await waitFor('at least one deliberate POST',()=>item.posts.length>0);}
  async function releasePost(status=409,body={ok:false,error:'reward_create_conflict'}){const call=item.posts[0];call.status=status;call.response=body;call.release();await settle(page);}
  async function finish(){closing=true;for(const call of [...item.posts,...item.reads])call.release();await Promise.allSettled([...tasks]);await context.close();contexts.delete(context);}
@@ -175,7 +197,8 @@ async function runCase(width,theme,name){const f=await open(width,theme,name),{p
    if(name==='current-409-retains-fields'){
     await dialog.getByRole('button',{name:'Guardar Beneficio',exact:true}).click();
     await waitFor('a native footer click submits the form',()=>item.posts.length>0);
-    check(item,item.posts.length===1,'one footer click issues one deliberate save');
+    check(item,item.posts.length===1&&item.posts[0].body.program_id===PROGRAM,'one footer click saves the explicitly selected program');
+    check(item,item.programReads.length===1&&item.programReads[0].query==='?tenant=qa-a','creation reads programs only for its company');
    }else await f.submit();
    if(name==='double-submit'){
     await dialog.locator('form').evaluate(form=>{form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));});await settle(page);
@@ -247,8 +270,8 @@ async function runCase(width,theme,name){const f=await open(width,theme,name),{p
     check(item,await dialog.count()===1&&await dialog.getByLabel('Título del Beneficio',{exact:true}).inputValue()===before,'a successful catalogue read retains the uncertain form and typed fields');
     await dialog.locator('form').evaluate(form=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));await f.newButton.evaluate(node=>node.click());await settle(page);
     check(item,item.posts.length===1&&item.reads.length===2,'a valid read cannot enable another write while the earlier result is uncertain');
-    const observed=await page.evaluate(()=>window.__rewardRequests.filter(r=>r.method==='GET'));
-    check(item,observed.every(r=>r.path==='/api/admin/loyalty/rewards'&&r.cache==='no-store'&&r.credentials==='same-origin'&&!r.hasBody&&r.hasSignal),'review requests use the existing bounded private GET without a body');
+    const observed=await page.evaluate(()=>window.__rewardRequests.filter(r=>r.method==='GET'&&r.path==='/api/admin/loyalty/rewards'));
+    check(item,observed.length===2&&observed.every(r=>r.cache==='no-store'&&r.credentials==='same-origin'&&!r.hasBody&&r.hasSignal),'review requests use the existing bounded private GET without a body');
    }
   }
   check(item,report.blockedRequests.length===0,'case attempted no external or unexpected path');

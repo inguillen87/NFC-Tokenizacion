@@ -172,6 +172,7 @@ export default async function RewardsPage({ searchParams }: { searchParams?: Pro
       catalogScope={rewardsResult.catalogScope}
       isDemo={Boolean(session.isDemo)}
       canWrite={canWrite}
+      explicitProgramSelection={process.env.DASHBOARD_REWARD_PROGRAM_SELECTION_ENABLED === "true"}
       dataSource={rewardsResult.dataSource}
       availability={rewardsResult.availability}
       sourceReason={rewardsResult.reason}
