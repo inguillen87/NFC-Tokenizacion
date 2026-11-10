@@ -172,7 +172,8 @@ test("partial failures preserve real products and links; email is rendered once 
   assert.match(html, /src="\/images\/real-filter.jpg"/);
   assert.match(html, /No se pudo cargar el historial/);
   assert.equal((html.match(/alex@example\.test/g) || []).length, 1);
-  assert.match(html, /250 registradas en tu cuenta/);
+  assert.match(html, /1 producto en tu cuenta/);
+  assert.match(html, /250 lecturas registradas/);
   assert.match(html, /Hola, Alex/);
 });
 
@@ -189,11 +190,19 @@ test("home shows only five recent real readings and three memberships without su
   assert.match(html, /Horarios en UTC/);
   assert.match(html, /Membresía pendiente/);
   assert.match(html, /Puntos no informados/);
-  assert.doesNotMatch(html, /Marca D|210|12 registradas en tu cuenta|Autenticación verificada/);
+  assert.doesNotMatch(html, /Marca D|210|12 lecturas registradas|Autenticación verificada/);
 });
 
 test("home destinations exist, wallet/catalog stay accessible, and no demo/checkout control is promoted to a real action", () => {
   const html = render(empty());
+  const welcome = html.match(/<section[^>]+aria-labelledby="home-welcome-title">([\s\S]*?)<\/section>/)?.[1];
+  assert.ok(welcome);
+  assert.deepEqual([...welcome.matchAll(/href="([^"]+)"/g)].map((match) => match[1]), ["/me/products", "/me/taps", "/me/rewards"]);
+  assert.match(welcome, /Volvé a tus fichas guardadas/);
+  assert.match(welcome, /Volvé a una lectura anterior/);
+  const explicitCounts = render({ ...empty(), account: { ok: true, consumer: {}, stats: { products: 0, taps: 1 } } });
+  assert.match(explicitCounts, /Aún no guardaste productos/);
+  assert.match(explicitCounts, /1 lectura registrada/);
   const hrefs = [...html.matchAll(/href="(\/me(?:\/[^"?]+)?)"/g)].map((match) => match[1]);
   for (const href of hrefs) assert.ok(existsSync(new URL(`../src/app${href}/page.tsx`, import.meta.url)), href);
   assert.ok(hrefs.includes("/me/marketplace"));
