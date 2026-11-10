@@ -1,6 +1,6 @@
 import {loyaltyOverviewReadinessPriorHash} from './helpers/loyalty-overview-readiness-reviewed-sources.mjs';
 import {loyaltyOverviewRecoveryPriorHash} from './helpers/loyalty-overview-recovery-reviewed-sources.mjs';
-import {REWARD_DIALOG_SOURCE_BASE,REWARD_DIALOG_REVIEWED_SOURCES,rewardCatalogHistoricalPriorHash,rewardDialogHistoricalPriorHash,rewardDialogPriorHash,rewardStockDisplayHistoricalPriorHash} from './helpers/reward-dialog-reviewed-sources.mjs';
+import {REWARD_DIALOG_SOURCE_BASE,REWARD_DIALOG_REVIEWED_SOURCES,rewardCatalogHistoricalPriorHash,rewardDialogAppearanceHistoricalPriorHash,rewardDialogHistoricalPriorHash,rewardDialogPriorHash,rewardStockDisplayHistoricalPriorHash} from './helpers/reward-dialog-reviewed-sources.mjs';
 import {CUSTOMER_FEEDBACK_ADDED,customerFeedbackPriorHash,customerFeedbackPriorInventory,assertCustomerFeedbackAdded} from './helpers/customer-feedback-reviewed-sources.mjs';
 import {crmFilterContextPriorHash} from './helpers/crm-filter-context-reviewed-sources.mjs';
 import {catalogConfirmationPriorHash} from './helpers/catalog-confirmation-reviewed-sources.mjs';
@@ -181,12 +181,20 @@ test('the rewards catalog preserves exact page and historical card origins',asyn
  }
 });
 
-test('the reward dialog appearance requires the exact current client source',async()=>{
+test('the reward dialog appearance retains its exact historical source',()=>{
+ const path='apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx';
+ const appearance='f09a91e2e26e57e7b7b8d9f1f8caf66676a7d35f78aa2104c57322d514d30404';
+ assert.equal(rewardDialogAppearanceHistoricalPriorHash(path,appearance),REWARD_DIALOG_REVIEWED_SOURCES[path].before);
+ const priorCatalog='9c1af29f8e415cee6c4c6084a650af70682e0ee413215d9eb89cdd784715ffcc';
+ const priorProposal='7f20baf68320068e1f06a7bfb7270706bc39c405c4b3a387bd29edf762603b86';
+ for(const rejected of [priorCatalog,priorProposal,appearance.slice(0,-1)+'0'])assert.throws(()=>rewardDialogAppearanceHistoricalPriorHash(path,rejected),/exact reviewed reward dialog appearance/);
+});
+
+test('the reward dialog actions require the exact current client source',async()=>{
  const path='apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx';
  const text=(await readFile(new URL('../src/app/(app)/loyalty/rewards/rewards-client.tsx',import.meta.url),'utf8')).replaceAll('\r\n','\n');
  const actual=createHash('sha256').update(text).digest('hex');
  assert.equal(rewardDialogPriorHash(path,actual),REWARD_DIALOG_REVIEWED_SOURCES[path].before);
- const priorCatalog='9c1af29f8e415cee6c4c6084a650af70682e0ee413215d9eb89cdd784715ffcc';
- const priorProposal='7f20baf68320068e1f06a7bfb7270706bc39c405c4b3a387bd29edf762603b86';
- for(const rejected of [priorCatalog,priorProposal,createHash('sha256').update(text+'\n').digest('hex')])assert.throws(()=>rewardDialogPriorHash(path,rejected),/exact reviewed reward dialog appearance/);
+ const appearance='f09a91e2e26e57e7b7b8d9f1f8caf66676a7d35f78aa2104c57322d514d30404';
+ for(const rejected of [appearance,createHash('sha256').update(text+'\n').digest('hex')])assert.throws(()=>rewardDialogPriorHash(path,rejected),/exact reviewed reward dialog actions/);
 });

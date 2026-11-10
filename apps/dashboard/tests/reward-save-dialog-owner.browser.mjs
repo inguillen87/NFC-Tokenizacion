@@ -61,6 +61,27 @@ async function checkFeedbackContrast(item,feedback){
  item.feedbackContrast={...colors,ratio};
  check(item,colors.opaque&&colors.foreground[3]===255&&colors.background[3]===255&&ratio>=4.5,'rendered feedback text has at least 4.5:1 contrast on an opaque surface');
 }
+async function checkDialogActions(item,dialog,key){
+ const layout=await dialog.evaluate(node=>{
+  const form=node.querySelector('form'),footer=node.querySelector('footer');
+  const save=footer.querySelector('button[type="submit"]'),cancel=footer.querySelector('button[type="button"]');
+  const visible=button=>{
+   const {left,right,top,bottom,width,height}=button.getBoundingClientRect();
+   const center=document.elementFromPoint((left+right)/2,(top+bottom)/2);
+   return width>=44&&height>=44&&left>=0&&right<=innerWidth&&top>=0&&bottom<=innerHeight&&button.contains(center);
+  };
+  const initialScroll=form.scrollTop;
+  form.scrollTop=0;
+  const top={visible:visible(save)&&visible(cancel),y:footer.getBoundingClientRect().top};
+  form.scrollTop=form.scrollHeight;
+  const bottom={visible:visible(save)&&visible(cancel),y:footer.getBoundingClientRect().top};
+  const scrolled=form.scrollTop>0;
+  form.scrollTop=initialScroll;
+  return {top,bottom,scrolled,sameForm:save.form===form,noHorizontalOverflow:form.scrollWidth<=form.clientWidth+1};
+ });
+ item[key]=layout;
+ check(item,layout.sameForm&&layout.scrolled&&layout.top.visible&&layout.bottom.visible&&Math.abs(layout.top.y-layout.bottom.y)<1&&layout.noHorizontalOverflow,'form actions stay visible and associated with the form at both scroll ends');
+}
 async function waitFor(label,predicate){const end=Date.now()+12000;while(!predicate()){assert(Date.now()<end,label);await new Promise(done=>setTimeout(done,15));}}
 async function open(width,theme,name){
  const context=await browser.newContext({viewport:{width,height:950},locale:'es-AR',colorScheme:theme,reducedMotion:'reduce',serviceWorkers:'block'});contexts.add(context);const page=await context.newPage();page.setDefaultTimeout(10000);
@@ -127,7 +148,11 @@ async function runCase(width,theme,name){const f=await open(width,theme,name),{p
    }else if(name==='success-no-timer'){
     await dialog.getByRole('button',{name:'Sin imagen',exact:true}).click();
    }
-   await f.submit();
+   if(name==='current-409-retains-fields'){
+    await dialog.getByRole('button',{name:'Guardar Beneficio',exact:true}).click();
+    await waitFor('a native footer click submits the form',()=>item.posts.length>0);
+    check(item,item.posts.length===1,'one footer click issues one deliberate save');
+   }else await f.submit();
    if(name==='double-submit'){
     await dialog.locator('form').evaluate(form=>{form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));});await settle(page);
     check(item,item.posts.length===1,'repeated current-owner submit events cannot issue another POST');await f.releasePost();
@@ -174,6 +199,13 @@ async function runCase(width,theme,name){const f=await open(width,theme,name),{p
     check(item,item.posts[0].body.image_url==='/images/wine_crate.png'&&await dialog.getByRole('button',{name:'Caja de seis botellas',pressed:true}).count()===1,'preset uses its existing asset value and survives a refused save');
     check(item,await dialog.getByLabel('Código de Control',{exact:true}).inputValue()==='NEW'&&await dialog.getByLabel('Título del Beneficio',{exact:true}).inputValue()==='Título conservado QA','current refusal preserves the typed fields');
     check(item,(await alert.innerText()).includes('otro código')&&await alert.evaluate(node=>node===document.activeElement),'current duplicate refusal offers deliberate recovery and focuses neutral feedback');
+    await checkDialogActions(item,dialog,'footerLayout');
+    const save=dialog.getByRole('button',{name:'Guardar Beneficio',exact:true}),close=dialog.getByRole('button',{name:'Cerrar edición del beneficio',exact:true});
+    await save.focus();await page.keyboard.press('Tab');
+    check(item,await close.evaluate(node=>node===document.activeElement),'Tab wraps from the footer to the first dialog control');
+    await page.keyboard.press('Shift+Tab');
+    check(item,await save.evaluate(node=>node===document.activeElement),'Shift+Tab wraps back to the footer');
+    await alert.focus();
    }else if(name==='old-api-404'){
     const call=item.posts[0];call.status=404;call.raw='<html>old deployment QA</html>';call.release();await dialog.getByRole('alert').waitFor();
     check(item,item.posts.length===1&&call.path==='/api/admin/loyalty/rewards/create','unsupported strict endpoint never falls back to the old upsert path');
@@ -200,6 +232,12 @@ async function runCase(width,theme,name){const f=await open(width,theme,name),{p
    await page.addScriptTag({content:axe});const violations=await page.evaluate(async()=>(await axe.run('dialog',{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)})));item.violations=violations;
    check(item,violations.length===0,'the current feedback/dialog has no axe violations in this fixture');check(item,await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'page has no horizontal overflow');
    const screenshot=name+'-'+width+'-'+theme+'.png';await page.screenshot({path:join(output,screenshot),fullPage:false});item.screenshot=screenshot;
+   if(name==='current-409-retains-fields'&&width===390){
+    await page.setViewportSize({width:320,height:568});
+    await page.addStyleTag({content:'html { font-size: 125% !important; }'});
+    await settle(page);
+    await checkDialogActions(item,dialog,'compactFooterLayout');
+   }
   }
   item.passed=true;
  }catch(error){item.failure=String(error.stack||error);}finally{await f.finish();}
