@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID, createHash } from "node:crypto";
 import { AsyncLocalStorage } from "node:async_hooks";
+import { readFile } from "node:fs/promises";
 import { assertQaPostgresClientIdentity } from './ownership-current-state-postgres-harness.mjs';
 
 const OWN_SCHEMA = /^loyalty_current_qa_[0-9a-f]{32}$/;
@@ -227,6 +228,112 @@ export async function runLoyaltyCurrentStatePostgresQa({ connect, dockerAttestat
       for(const row of results) if(row.status==="rejected") throw row.reason;
       return results.map(row=>row.value);
     }
+
+    await check("admin loyalty overview reads real tenant aggregates without writing loyalty state", async () => {
+      const tenantA = { id: randomUUID(), slug: "qa-overview-a" };
+      const tenantB = { id: randomUUID(), slug: "qa-overview-b" };
+      const emptyTenant = { id: randomUUID(), slug: "qa-overview-empty" };
+      const [programA, emptyProgramA, draftProgramA, programB] = Array.from({ length: 4 }, () => randomUUID());
+      await admin.query(`INSERT INTO ${s}.tenants (id, slug) VALUES ($1, $2), ($3, $4), ($5, $6)`, [
+        tenantA.id, tenantA.slug, tenantB.id, tenantB.slug, emptyTenant.id, emptyTenant.slug,
+      ]);
+      await admin.query(`INSERT INTO ${s}.loyalty_programs (id, tenant_id, status)
+        VALUES ($1, $2, 'active'), ($3, $2, 'active'), ($4, $2, 'draft'), ($5, $6, 'active')`, [
+        programA, tenantA.id, emptyProgramA, draftProgramA, programB, tenantB.id,
+      ]);
+      await admin.query(`INSERT INTO ${s}.loyalty_members (tenant_id, program_id, member_key)
+        VALUES ($1, $2, 'overview-a1'), ($1, $2, 'overview-a2'), ($1, $3, 'overview-draft'), ($4, $5, 'overview-b1')`, [
+        tenantA.id, programA, draftProgramA, tenantB.id, programB,
+      ]);
+      await admin.query(`INSERT INTO ${s}.points_ledger (tenant_id, program_id, member_id, source, delta)
+        SELECT member.tenant_id, member.program_id, member.id, 'ADMIN_ADJUSTMENT'::${s}.points_source, entry.delta
+        FROM (VALUES ('overview-a1', 40), ('overview-a2', 20), ('overview-a1', -15),
+          ('overview-draft', 800), ('overview-b1', 500), ('overview-b1', -2)) AS entry(member_key, delta)
+        JOIN ${s}.loyalty_members member USING (member_key)`);
+
+      const routeSource = await readFile(new URL("../../src/app/admin/loyalty/overview/route.ts", import.meta.url));
+      const { default: ts } = await import("typescript");
+      const auth = await import("../../src/lib/auth.ts");
+      const http = await import("../../src/lib/http.ts");
+      const sessions = new WeakMap();
+      // Keep the real permission and tenant checks. The local fixture resolver
+      // replaces persisted IAM, whose normal session refresh writes separately.
+      const dependencies = {
+        "../../../../lib/auth": {
+          checkAdminWithPermission: (request, permission) =>
+            auth.checkAdminWithPermission(request, permission, async () => sessions.get(request) ?? null),
+          getAdminTenantAccess: auth.getAdminTenantAccess,
+        },
+        "../../../../lib/db": db,
+        "../../../../lib/http": http,
+      };
+      const compiled = ts.transpileModule(routeSource.toString("utf8"), {
+        compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
+      }).outputText;
+      const module = { exports: {} };
+      new Function("require", "module", "exports", compiled)(name => {
+        assert.ok(Object.hasOwn(dependencies, name), `Unexpected overview dependency: ${name}`);
+        return dependencies[name];
+      }, module, module.exports);
+
+      const overviewRequest = (tenant, requestedTenant, permissions) => {
+        const url = new URL("https://api.nexid.test/admin/loyalty/overview");
+        url.searchParams.set("tenant", requestedTenant);
+        const request = new Request(url, { headers: tenant ? { authorization: "Bearer synthetic-overview-session" } : {} });
+        if (tenant) sessions.set(request, {
+          id: randomUUID(), userId: randomUUID(), email: "overview@example.test", label: "Synthetic overview",
+          role: "marketing-manager", tenantId: tenant.id, tenantSlug: tenant.slug, permissions, deniedPermissions: [],
+          mfaVerified: true, expiresAt: new Date(Date.now() + 60_000).toISOString(), rotatedCookieValue: null,
+        });
+        return request;
+      };
+      const persistedOverviewState = async () => {
+        const state = {};
+        for (const table of ["tenants", "loyalty_programs", "loyalty_members", "points_ledger"]) {
+          state[table] = (await observer.query(`SELECT * FROM ${s}."${table}" ORDER BY id`)).rows;
+        }
+        return state;
+      };
+      const before = await persistedOverviewState();
+      const scenarios = [
+        { tenant: tenantA, requestedTenant: tenantB.slug, expected: { active_programs: 2, total_members: 2, points_issued: 60, points_redeemed: 15 } },
+        { tenant: tenantB, requestedTenant: tenantA.slug, expected: { active_programs: 1, total_members: 1, points_issued: 500, points_redeemed: 2 } },
+        { tenant: emptyTenant, requestedTenant: tenantA.slug, expected: { active_programs: 0, total_members: 0, points_issued: 0, points_redeemed: 0 } },
+      ];
+      await observer.query("BEGIN READ ONLY");
+      try {
+        const { rows } = await observer.query("SHOW transaction_read_only");
+        assert.equal(rows[0].transaction_read_only, "on");
+        // Let the shared migration watermark check run before counting route queries.
+        await executionClient.run(observer, () => db.sql`SELECT 1`);
+        const get = request => executionClient.run(observer, () => module.exports.GET(request));
+        const deniedOffset = report.statements.length;
+        assert.equal((await get(overviewRequest(null, tenantA.slug, []))).status, 401);
+        assert.equal((await get(overviewRequest(tenantA, tenantA.slug, []))).status, 403);
+        assert.equal(report.statements.length, deniedOffset, "Authorization must precede loyalty SQL");
+        for (const { tenant, requestedTenant, expected } of scenarios) {
+          const offset = report.statements.length;
+          const response = await get(overviewRequest(tenant, requestedTenant, ["crm:read"]));
+          assert.equal(response.status, 200);
+          assert.deepEqual(await response.json(), expected);
+          const reads = report.statements.slice(offset);
+          assert.equal(reads.length, 1, "One business aggregate per scoped GET");
+          assert.match(reads[0].text, /^\s*WITH active_programs AS MATERIALIZED\b/);
+          assert.deepEqual(reads[0].parameters, [tenant.slug, tenant.slug]);
+          assert.equal(reads[0].backendPid, pids[2], "Aggregate must execute on the read-only PostgreSQL connection");
+          assert.equal(reads[0].returnedRows, 1);
+          assert.ok(!reads[0].compatibilitySeedSkipped && !reads[0].error);
+        }
+      } finally {
+        await observer.query("ROLLBACK");
+      }
+      assert.deepEqual(await persistedOverviewState(), before);
+      return {
+        routeSourceSha256: createHash("sha256").update(routeSource).digest("hex"),
+        aggregateReads: scenarios.length, forcedTenantIsolation: true, confirmedZero: true, loyaltyStateUnchanged: true,
+        persistedIamExercised: false,
+      };
+    });
 
     for(const status of ["revoked","inactive"]) await check(`${status}: historical event remains readable, all TAP writes deny`,async()=>{
       const f=await fixture({tagStatus:status,lifecycle:status});

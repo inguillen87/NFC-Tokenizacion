@@ -84,10 +84,10 @@ async function notifyLead(payload: { lead: Record<string, unknown>; sourceBody: 
     webhookUrl
       ? postJson(webhookUrl, { type: "lead.created", lead, sourceBody: payload.sourceBody })
       : Promise.resolve({ ok: false, status: 0 }),
-    whatsappUrl
+    whatsappUrl && salesWhatsappTo
       ? postJson(whatsappUrl, {
         type: "lead.created",
-        to: salesWhatsappTo || clean(lead.phone),
+        to: salesWhatsappTo,
         text: message,
         lead,
       }, whatsappToken)
@@ -96,7 +96,7 @@ async function notifyLead(payload: { lead: Record<string, unknown>; sourceBody: 
 
   return {
     webhook: webhookUrl ? deliveries[0] : null,
-    whatsapp: whatsappUrl ? deliveries[1] : null,
+    whatsapp: whatsappUrl && salesWhatsappTo ? deliveries[1] : null,
   };
 }
 

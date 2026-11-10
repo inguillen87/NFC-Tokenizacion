@@ -169,7 +169,7 @@ test("commercial authorization permits intended specialists and rejects forged r
 
 test("commercial read endpoints authorize before schema or data access", async () => {
   const cases = [
-    ["../src/app/admin/loyalty/overview/route.ts", 'checkAdminWithPermission(req, "crm:read")', "await ensureLoyaltySchema()"],
+    ["../src/app/admin/loyalty/overview/route.ts", 'checkAdminWithPermission(req, "crm:read")', "const rows = await sql"],
     ["../src/app/admin/loyalty/trivia/overview/route.ts", 'checkAdminWithPermission(req, "campaigns:read")', "await ensureLoyaltySchema()"],
     ["../src/app/admin/consumer-network/offers/route.ts", 'checkAdminWithPermission(req, "marketplace:read")', "await ensureConsumerPortalSchema()"],
   ];
