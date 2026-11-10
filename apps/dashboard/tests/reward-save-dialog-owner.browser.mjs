@@ -22,10 +22,18 @@ const before=await hashes(),observedHead=execFileSync('git',['--no-optional-lock
 if(process.env.QA_SOURCE){assert.equal(process.env.QA_SOURCE,observedHead);assert.equal(execFileSync('git',['--no-optional-locks','-C',root,'status','--porcelain'],{encoding:'utf8',windowsHide:true}).trim(),'');}
 const REWARD='10000000-0000-4000-8000-000000000001',PROGRAM='20000000-0000-4000-8000-000000000001';
 const row={id:REWARD,program_id:PROGRAM,tenant_slug:'qa-a',code:'EXISTING',title:'Beneficio guardado QA',points:40,status:'active',description:'Texto sintético',type:'TOUR',image_url:null,stock_total:12,stock_remaining:10,requires_age_gate:false,network_visible:false,reservation_requirements:{version:'portal-reservation-requirements.v1',program:{association_confirmed:true}}};
+const globalTenants=['qa-a','empresa-global-'+ 's'.repeat(140)];
+const globalRows=globalTenants.map((tenant,index)=>({...row,id:index?'10000000-0000-4000-8000-000000000002':REWARD,tenant_slug:tenant,title:'Beneficio compartido QA'}));
 const entry=`import React,{useState}from'react';import{flushSync}from'react-dom';import{createRoot}from'react-dom/client';import RewardsClient from'./src/app/(app)/loyalty/rewards/rewards-client';
 window.__rewardRefreshes=0;window.__rewardRequests=[];const realFetch=window.fetch.bind(window);window.fetch=(input,init)=>{const url=new URL(typeof input==='string'?input:input.url,location.href),record={path:url.pathname,query:url.search,method:init?.method||'GET',cache:init?.cache,credentials:init?.credentials,hasBody:init?.body!==undefined,hasSignal:Boolean(init?.signal),headers:false,bodySettled:false};if(url.origin===location.origin&&url.pathname.startsWith('/api/'))window.__rewardRequests.push(record);return realFetch(input,init).then(response=>{record.headers=true;const json=response.json.bind(response);response.json=()=>json().finally(()=>{record.bodySettled=true});return response;});};
 const initial=${JSON.stringify(row)},rowsA=new URLSearchParams(location.search).has('historical')?[{...initial,status:'archived',type:'SERVICE'},{...initial,id:'10000000-0000-4000-8000-000000000002',code:'S'.repeat(200),title:'Beneficio histórico QA',points:null,status:'legacy',type:null}]:[initial],rowsB=[{...initial,tenant_slug:'qa-b',title:'Beneficio de otra empresa QA'}];const reactRoot=createRoot(document.getElementById('root'));
-function Fixture(){const[props,setProps]=useState({initialRewards:rowsA,tenantScope:'qa-a',isDemo:false,canWrite:true,dataSource:'production',availability:'ready',sourceReason:''});window.__rewardChangeSource=kind=>flushSync(()=>setProps(old=>kind==='tenant'?{...old,tenantScope:'qa-b',initialRewards:rowsB}:kind==='permission'?{...old,canWrite:false}:{...old,dataSource:'unavailable',availability:'upstream_error',initialRewards:[]}));return <main className='dashboard-app mx-auto max-w-6xl p-4'><h1 className='text-2xl font-bold'>Beneficios · ensayo local</h1><p>Componentes reales, empresa y solicitudes sintéticas.</p><RewardsClient {...props}/></main>};window.__rewardReopenSameTurn=()=>{const previous=document.querySelector('dialog'),close=previous.querySelector('[aria-label="Cerrar edición del beneficio"]'),create=[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Nuevo Beneficio');flushSync(()=>{close.click();create.click()});window.__previousRewardDialog=previous;return previous===document.querySelector('dialog')};window.__rewardUnmount=()=>flushSync(()=>reactRoot.unmount());reactRoot.render(<Fixture/>);`;
+function Fixture(){
+ const [props,setProps]=useState({initialRewards:rowsA,tenantScope:'qa-a',catalogScope:'tenant',isDemo:false,canWrite:true,dataSource:'production',availability:'ready',sourceReason:''});
+ window.__rewardChangeSource=kind=>flushSync(()=>setProps(old=>kind==='tenant'?{...old,tenantScope:'qa-b',initialRewards:rowsB}:kind==='permission'?{...old,canWrite:false}:{...old,dataSource:'unavailable',availability:'upstream_error',initialRewards:[]}));
+ window.__rewardShowGlobal=(catalogScope,dataSource='production')=>flushSync(()=>setProps(old=>({...old,initialRewards:${JSON.stringify(globalRows)},tenantScope:'',catalogScope,isDemo:dataSource==='demo',canWrite:false,dataSource})));
+ return <main className='dashboard-app mx-auto max-w-6xl p-4'><h1 className='text-2xl font-bold'>Beneficios · ensayo local</h1><p>Componentes reales, empresa y solicitudes sintéticas.</p><RewardsClient {...props}/></main>;
+}
+window.__rewardReopenSameTurn=()=>{const previous=document.querySelector('dialog'),close=previous.querySelector('[aria-label="Cerrar edición del beneficio"]'),create=[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Nuevo Beneficio');flushSync(()=>{close.click();create.click()});window.__previousRewardDialog=previous;return previous===document.querySelector('dialog')};window.__rewardUnmount=()=>flushSync(()=>reactRoot.unmount());reactRoot.render(<Fixture/>);`;
 const report={schema:'nexid.reward-save-dialog-owner.native.v1',passed:false,releaseAcceptanceEligible:false,actualReact:true,actualComponent:true,nativeComponentCss:true,syntheticShell:true,syntheticProps:true,syntheticTransport:true,routerObserverStub:true,actualNext:false,realAuthentication:false,realDatabase:false,realProvider:false,physicalTap:false,backendReadOnlyCertified:false,notes:['No initializer or business write is added by the client GET; existing live IAM initialization/last_seen side effects are outside this synthetic fixture.','Cancellation may stop delivery of an old response; direct unit callbacks separately cover post-unmount/pre-effect ownership.'],observedHead,qaSource:process.env.QA_SOURCE||null,sourceBefore:before,sourceAfter:null,cases:[],checks:[],errors:[],blockedRequests:[],serverRequests:[],closure:{contexts:false,browser:false,server:false,esbuild:false}};
 await mkdir(output,{recursive:true});let browser,origin,js,css;const contexts=new Set(),bodyPlans=[];
 const server=createServer(async(req,res)=>{
@@ -124,7 +132,23 @@ async function runCase(width,theme,name){const f=await open(width,theme,name),{p
    await edit.click();await dialog.waitFor();
    check(item,await dialog.locator('#reward-edit-status').inputValue()==='archived','editor keeps archived status');
    check(item,await dialog.locator('select').evaluateAll(selects=>selects.some(select=>select.value==='SERVICE')),'editor keeps the saved service type');
-   check(item,item.posts.length===0&&item.reads.length===0,'opening the historical catalog and supported editor makes no API calls');
+   await dialog.getByRole('button',{name:'Cerrar edición del beneficio',exact:true}).click();
+   await dialog.waitFor({state:'detached'});
+   const companyLabels=page.getByText('Identificador de empresa',{exact:true});
+   check(item,await companyLabels.count()===0,'a tenant-scoped catalog does not repeat company identifiers');
+   await page.evaluate(()=>window.__rewardShowGlobal('global'));
+   check(item,await page.getByRole('heading',{name:'Beneficio compartido QA',exact:true}).count()===2&&await companyLabels.count()===2,'global catalog labels both rewards with the same code and title');
+   for(const company of globalTenants){
+    const identifier=page.getByText(company,{exact:true});
+    check(item,await identifier.count()===1&&await identifier.evaluate(node=>node.tagName==='DD'),'each global row shows its own company identifier');
+   }
+   check(item,await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'a long company identifier wraps inside the viewport');
+   check(item,await edit.count()===0&&await f.newButton.count()===0,'global catalog stays read-only');
+   await page.evaluate(()=>window.__rewardShowGlobal());
+   check(item,await companyLabels.count()===0,'missing scope cannot display company identifiers');
+   await page.evaluate(()=>window.__rewardShowGlobal('global','demo'));
+   check(item,await companyLabels.count()===0,'demo cannot display production company identifiers');
+   check(item,item.posts.length===0&&item.reads.length===0,'opening the supported editor and changing catalog scope adds no API calls');
   }else if(name==='exact-edit-route'){
    await page.getByRole('button',{name:'Editar',exact:true}).click();await dialog.waitFor();await dialog.getByLabel('Título del Beneficio',{exact:true}).fill('Edición explícita QA');await f.submit();
    check(item,item.posts.length===1&&item.posts[0].path==='/api/admin/loyalty/rewards','exact edit uses legacy endpoint once');

@@ -96,6 +96,7 @@ export function rewardSaveErrorCopy(code: unknown): string {
 interface RewardsClientProps {
   initialRewards: Reward[];
   tenantScope: string;
+  catalogScope?: "tenant" | "global";
   isDemo: boolean;
   canWrite: boolean;
   dataSource: "production" | "demo" | "unavailable";
@@ -199,6 +200,7 @@ export function canEditReward(reward: Reward, tenant: string): reward is Editabl
 export default function RewardsClient({
   initialRewards: serverRewards,
   tenantScope,
+  catalogScope,
   isDemo,
   canWrite,
   dataSource: serverDataSource,
@@ -212,6 +214,7 @@ export default function RewardsClient({
   const dataSource = freshCatalog ? "production" as const : serverDataSource;
   const availability = freshCatalog ? initialRewards.length ? "ready" as const : "ready_empty" as const : serverAvailability;
   const sourceReason = freshCatalog ? "" : serverSourceReason;
+  const showCompanyIdentifier = catalogScope === "global" && tenantScope === "" && dataSource === "production" && !isDemo;
   const source: RewardDialogSource = freshCatalog?.held ? serverSource : { initialRewards, tenantScope, canWrite, isDemo, dataSource, availability };
   const latestSource = useRef(source); latestSource.current = source;
   const mounted = useRef(false);
@@ -505,6 +508,8 @@ export default function RewardsClient({
           const typeLabel = REWARD_TYPES.find(({ value }) => value === item.type)?.label ?? "Tipo sin confirmar";
           const displayImage = item.image_url?.trim();
           const editable = canWrite && !isDemo && dataSource === "production" && canEditReward(item, tenantScope);
+          const companyIdentifier = showCompanyIdentifier && typeof item.tenant_slug === "string" && item.tenant_slug.trim()
+            ? item.tenant_slug : null;
           
           return (
             <div
@@ -563,6 +568,12 @@ export default function RewardsClient({
                 <h3 className="text-base font-bold text-white group-hover:text-cyan-300 transition-colors [overflow-wrap:anywhere]">
                   {item.title.trim() || "Beneficio sin título informado"}
                 </h3>
+                {companyIdentifier ? (
+                  <dl className="mt-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs leading-relaxed text-slate-300">
+                    <dt className="font-semibold">Identificador de empresa</dt>
+                    <dd className="font-mono [overflow-wrap:anywhere]">{companyIdentifier}</dd>
+                  </dl>
+                ) : null}
                 <p className="text-xs text-slate-400 mt-2 line-clamp-3 leading-relaxed flex-1">
                   {item.description || "Sin descripción disponible."}
                 </p>
