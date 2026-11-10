@@ -157,13 +157,17 @@ async function runSunUpdatesPendingNoticeScenarios({scenario,assess,report,check
    await t.page.waitForFunction(()=>document.querySelector('#sun-updates-form')?.getAttribute('aria-busy')==='true'&&window.__updatesPendingProbe.posts===1&&window.__updatesPendingProbe.timers.some(timer=>timer.active));
    if(phase==='headers')check(t.calls.length===1&&typeof releaseHeaders==='function'&&await t.page.evaluate(()=>window.__updatesPendingProbe.headersReceived===0),label+': the one POST is held before response headers');
    else{await t.page.waitForFunction(()=>window.__updatesPendingProbe.headersReceived===1&&window.__updatesPendingProbe.jsonStarted===1&&window.__updatesPendingProbe.bodyWaiting);check(t.calls.length===1,label+': one response has headers while browser JSON body remains pending');}
-   await t.page.evaluate(()=>{window.__updatesFocusBeforeNotice=document.activeElement;});
+   // The form disables its controls during submission. Test focus on a control
+   // the visitor can still use, independently of the browser's native blur.
+   const privacyDisclosure=panel.locator('details > summary');
+   await privacyDisclosure.focus();
+   check(await privacyDisclosure.evaluate(el=>el===document.activeElement),label+': privacy remains focusable while the form is busy');
    const status=panel.locator('#sun-updates-request-status');
    check(await status.getAttribute('role')==='status'&&await status.getAttribute('aria-live')==='polite'&&await status.getAttribute('aria-atomic')==='true'&&await status.evaluate(el=>!el.closest('form')&&!el.closest('[aria-busy="true"]')),label+': stable polite atomic status is outside the busy form');
    check(!(await status.innerText()).includes('Seguimos esperando la confirmación')&&await t.page.evaluate(()=>window.__updatesPendingProbe.timers.length===1&&window.__updatesPendingProbe.timers[0].requestedDelayMs===8000&&!window.__updatesPendingProbe.timers[0].fired),label+': the one8000ms notice callback is captured and has not been triggered; exact threshold belongs to unit coverage');
    await t.page.evaluate(()=>window.__updatesFirePendingNotice());
    await status.getByText('Seguimos esperando la confirmación de tu solicitud. Podría haberse guardado; no enviamos otra automáticamente.',{exact:true}).waitFor();
-   check(await t.page.evaluate(()=>document.activeElement===window.__updatesFocusBeforeNotice),label+': the timer never moves focus');
+   check(await privacyDisclosure.evaluate(el=>el===document.activeElement),label+': the timer never moves focus');
    check(await panel.locator('#sun-updates-form').getAttribute('aria-busy')==='true'&&await panel.getByRole('button',{name:'Enviando solicitud...',exact:true}).isDisabled()&&await panel.getByRole('textbox',{name:'Correo electrónico',exact:true}).inputValue()==='a@example.test'&&await panel.getByRole('checkbox').isChecked(),label+': pending notice retains the same draft and explicit consent without unlocking');
    const link=status.getByRole('link',{name:'Volver a la ficha',exact:true});
    check(await link.getAttribute('href')==='#sun-summary'&&await t.page.locator('#sun-summary').count()===1,label+': the normal local link has one real summary destination');
