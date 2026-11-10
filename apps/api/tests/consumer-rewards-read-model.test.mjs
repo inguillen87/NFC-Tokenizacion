@@ -4,12 +4,15 @@ import test from "node:test";
 import ts from "typescript";
 
 const CONSUMER = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const REWARD = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+const RECEIPT = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const NOW = Date.parse("2026-09-08T12:00:00.000Z");
 const CREATED = "2026-09-08T10:00:00.000Z";
 const PRIVATE = "private-consumer-email-and-database-error";
 const files = {
   model: "../src/lib/consumer-rewards-read-model.ts",
   route: "../src/app/consumer/rewards/route.ts",
+  receiptRoute: "../src/app/consumer/redemptions/[redemptionId]/route.ts",
 };
 const compiled = Object.fromEntries(Object.entries(files).map(([key, file]) => [key,
   ts.transpileModule(readFileSync(new URL(file, import.meta.url), "utf8"), {
@@ -70,17 +73,89 @@ function harness(options = {}) {
     new Function("require", "module", "exports", "Date", code)(require, module, module.exports, ProjectionDate);
     loaded[name] = module.exports;
   }
-  return { ...loaded, queries, events, get: (request = new Request("https://api.nexid.test/consumer/rewards")) => loaded.route.GET(request) };
+  return {
+    ...loaded, queries, events,
+    get: (request = new Request("https://api.nexid.test/consumer/rewards")) => loaded.route.GET(request),
+    getReceipt: (redemptionId = RECEIPT) => loaded.receiptRoute.GET(
+      new Request("https://api.nexid.test/consumer/redemptions/" + encodeURIComponent(redemptionId)),
+      { params: Promise.resolve({ redemptionId }) },
+    ),
+  };
 }
 
 async function response(h, status) {
-  const result = await h.get();
+  return privateResponse(await h.get(), status);
+}
+
+async function privateResponse(result, status) {
   assert.equal(result.status, status);
   assert.equal(result.headers.get("cache-control"), "private, no-store");
   const body = await result.json();
   assert.equal(JSON.stringify(body).includes(PRIVATE), false);
   return body;
 }
+
+function receiptRow(overrides = {}) {
+  return {
+    id: RECEIPT, reward_id: REWARD, tenant_slug: "bodega-prueba",
+    claim_status: "claimed", claimed_at: CREATED, claim_expires_at_value: null,
+    redemption_code: PRIVATE, consumer_id: PRIVATE, idempotency_key: PRIVATE, ...overrides,
+  };
+}
+
+test("receipt read uses one exact owner-bound, tenant-consistent SELECT and a minimal private response", async () => {
+  const h = harness({ rows: [receiptRow()], clock: { now: NOW, calls: 0 } });
+  assert.deepEqual(await privateResponse(await h.getReceipt(RECEIPT.toUpperCase()), 200), {
+    ok: true,
+    receipt: { id: RECEIPT, reward_id: REWARD, tenant_slug: "bodega-prueba", status: "claimed", expires_at: "2026-09-10T10:00:00.000Z" },
+  });
+  assert.deepEqual(h.events, ["authenticate", "read"]);
+  assert.equal(h.queries.length, 1);
+  const [{ statement, values }] = h.queries;
+  assert.deepEqual(values, [RECEIPT, CONSUMER]);
+  assert.match(statement, /^\s*SELECT\b/);
+  assert.match(statement, /JOIN rewards reward ON reward\.id = claim\.reward_id AND reward\.tenant_id = claim\.tenant_id/);
+  assert.match(statement, /JOIN tenants tenant ON tenant\.id = claim\.tenant_id/);
+  assert.match(statement, /WHERE claim\.id = \?::uuid AND claim\.consumer_id = \?::uuid/);
+  assert.doesNotMatch(statement, /redemption_code|idempotency_key|email|phone|\b(?:INSERT|UPDATE|DELETE|LIMIT)\b/i);
+});
+
+test("receipt denial is private and opaque, with no SQL before normal authentication or on malformed selectors", async () => {
+  const unauthorized = harness({ unauthenticated: true });
+  assert.deepEqual(await privateResponse(await unauthorized.getReceipt(), 401), { ok: false, error: "unauthorized" });
+  assert.deepEqual(unauthorized.events, ["authenticate"]);
+
+  const notFound = { ok: false, error: "receipt_not_found" };
+  for (const selector of ["", "unrecognized", RECEIPT + "\n", " " + RECEIPT]) {
+    const invalid = harness();
+    assert.deepEqual(await privateResponse(await invalid.getReceipt(selector), 404), notFound);
+    assert.deepEqual(invalid.events, ["authenticate"]);
+  }
+  const absent = harness();
+  assert.deepEqual(await privateResponse(await absent.getReceipt(), 404), notFound);
+  assert.deepEqual(absent.events, ["authenticate", "read"]);
+
+  for (const options of [{ authError: new Error(PRIVATE) }, { queryError: new Error(PRIVATE) }]) {
+    const h = harness(options);
+    assert.deepEqual(await privateResponse(await h.getReceipt(), 503), { ok: false, error: "unavailable" });
+  }
+});
+
+test("receipt reports expiry at its boundary, retains terminal outcomes and stays uncertain for unknown validity", async () => {
+  for (const [row, status, expiresAt] of [
+    [receiptRow({ claim_expires_at_value: "2026-09-08T09:00:00-03:00" }), "expired", "2026-09-08T12:00:00.000Z"],
+    [receiptRow({ claim_expires_at_value: "2026-02-30T12:00:00Z" }), "unknown", null],
+    [receiptRow({ claim_status: "redeemed", claim_expires_at_value: "invalid" }), "redeemed", null],
+    [receiptRow({ claim_status: "cancelled" }), "cancelled", "2026-09-10T10:00:00.000Z"],
+    [receiptRow({ claim_status: "expired" }), "expired", "2026-09-10T10:00:00.000Z"],
+    [receiptRow({ claim_status: "legacy_state" }), "unknown", "2026-09-10T10:00:00.000Z"],
+  ]) {
+    const h = harness({ rows: [row], clock: { now: NOW, calls: 0 } });
+    const { receipt } = await privateResponse(await h.getReceipt(), 200);
+    assert.equal(receipt.status, status);
+    assert.equal(receipt.expires_at, expiresAt);
+  }
+});
 
 test("authentication precedes all reward reads; unauthorized and unavailable responses are private", async () => {
   const denied = harness({ unauthenticated: true });
