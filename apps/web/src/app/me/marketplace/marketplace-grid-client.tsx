@@ -132,6 +132,8 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
   const validTapContext = typeof postTapEventId === "string" && /^[1-9]\d{0,15}$/.test(postTapEventId) && Number.isSafeInteger(Number(postTapEventId));
   const [tapContextDenied, setTapContextDenied] = useState(false);
   const tapContextDeniedRef = useRef(false);
+  const [loginHref, setLoginHref] = useState<string | null>(null);
+  const sessionExpired = useRef(false);
   const contextUnavailable = postTapEventId !== undefined && (!validTapContext || tapContextDenied);
   const [busyById, setBusyById] = useState<Record<string, boolean>>({});
   const [feedbackById, setFeedbackById] = useState<Record<string, string>>({});
@@ -262,7 +264,7 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
   }
 
   async function requestToBuy(item: Listing, options: { ageGateAccepted?: boolean; quantity?: number; message?: string } = {}, initiator?: HTMLButtonElement) {
-    if (contextUnavailable || tapContextDeniedRef.current || !item.id || inFlight.current.has(item.id) || requestedById[item.id]) return false;
+    if (contextUnavailable || tapContextDeniedRef.current || sessionExpired.current || !item.id || inFlight.current.has(item.id) || requestedById[item.id]) return false;
     const needsAgeGate = item.age_gate_required === true;
     const ageGateAccepted = options.ageGateAccepted === true || acceptedAgeById[item.id] === true;
     if (needsAgeGate && !ageGateAccepted) {
@@ -286,11 +288,9 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
       }
       const { status, ok, payload } = result;
       if (status === 401) {
-        setFeedbackById((prev) => ({ ...prev, [item.id]: "Entrá al portal para enviar tu solicitud a la marca." }));
+        sessionExpired.current = true;
         const next = normalizeConsumerAuthReturnPath(normalizeSafeReturnPath(window.location.pathname + window.location.search, "/me/marketplace"));
-        window.setTimeout(() => {
-          window.location.assign(`/login?consumer=1&next=${encodeURIComponent(next)}`);
-        }, 650);
+        setLoginHref(`/login?consumer=1&next=${encodeURIComponent(next)}`);
         return false;
       }
       if (!ok || !payload.ok) {
@@ -327,7 +327,7 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
     }
   }
   async function checkoutCart(initiator: HTMLButtonElement) {
-    if (contextUnavailable || !cartLines.length || cartBusy) return;
+    if (contextUnavailable || sessionExpired.current || !cartLines.length || cartBusy) return;
     const unconfirmed = cartLines.find(({ item }) => item.age_gate_required === true && acceptedAgeById[item.id] !== true);
     if (unconfirmed) {
       openAgeConfirmation(unconfirmed.item, "list", initiator);
@@ -349,6 +349,7 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
         successfulIds.add(line.item.id);
         okCount += 1;
       }
+      if (sessionExpired.current) break;
     }
     if (okCount) {
       setCart((prev) => {
@@ -359,6 +360,8 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
         return remaining;
       });
       setCartStatus(`${okCount} solicitud${okCount === 1 ? " registrada" : "es registradas"}. La marca debe confirmar disponibilidad y condiciones.${okCount < cartLines.length ? " Los productos pendientes siguen en tu lista." : ""}`);
+    } else if (sessionExpired.current) {
+      setCartStatus("La lista sigue en esta pantalla.");
     } else {
       setCartStatus("No se pudieron enviar las solicitudes. Revisá los avisos de cada producto.");
     }
@@ -394,6 +397,10 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
         </button>
       </div>
       {contextUnavailable ? <div role="status" className={styles.intro}><p>Las consultas desde esta lectura ya no están disponibles. Tu lista se conserva en esta pantalla.</p><a href="/me/marketplace" className={styles.button}>Volver al catálogo</a></div> : null}
+      {loginHref ? <div className={styles.intro}>
+        <p role="status">Tu sesión venció. {cartLines.length ? "Podés revisar tu lista pendiente antes de volver a entrar." : "Volvé a entrar para enviar solicitudes."}</p>
+        <a href={loginHref} className={`${styles.button} ${styles.primary}`}>Volver a entrar</a>
+      </div> : null}
       <div className={styles.layout}>
         <aside className={styles.filters} aria-label="Filtros del catálogo">
           <div className={styles.panel}>
@@ -443,13 +450,13 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
                       <div id={agePanelId} className={styles.confirmation} role="group" aria-labelledby={`${agePanelId}-title`}>
                         <h4 id={`${agePanelId}-title`} ref={node => { if (node) ageHeadingRefs.current.set(item.id, node); else ageHeadingRefs.current.delete(item.id); }} tabIndex={-1} className={styles.ageHeading}>{ageGateActionById[item.id] === "list" ? "Confirmá que sos mayor de edad para agregar este producto a tu lista." : "Confirmá que sos mayor de edad para enviar esta solicitud."}</h4>
                         <div className={styles.actions}>
-                          <button type="button" aria-describedby={`${agePanelId}-title`} disabled={cartBusy || busyById[item.id]} onClick={event => confirmAge(item, event.currentTarget)} className={`${styles.button} ${styles.primary}`}>Soy mayor de edad</button>
+                          <button type="button" aria-describedby={`${agePanelId}-title`} disabled={cartBusy || busyById[item.id] || (Boolean(loginHref) && ageGateActionById[item.id] === "request")} onClick={event => confirmAge(item, event.currentTarget)} className={`${styles.button} ${styles.primary}`}>Soy mayor de edad</button>
                           <button type="button" onClick={event => cancelAgeConfirmation(item, event.currentTarget)} className={styles.button}>Cancelar</button>
                         </div>
                       </div>
                     ) : null}
                     <div className={styles.actions}>
-                      <button type="button" disabled={requestDisabled || cartBusy || busyById[item.id] || requestAlreadySent} onClick={event => requestToBuy(item, { quantity: cart[item.id] || 1 }, event.currentTarget)} aria-expanded={item.age_gate_required === true ? Boolean(ageGateById[item.id]) : undefined} aria-controls={ageGateById[item.id] ? agePanelId : undefined} aria-busy={busyById[item.id] || false} className={`${styles.button} ${styles.primary}`}>
+                      <button type="button" disabled={requestDisabled || Boolean(loginHref) || cartBusy || busyById[item.id] || requestAlreadySent} onClick={event => requestToBuy(item, { quantity: cart[item.id] || 1 }, event.currentTarget)} aria-expanded={item.age_gate_required === true ? Boolean(ageGateById[item.id]) : undefined} aria-controls={ageGateById[item.id] ? agePanelId : undefined} aria-busy={busyById[item.id] || false} className={`${styles.button} ${styles.primary}`}>
                         {requestAlreadySent ? "Solicitud enviada" : busyById[item.id] ? "Enviando..." : "Solicitar contacto"}
                       </button>
                       {cart[item.id] ? <button type="button" ref={node => { if (node) listActionRefs.current.set(item.id, node); else listActionRefs.current.delete(item.id); }} onClick={revealList} className={styles.button}><ShoppingCart className={styles.icon} aria-hidden="true" /> Ver mi lista · {cart[item.id]} unidad{cart[item.id] === 1 ? "" : "es"}</button>
@@ -493,7 +500,11 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
                 <p className={styles.note}>La marca confirma el precio final y la disponibilidad. No se realiza ningún cobro desde esta lista.</p>
               </div>
             ) : null}
-            <button type="button" disabled={contextUnavailable || !cartLines.length || cartBusy} onClick={event => void checkoutCart(event.currentTarget)} aria-busy={cartBusy} className={`${styles.button} ${styles.primary} ${styles.sendList}`}><PackageCheck className={styles.icon} aria-hidden="true" />{cartBusy ? "Enviando..." : "Enviar solicitudes"}</button>
+            {loginHref && cartLines.length ? (
+              <a href={loginHref} className={`${styles.button} ${styles.primary} ${styles.sendList}`}>Volver a entrar</a>
+            ) : (
+              <button type="button" disabled={contextUnavailable || Boolean(loginHref) || !cartLines.length || cartBusy} onClick={event => void checkoutCart(event.currentTarget)} aria-busy={cartBusy} className={`${styles.button} ${styles.primary} ${styles.sendList}`}><PackageCheck className={styles.icon} aria-hidden="true" />{cartBusy ? "Enviando..." : "Enviar solicitudes"}</button>
+            )}
             {cartStatus ? <p className={styles.feedback} role="status">{cartStatus}</p> : null}
           </div>
         </aside>

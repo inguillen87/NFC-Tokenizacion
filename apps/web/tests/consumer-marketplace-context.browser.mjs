@@ -10,8 +10,8 @@ import postcss from 'postcss';
 import tailwind from '@tailwindcss/postcss';
 const web=fileURLToPath(new URL('../',import.meta.url)),output=resolve(process.env.QA_OUTPUT||'artifacts/consumer-marketplace-context');await mkdir(output,{recursive:true});
 const {chromium}=await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href),axe=await readFile(process.env.AXE_MODULE_PATH,'utf8');
-const items=[{id:'inquiry-one',title:'Producto de ensayo uno',tenant_slug:'tenant-qa',stock_status:'active',request_to_buy_enabled:true},{id:'inquiry-two',title:'Producto de ensayo dos',tenant_slug:'tenant-qa',stock_status:'active',request_to_buy_enabled:true}];
-const fixture=`import React from'react';import{createRoot}from'react-dom/client';import{MarketplaceGridClient}from'./src/app/me/marketplace/marketplace-grid-client';import shell from'./src/app/me/_components/portal-shell.module.css';const mode=new URLSearchParams(location.search).get('mode');createRoot(document.getElementById('app')).render(<main className={shell.portal} style={{padding:16,boxSizing:'border-box'}}><h1>Consultas de catálogo · ensayo local</h1><p>Datos sintéticos. No realiza compras, pagos ni operaciones reales.</p><MarketplaceGridClient items={${JSON.stringify(items)}} {...(mode==='global'?{}:{postTapEventId:mode==='invalid'?'01':'715'})}/></main>);`;
+const items=[{id:'inquiry-one',title:'Producto de ensayo uno',tenant_slug:'tenant.qa',stock_status:'active',request_to_buy_enabled:true},{id:'inquiry-two',title:'Producto de ensayo dos',tenant_slug:'tenant.qa',stock_status:'active',request_to_buy_enabled:true},{id:'inquiry-three',title:'Producto de ensayo tres',tenant_slug:'tenant.qa',stock_status:'active',request_to_buy_enabled:true}];
+const fixture=`import React from'react';import{createRoot}from'react-dom/client';import{MarketplaceGridClient}from'./src/app/me/marketplace/marketplace-grid-client';import shell from'./src/app/me/_components/portal-shell.module.css';const mode=new URLSearchParams(location.search).get('mode');const independent=mode==='global'||mode==='session-global';createRoot(document.getElementById('app')).render(<main className={shell.portal} style={{padding:16,boxSizing:'border-box'}}><h1>Consultas de catálogo · ensayo local</h1><p>Datos sintéticos. No realiza compras, pagos ni operaciones reales.</p><MarketplaceGridClient items={${JSON.stringify(items)}} {...(independent?{}:{postTapEventId:mode==='invalid'?'01':'715'})}/></main>);`;
 const bundled=await build({stdin:{contents:fixture,resolveDir:web,loader:'tsx'},bundle:true,write:false,outfile:'fixture.js',format:'esm',platform:'browser',jsx:'automatic',define:{'process.env.NODE_ENV':'"production"'},logLevel:'error'});
 const globalCss=await postcss([tailwind()]).process(await readFile(join(web,'src/app/globals.css'),'utf8'),{from:join(web,'src/app/globals.css')}),js=bundled.outputFiles.find(f=>f.path.endsWith('.js')),css=(bundled.outputFiles.find(f=>f.path.endsWith('.css'))?.text||'')+'\n'+globalCss.css;
 const server=createServer((req,res)=>{if(req.method!=='GET'){res.writeHead(405);return res.end();}const path=new URL(req.url,'http://fixture.invalid').pathname;if(path==='/fixture.js'){res.setHeader('content-type','text/javascript');return res.end(js.contents);}if(path==='/fixture.css'){res.setHeader('content-type','text/css');return res.end(css);}if(path==='/favicon.ico'){res.writeHead(204);return res.end();}res.setHeader('content-type','text/html; charset=utf-8');res.end(`<!doctype html><html lang='es-AR'><head><title>Consultas · ensayo local</title><meta name='viewport' content='width=device-width,initial-scale=1'><link rel='stylesheet' href='/fixture.css'><style>body{margin:0;font:16px/1.5 system-ui}h1{font-size:24px}</style></head><body><div id='app'></div><script type='module' src='/fixture.js'></script></body></html>`);});
@@ -19,12 +19,52 @@ await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.
 const report={localOnly:true,actualProductionComponentAndCss:true,actualNextServer:false,syntheticInquiryOnly:true,realBusinessWrites:0,realPurchaseCertified:false,physicalTapMeasured:false,errors:[],externalRequests:[],geolocationCalls:0,checks:[],views:[],sourceHashes:{}};
 for(const path of['src/app/me/marketplace/page.tsx','src/app/me/marketplace/marketplace-grid-client.tsx','src/app/me/marketplace/marketplace-request.ts','src/app/me/marketplace/marketplace.module.css'])report.sourceHashes[path]=createHash('sha256').update(await readFile(join(web,path))).digest('hex');
 const check=(value,name)=>{report.checks.push({name,passed:Boolean(value)});assert.ok(value,name);};
-try{for(const width of[320,390,768,1280])for(const theme of['light','dark'])for(const mode of['context','global','withdrawn','invalid']){
+try{for(const width of[320,390,768,1280])for(const theme of['light','dark'])for(const mode of['context','global','withdrawn','invalid','session-expired','session-partial','session-single','session-global']){
  const context=await browser.newContext({viewport:{width,height:1000},reducedMotion:'reduce',serviceWorkers:'block'}),page=await context.newPage(),calls=[],label=`${width}/${theme}/${mode}`;page.setDefaultTimeout(10000);page.on('pageerror',e=>report.errors.push(e.message));
  await page.addInitScript(theme=>{document.addEventListener('DOMContentLoaded',()=>document.documentElement.setAttribute('data-theme',theme),{once:true});window.__gpsCalls=0;Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){window.__gpsCalls++;}}});},theme);
- await page.route('**/*',async route=>{const r=route.request(),url=new URL(r.url());if(url.origin!==origin){report.externalRequests.push(url.hostname);return route.abort();}if(url.pathname.startsWith('/api/marketplace/')){calls.push({path:url.pathname,method:r.method(),body:r.postDataJSON()});const status=mode==='withdrawn'?409:200;return route.fulfill({status,contentType:'application/json',body:JSON.stringify({ok:status===200,error:status===409?'marketplace_configuration_changed':undefined,request_mode:'request_only',fulfills_scanned_unit:false})});}return route.continue();});
- await page.goto(origin+'/?mode='+mode,{waitUntil:'networkidle'});const grid=page.locator('[data-marketplace-catalog]'),card=id=>grid.locator(`[data-marketplace-product="${id}"]`),list=page.getByRole('complementary',{name:'Lista de solicitudes'});
+ await page.route('**/*',async route=>{
+  const r=route.request(),url=new URL(r.url());
+  if(url.origin!==origin){report.externalRequests.push(url.hostname);return route.abort();}
+  if(!url.pathname.startsWith('/api/marketplace/'))return route.continue();
+  calls.push({path:url.pathname,method:r.method(),body:r.postDataJSON()});
+  const sessionExpired=mode.startsWith('session-')&&(mode!=='session-partial'||calls.length>1);
+  const status=mode==='withdrawn'?409:sessionExpired?401:200;
+  return route.fulfill({status,contentType:'application/json',body:JSON.stringify({ok:status===200,error:status===409?'marketplace_configuration_changed':undefined,request_mode:'request_only',fulfills_scanned_unit:false})});
+ });
+ const independent=mode==='global'||mode==='session-global';
+ const returnPath=independent?'/me/marketplace?tenant=tenant.qa':'/me/marketplace?fromTap=1&eventId=715&tenant=tenant.qa&action=marketplace';
+ const entryUrl=origin+returnPath+'&mode='+mode;
+ const loginReads=[];
+ page.on('request',r=>{if(new URL(r.url()).pathname==='/login')loginReads.push(r.method());});
+ await page.goto(entryUrl,{waitUntil:'networkidle'});const grid=page.locator('[data-marketplace-catalog]'),card=id=>grid.locator(`[data-marketplace-product="${id}"]`),list=page.getByRole('complementary',{name:'Lista de solicitudes'});
  if(mode==='invalid'){check(await card('inquiry-one').getByRole('button',{name:'Solicitar contacto',exact:true}).isDisabled(),label+': invalid event is inert');check(calls.length===0,label+': no downgrade to global');}
+ else if(mode.startsWith('session-')){
+  const expiredBeforeAny=mode==='session-expired',single=mode==='session-single'||mode==='session-global';
+  if(single){
+   await card('inquiry-one').getByRole('button',{name:'Solicitar contacto',exact:true}).click();
+  }else{
+   for(const item of items)await card(item.id).getByRole('button',{name:'Agregar a la lista',exact:true}).click();
+   await list.getByRole('button',{name:'Enviar solicitudes',exact:true}).click();
+  }
+  const login=grid.getByRole('link',{name:'Volver a entrar',exact:true});await login.first().waitFor();
+  const loginHref='/login?consumer=1&next='+encodeURIComponent(returnPath);
+  check(await login.count()===(single?1:2)&&await login.evaluateAll((links,href)=>links.every(link=>link.getAttribute('href')===href),loginHref),label+': explicit login preserves only whitelisted reading context');
+  check(await grid.getByRole('button',{name:'Solicitar contacto',exact:true}).count()>0&&await grid.getByRole('button',{name:'Solicitar contacto',exact:true}).evaluateAll(nodes=>nodes.every(node=>node.disabled)),label+': requests are disabled after session expiry');
+  const submit=list.getByRole('button',{name:'Enviar solicitudes',exact:true});
+  check(single?await submit.isDisabled():await submit.count()===0&&await list.getByRole('link',{name:'Volver a entrar',exact:true}).isVisible(),label+': the list offers login instead of a batch retry when there is a draft');
+  if(!single){
+   const pending=expiredBeforeAny?items:items.slice(1);
+   for(const item of pending)check(await list.getByText(item.title,{exact:true}).count()===1,label+': draft still contains '+item.id);
+   if(!expiredBeforeAny){
+    check(await list.getByText(items[0].title,{exact:true}).count()===0,label+': confirmed item is removed from the draft');
+    check(await list.getByText(/1 solicitud registrada/).isVisible(),label+': only the confirmed request is reported');
+   }
+  }
+  await page.waitForTimeout(750);
+  const expectedPaths=(expiredBeforeAny||single?items.slice(0,1):items.slice(0,2)).map(item=>'/api/marketplace/products/'+item.id+'/request-to-buy');
+  check(JSON.stringify(calls.map(call=>call.path))===JSON.stringify(expectedPaths)&&calls.every(call=>call.method==='POST'&&(independent?!Object.hasOwn(call.body,'postTapEventId'):call.body.postTapEventId==='715')),label+': first 401 stops subsequent writes');
+  check(page.url()===entryUrl&&loginReads.length===0,label+': session expiry does not navigate automatically');
+ }
  else{await card('inquiry-one').getByRole('button',{name:'Agregar a la lista',exact:true}).click();await card('inquiry-two').getByRole('button',{name:'Agregar a la lista',exact:true}).click();await list.getByRole('button',{name:'Enviar solicitudes',exact:true}).click();
   if(mode==='withdrawn'){await grid.getByText('Las consultas desde esta lectura ya no están disponibles. Tu lista se conserva en esta pantalla.',{exact:true}).waitFor();check(calls.length===1,label+': withdrawal stops remaining contextual requests');check(await list.getByText('Producto de ensayo uno',{exact:true}).count()===1&&await list.getByText('Producto de ensayo dos',{exact:true}).count()===1,label+': full draft preserved');check(await list.getByRole('button',{name:'Enviar solicitudes',exact:true}).isDisabled(),label+': no repeat after withdrawal');}
   else{await list.getByText(/2 solicitudes registradas/).waitFor();check(calls.length===2,label+': one explicit inquiry per item');}
