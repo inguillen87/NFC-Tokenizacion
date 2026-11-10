@@ -214,3 +214,12 @@ test('global rewards identity requires exact current page and client sources',as
   for(const rejected of [old,changed,sources[1-index].actual])assert.throws(()=>rewardDialogPriorHash(path,rejected),/exact reviewed reward company identity/);
  }
 });
+
+test('voucher feedback preserves the independent campaign source origin',async()=>{
+ const baseline=readHistoricalBaseline('release-convergence',await readFile(new URL('./fixtures/release-convergence-baseline.json',import.meta.url),'utf8'));
+ const path='apps/dashboard/src/app/(app)/loyalty/campaigns/loyalty-campaigns-client.tsx';
+ const text=(await readFile(new URL('../src/app/(app)/loyalty/campaigns/loyalty-campaigns-client.tsx',import.meta.url),'utf8')).replaceAll('\r\n','\n');
+ const actual=createHash('sha256').update(text).digest('hex');
+ assert.equal(rewardDialogPriorHash(path,actual),baseline.expected[path]);
+ for(const rejected of [baseline.expected[path],createHash('sha256').update(text+'\n').digest('hex')])assert.throws(()=>rewardDialogPriorHash(path,rejected),/exact reviewed voucher feedback/);
+});

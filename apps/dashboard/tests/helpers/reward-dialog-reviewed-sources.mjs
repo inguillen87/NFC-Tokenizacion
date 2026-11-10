@@ -7,6 +7,9 @@ import {ENGAGEMENT_GOVERNANCE_CHANGED} from './engagement-governance-reviewed-so
 export const REWARD_DIALOG_SOURCE_BASE='a38a432e96cea93df53f1fca6bd58335b42a290a';
 const rewardsPagePath='apps/dashboard/src/app/(app)/loyalty/rewards/page.tsx';
 const rewardsClientPath='apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx';
+const voucherFeedbackPath='apps/dashboard/src/app/(app)/loyalty/campaigns/loyalty-campaigns-client.tsx';
+const voucherFeedbackBefore='edd60aecfa61e88535da081576fa42804d46d1958a732f07bcee7cb66eb2f13f';
+const voucherFeedbackAfter='6c49b6430415aeba6da237095da9461b80c985b4c62f9ade191261df514d74e5';
 const rewardStockDisplayAfter='9039f7d58c85752f1e431c0714965078ece8b4a604ebb01d743499c4381b2099';
 const rewardDialogAppearanceAfter='f09a91e2e26e57e7b7b8d9f1f8caf66676a7d35f78aa2104c57322d514d30404';
 const rewardDialogActionsAfter='e141130ad5801a345a8b2b1410648a908a9ad727be38c4b7e5c442e5ff8a9719';
@@ -79,6 +82,10 @@ export function rewardDialogActionsHistoricalPriorHash(path,actual){
 }
 
 export function rewardDialogPriorHash(path,actual){
+ if(path===voucherFeedbackPath){
+  assert.equal(actual,voucherFeedbackAfter,path+' exact reviewed voucher feedback');
+  return voucherFeedbackBefore;
+ }
  if(!Object.hasOwn(rewardCompanyIdentitySources,path))return rewardDialogActionsHistoricalPriorHash(path,actual);
  const pin=rewardCompanyIdentitySources[path];
  assert.equal(actual,pin.after,path+' exact reviewed reward company identity');

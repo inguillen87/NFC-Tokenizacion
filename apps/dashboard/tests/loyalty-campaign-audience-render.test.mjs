@@ -15,11 +15,108 @@ import {
   parseCampaignConsentAudience,
   parseCampaignAudienceRows,
 } from "../src/app/(app)/loyalty/campaigns/loyalty-campaign-audience.tsx";
-import LoyaltyCampaignsClient from "../src/app/(app)/loyalty/campaigns/loyalty-campaigns-client.tsx";
+import LoyaltyCampaignsClient, { projectVoucherFeedback, VoucherFeedbackPanel } from "../src/app/(app)/loyalty/campaigns/loyalty-campaigns-client.tsx";
 
 // Existing local demo adapter, not a replacement audience or a live API request.
 const fixture = demoConsumerNetworkResource("GET", "consumer-network/members", "demobodega", new Date("2026-09-05T12:00:00Z"));
 const client = await readFile(new URL("../src/app/(app)/loyalty/campaigns/loyalty-campaigns-client.tsx", import.meta.url), "utf8");
+
+const voucherTenant = "empresa-qa";
+const voucherCode = "QA123456";
+const voucherReceipt = {
+  redemption_code: voucherCode,
+  status: "claimed",
+  tenant: { slug: voucherTenant },
+  reward: { title: "Beneficio QA", points_cost: 1739 },
+  consumer: { name: "Persona QA", phone_masked: "+5411***123" },
+  expires_at: "2030-03-20T18:00:00.000Z",
+};
+const acknowledgement = (action = "lookup", patch = {}) => ({ ok: true, action, redemption: { ...voucherReceipt, ...patch } });
+const voucherFeedback = (action, status, body, tenant = voucherTenant, code = voucherCode) =>
+  projectVoucherFeedback(action, status, body, tenant, code);
+const voucherHtml = feedback => renderToStaticMarkup(React.createElement(VoucherFeedbackPanel, { feedback }));
+
+test("voucher receipt lookup distinguishes a found reservation, a previous redemption and a cancelled reservation", () => {
+  const found = voucherFeedback("lookup", 200, acknowledgement(), voucherTenant, " qa 123456 ");
+  assert.equal(found.title, "Reserva encontrada");
+  assert.equal(found.tone, "neutral");
+  assert.equal(found.receipt.expiresAt, voucherReceipt.expires_at);
+  const foundHtml = voucherHtml(found);
+  assert.match(foundHtml, /role="status"/);
+  assert.match(foundHtml, /Beneficio QA/);
+  assert.match(foundHtml, /\+5411\*\*\*123/);
+  assert.doesNotMatch(foundHtml, /Voucher válido|Canje confirmado|1739/);
+
+  for (const [status, title] of [["redeemed", "Ya canjeado"], ["cancelled", "Reserva cancelada"]]) {
+    const existing = voucherFeedback("lookup", 200, acknowledgement("lookup", { status, expires_at: null }));
+    assert.equal(existing.title, title);
+    const html = voucherHtml(existing);
+    assert.match(html, /Vencimiento<\/dt><dd>Sin informar/);
+    assert.doesNotMatch(html, /Canje confirmado|sin vencimiento|Invalid Date/);
+  }
+});
+
+test("voucher confirmation requires an exact acknowledged action, company, code and redeemed status", () => {
+  const confirmed = voucherFeedback("redeem", 200, acknowledgement("redeemed", { status: "redeemed" }));
+  assert.equal(confirmed.title, "Canje confirmado");
+  assert.equal(confirmed.tone, "success");
+  for (const [action, status, payload, tenant, code] of [
+    ["lookup", 200, {}], ["lookup", 200, null], ["lookup", 200, { ok: "true" }],
+    ["lookup", 200, acknowledgement("lookup", { status: "toString" })],
+    ["lookup", 200, acknowledgement("lookup", { expires_at: "0" })],
+    ["lookup", 200, acknowledgement("lookup", { expires_at: null })],
+    ["lookup", 200, acknowledgement("lookup", { tenant: { slug: "empresa-ajena" } })],
+    ["lookup", 200, acknowledgement("lookup", { redemption_code: "OTRO" })],
+    ["lookup", 200, acknowledgement(), "", voucherCode],
+    ["lookup", 201, acknowledgement()],
+    ["lookup", 200, acknowledgement("redeemed", { status: "redeemed" })],
+    ["redeem", 200, acknowledgement("lookup", { status: "redeemed" })],
+    ["redeem", 200, acknowledgement("redeemed", { status: "claimed" })],
+    ["redeem", 200, acknowledgement("redeemed", { status: "redeemed", tenant: null })],
+  ]) {
+    const unresolved = voucherFeedback(action, status, payload, tenant, code);
+    assert.equal(unresolved.title, "Resultado sin confirmar");
+    assert.equal(unresolved.receipt, undefined);
+    assert.match(voucherHtml(unresolved), /role="alert"/);
+    if (action === "redeem") assert.match(unresolved.detail, /Consultá el comprobante antes de volver a canjear/);
+  }
+});
+
+test("voucher denials are actionable without showing internal errors or denied receipt data", () => {
+  for (const [status, reason, copy] of [
+    [400, "redemption_code_required", /Ingresá el código/],
+    [404, "redemption_not_found", /Revisá el código y la empresa/],
+    [409, "seal_mismatch", /sello no coincide/],
+    [409, "phone_mismatch", /cuatro dígitos del teléfono no coinciden/],
+    [409, "redemption_expired", /reserva venció/],
+    [409, "redemption_not_claimed", /reserva ya no está disponible/],
+    [409, "redemption_already_processed", /reserva cambió/],
+  ]) {
+    const denied = voucherFeedback("redeem", status, { ok: false, reason, redemption: voucherReceipt });
+    assert.match(denied.detail, copy);
+    const html = voucherHtml(denied);
+    assert.match(html, /role="alert"/);
+    assert.doesNotMatch(html, /Beneficio QA|Persona QA|redemption_|mismatch/);
+  }
+  assert.equal(voucherFeedback("lookup", 401, null).title, "Iniciá sesión");
+  assert.equal(voucherFeedback("lookup", 403, null).title, "Acceso restringido");
+  for (const [status, reason] of [[500, "redemption_not_found"], [409, "private-upstream-detail"]]) {
+    const unresolved = voucherFeedback("redeem", status, { ok: false, reason });
+    assert.equal(unresolved.title, "Resultado sin confirmar");
+    assert.ok(!voucherHtml(unresolved).includes(reason));
+  }
+});
+
+test("voucher presentation preserves the existing one-request form contract", () => {
+  const handler = client.split("async function handleValidateVoucher(")[1].split("setVoucherChecking(false);")[0];
+  assert.match(handler, /buildLoyaltyAdminUrl\("rewards\/redemptions\/validate", tenantScope\)/);
+  assert.equal([...handler.matchAll(/\bfetch\(/g)].length, 1);
+  assert.match(handler, /method: "POST"/);
+  assert.match(handler, /code: voucherCode,\s*seal: voucherSeal,\s*phoneLast4: voucherPhoneLast4,\s*action,/);
+  assert.match(handler, /projectVoucherFeedback\(action, response\.status, payload, tenantScope, voucherCode\)/);
+  assert.match(handler, /catch \{\s*setVoucherResult\(\{ context: voucherContext, feedback: unconfirmedVoucher\(action\)/);
+  assert.match(client, /voucherResult\?\.context === voucherContext \? voucherResult\.feedback : null/);
+});
 
 test("the real demo fixture reproduces the original absent consumer ID crash", () => {
   assert.equal(fixture.status, 200);
