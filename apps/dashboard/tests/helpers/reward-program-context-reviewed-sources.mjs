@@ -39,3 +39,12 @@ export function loyaltyPointsContrastPriorHash(path, actual) {
   assert.equal(actual, LOYALTY_POINTS_CONTRAST_SHA256, path + ' exact reviewed points contrast successor');
   return REWARD_PROGRAM_CONTEXT_REVIEWED_SOURCES[path].after;
 }
+
+// Dashboard 8da80146 is the pinned contrast predecessor for the catalog wording.
+const LOYALTY_CATALOG_STATUS_SHA256 = 'ad54a6fb359bbd99947e7dfdf19ee0734ef7ebbfb026a7af1c3f1cae8a6d181b';
+
+export function loyaltyCatalogStatusPriorHash(path, actual) {
+  if (path !== LOYALTY_POINTS_CONTRAST_PATH) return actual;
+  assert.equal(actual, LOYALTY_CATALOG_STATUS_SHA256, path + ' exact reviewed catalog status successor');
+  return LOYALTY_POINTS_CONTRAST_SHA256;
+}
