@@ -88,6 +88,10 @@ export async function fetchConsumerPath(path: string): Promise<(JsonMap & { item
   return Object.hasOwn(payload, "item") ? { ...payload, item: jsonRecord(payload.item) } : payload;
 }
 
+export async function readConsumerRewardReceipt(claimId: string) {
+  return readJson(`/consumer/redemptions/${encodeURIComponent(claimId)}`);
+}
+
 
 export type ConsumerPrivacyPathRead =
   | { status: "ready"; data: Record<string, unknown> }

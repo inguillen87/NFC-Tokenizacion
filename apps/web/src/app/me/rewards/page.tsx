@@ -24,7 +24,7 @@ export default async function RewardsPage({ searchParams }: { searchParams?: Pro
   const tenant = rewardTenant(params.tenant);
   const session = await readConsumerSession(buildConsumerNextPath("/me/rewards", params));
   if (session.status === "unavailable") return <ConsumerPortalUnavailable />;
-  const [rewardsPayload, walletPayload, lastReceipt] = await Promise.all([
+  const [rewardsPayload, walletPayload, receiptRead] = await Promise.all([
     fetchConsumerPath("rewards"),
     fetchConsumerPath("wallet"),
     params.voucher || (params.tenant && !tenant) ? null : readLastRewardReceipt(),
@@ -32,7 +32,9 @@ export default async function RewardsPage({ searchParams }: { searchParams?: Pro
   const rewards = buildConsumerRewardsModel(rewardsPayload, new Date().toISOString());
   const points = buildConsumerWalletPointsModel(walletPayload).brands;
   const selectedVoucher = findRequestedVoucher(rewards, params.voucher, params.tenant);
+  const lastReceipt = receiptRead?.status === "ready" ? receiptRead.receipt : null;
   const receipt = lastReceipt && (!tenant || tenant === lastReceipt.tenant) ? lastReceipt : null;
+  const partialUnavailable = receiptRead?.status === "unavailable" && rewards.status === "ready" && points.status === "ready";
   const receiptItems = receipt && rewards.status === "ready" ? rewards.items.filter(item =>
     item.hasClaim && item.key.toLowerCase() === "claim-" + receipt.id && item.id.toLowerCase() === receipt.rewardId
     && item.tenant === receipt.tenant
@@ -71,6 +73,10 @@ export default async function RewardsPage({ searchParams }: { searchParams?: Pro
                 <strong>{brand.balance === null ? "No informado" : <>{brand.balance}<small> pts</small></>}</strong>
               </article>)}</div>}
         </section>
+        {partialUnavailable ? <div className={styles.notice} role="status">
+          <p>No pudimos actualizar parte de tus beneficios. Podés seguir consultando lo que ya se cargó.</p>
+          <ConsumerDataRetryButton className={styles.primaryLink} />
+        </div> : null}
         {receiptContent && !receiptItem ? <section className={`${styles.notice} ${styles.receipt}`} aria-labelledby="last-reward-receipt-title">
           {receiptContent}
           {receiptBrandHref ? <Link className={styles.primaryLink} href={receiptBrandHref} prefetch={false}>Ver mi relación con la marca</Link> : null}

@@ -76,7 +76,8 @@ function loadPage(payload, options = {}) {
     "../_components/me-portal-interactive-client": { ConsumerDataRetryButton: () => React.createElement("button", { type: "button" }, "Reintentar carga") },
     "../_components/portal-shell": { PortalShell: ({ children }) => React.createElement("main", null, children) },
     "./rewards-client": { ConsumerRewardsClient: (props) => { clientProps.push(props); return React.createElement(ConsumerRewardsClient, props); } },
-    "./last-receipt": { readLastRewardReceipt: async () => options.lastReceipt ?? null },
+    "./last-receipt": { readLastRewardReceipt: async () => options.receiptRead ??
+      (options.lastReceipt ? { status: "ready", receipt: options.lastReceipt } : { status: "hidden" }) },
   }).default;
   return { page, calls, clientProps };
 }
@@ -95,7 +96,7 @@ test("the server checks a browser receipt selector through the private API and k
   const reward_id = "1a000000-0000-4000-8000-000000000001";
   const receipt = { id, reward_id, tenant_slug: "demobodega", status: "claimed", expires_at: FUTURE };
   let pointer = id.toUpperCase();
-  let answer = { ok: true, receipt };
+  let reply = () => Response.json({ ok: true, receipt });
   const reads = [];
   const transport = compile(read("_components/consumer-api.ts"), {
     "next/headers": { headers: async () => new Headers({ cookie: `consumer_session=opaque; ${helper.CONSUMER_REWARD_RECEIPT_COOKIE}=${pointer}` }) },
@@ -103,7 +104,7 @@ test("the server checks a browser receipt selector through the private API and k
     "@product/config": { productUrls: { api: "https://api.nexid.lat" } },
     "../../api/_lib/server-api-transport": { fetchRuntimeApi: async (url, init) => {
       reads.push({ url, cookie: init.headers.cookie, cache: init.cache, method: init.method || "GET" });
-      return Response.json(answer);
+      return reply();
     } },
   });
   const { readLastRewardReceipt } = compile(read("rewards/last-receipt.ts"), {
@@ -112,21 +113,53 @@ test("the server checks a browser receipt selector through the private API and k
     "../_components/consumer-api": transport,
     "../_components/consumer-rewards-model": model,
   });
-  assert.deepEqual(await readLastRewardReceipt(), { id, rewardId: reward_id, tenant: "demobodega", status: "claimed", expiresAt: FUTURE });
+  assert.deepEqual(await readLastRewardReceipt(), { status: "ready", receipt: {
+    id, rewardId: reward_id, tenant: "demobodega", status: "claimed", expiresAt: FUTURE,
+  } });
   assert.deepEqual(reads, [{ url: "https://api.nexid.lat/consumer/redemptions/" + id, cookie: "consumer_session=opaque", cache: "no-store", method: "GET" }]);
   for (const malformed of [
     { ...receipt, id: reward_id }, { ...receipt, reward_id: "other" },
     { ...receipt, status: "available" }, { ...receipt, expires_at: "yesterday" },
   ]) {
-    answer = { ok: true, receipt: malformed };
-    assert.equal(await readLastRewardReceipt(), null);
+    reply = () => Response.json({ ok: true, receipt: malformed });
+    assert.deepEqual(await readLastRewardReceipt(), { status: "unavailable" });
   }
-  answer = { ok: false, error: "receipt_not_found" };
-  assert.equal(await readLastRewardReceipt(), null);
+  for (const status of [401, 403, 404]) {
+    reply = () => Response.json({ ok: false, error: "receipt_not_found", receipt }, { status });
+    assert.deepEqual(await readLastRewardReceipt(), { status: "hidden" });
+  }
+  for (const fail of [
+    () => Response.json({ ok: false, receipt }, { status: 503 }),
+    () => Response.json({ ok: false, receipt }),
+    () => new Response("invalid-json"),
+    () => { throw new Error("fixture network interruption"); },
+  ]) {
+    reply = fail;
+    assert.deepEqual(await readLastRewardReceipt(), { status: "unavailable" });
+  }
   const count = reads.length;
   pointer = "unexpected";
-  assert.equal(await readLastRewardReceipt(), null);
+  assert.deepEqual(await readLastRewardReceipt(), { status: "hidden" });
   assert.equal(reads.length, count);
+});
+
+test("a receipt outage preserves available benefits and offers one neutral retry without receipt data", async () => {
+  const receiptRead = { status: "unavailable" };
+  const partial = await render(list([reward()]), { receiptRead });
+  assert.match(partial.html, /role="status"><p>No pudimos actualizar parte de tus beneficios/);
+  assert.match(partial.html, /Visita a la bodega/);
+  assert.equal((partial.html.match(/Reintentar carga/g) || []).length, 1);
+  assert.doesNotMatch(partial.html, /Última reserva en este navegador|Estado registrado|receipt_not_found/);
+  for (const [payload, options] of [
+    [null, { receiptRead }],
+    [list(), { receiptRead, wallet: null }],
+    [list(), { receiptRead, params: { voucher: "unrelated" } }],
+    [list(), { receiptRead, params: { tenant: ["demobodega"] } }],
+    [list(), { receiptRead: { status: "hidden" } }],
+  ]) {
+    const result = await render(payload, options);
+    assert.doesNotMatch(result.html, /No pudimos actualizar parte de tus beneficios/);
+  }
 });
 
 test("only the account-verified receipt survives a reload and highlights its exact owned voucher", async () => {

@@ -16,10 +16,10 @@ export function ConsumerProductImage({ product, className = "" }: { product: Hom
     : <Package size={28} aria-hidden="true" />}</span>;
 }
 
-export function ConsumerDataRetryButton() {
+export function ConsumerDataRetryButton({ className }: { className?: string } = {}) {
   const router = useRouter();
   const [refreshing, startRefresh] = useTransition();
-  return <button type="button" disabled={refreshing} onClick={() => startRefresh(() => router.refresh())}>{refreshing ? "Consultando…" : "Reintentar carga"}</button>;
+  return <button type="button" className={className} disabled={refreshing} onClick={() => startRefresh(() => router.refresh())}>{refreshing ? "Consultando…" : "Reintentar carga"}</button>;
 }
 
 function SectionHeading({ id, title, href, link }: { id: string; title: string; href: string; link: string }) {
