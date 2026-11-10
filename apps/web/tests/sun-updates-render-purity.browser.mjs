@@ -109,7 +109,7 @@ export async function runSunUpdatesRenderPurityScenarios({scenario,assess,report
 // a real browser ReadableStream after one synthetic loopback POST; it does not
 // measure transport streaming, latency, delivery, persistence or physical NFC.
 async function runSunUpdatesPendingNoticeScenarios({scenario,assess,report,check}){
- report.sunUpdatesPendingNotice={actualReactDOM:true,syntheticClock:false,controlled8000msCallback:true,exactThresholdOnlyInUnitTests:true,syntheticBodyStream:true,transportLatencyMeasured:false,realBusinessWrites:0,cases:[]};
+ report.sunUpdatesPendingNotice={actualReactDOM:true,syntheticClock:false,controlled8000msCallback:true,exactThresholdOnlyInUnitTests:true,syntheticBodyStream:true,transportLatencyMeasured:false,realBusinessWrites:0,cases:[],layout:[]};
  for(const view of [{width:277,height:568,textSize:32},{width:390,height:844,textSize:16}])for(const theme of ['light','dark'])for(const phase of ['headers','body']){
   const {width,height,textSize}=view,label=`${width}x${height}/text${textSize}/${theme}/updates-pending-${phase}`,t=await scenario('updates-render-purity',width,theme);
   let releaseHeaders=null,handler=null,originalError=null,notifyIntercepted;const cleanupErrors=[],intercepted=new Promise(resolve=>{notifyIntercepted=resolve;});
@@ -172,7 +172,18 @@ async function runSunUpdatesPendingNoticeScenarios({scenario,assess,report,check
    check(keyboardReached,label+': the recovery link is reachable by keyboard while the form is busy');
    const target=await link.boundingBox();
    check(target&&target.height>=44&&target.width>0&&target.x>=-1&&target.x+target.width<=width+1&&target.y>=-1&&target.y+target.height<=height+1,label+': focused recovery link is fully visible and at least44px high');
-   check(await t.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)&&await status.evaluate(el=>el.scrollWidth<=el.clientWidth+1),label+': notice and viewport do not overflow');
+   const layout=await status.evaluate(el=>{
+    const widths=node=>node?{content:node.clientWidth,scroll:node.scrollWidth}:null;
+    return {
+     viewport:{content:innerWidth,scroll:document.documentElement.scrollWidth},
+     notice:widths(el),
+     form:widths(document.getElementById('sun-updates-form')),
+     contact:widths(document.querySelector('#sun-updates-form fieldset')),
+    };
+   });
+   report.sunUpdatesPendingNotice.layout.push({width,height,textSize,theme,phase,...layout});
+   check(layout.notice.scroll<=layout.notice.content+1,label+': pending notice stays within its width');
+   check(layout.viewport.scroll<=layout.viewport.content+1,label+': pending form stays within the viewport');
    await assess(t.page,width,theme,`updates-pending-${phase}-text${textSize}`);
    await t.page.keyboard.press('Enter');
    await t.page.waitForFunction(()=>location.hash==='#sun-summary');

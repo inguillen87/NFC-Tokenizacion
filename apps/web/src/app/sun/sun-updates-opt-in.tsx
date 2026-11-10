@@ -235,7 +235,7 @@ function SunUpdatesForm({ contextKey, locale, brandName, productName, tenantSlug
   return (
     <section
       id="sun-updates-opt-in"
-      className="scroll-mt-24 rounded-2xl border border-indigo-300/15 bg-indigo-500/[0.06] p-4"
+      className="min-w-0 scroll-mt-24 rounded-2xl border border-indigo-300/15 bg-indigo-500/[0.06] p-4 [overflow-wrap:anywhere]"
       aria-labelledby="sun-updates-title"
     >
       <div className="flex items-start gap-3">
@@ -300,7 +300,7 @@ function SunUpdatesForm({ contextKey, locale, brandName, productName, tenantSlug
                     placeholder="Tu nombre"
                   />
                 </label>
-                <fieldset className="min-w-0">
+                <fieldset className="min-w-0 [&_input]:min-w-0 [&_input]:w-full [&_select]:min-w-0 [&_select]:w-full">
                   <legend className="mb-2 text-xs font-bold text-slate-300">Elegí dónde recibir novedades</legend>
                   <ConsumerContactInput
                     draft={contactDraft}
