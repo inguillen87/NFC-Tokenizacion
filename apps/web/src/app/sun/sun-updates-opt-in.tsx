@@ -240,7 +240,7 @@ function SunUpdatesForm({ contextKey, locale, brandName, productName, tenantSlug
     >
       <div className="p-4 @max-[15rem]/sun-updates:p-[12px]">
         <div className="flex items-start gap-3 @max-[15rem]/sun-updates:flex-col @max-[15rem]/sun-updates:gap-[8px]">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-indigo-300/20 bg-indigo-500/10 text-indigo-200 @max-[15rem]/sun-updates:size-[32px]">
+          <span className="sun-updates-icon grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-indigo-300/20 bg-indigo-500/10 text-indigo-200 @max-[15rem]/sun-updates:size-[32px]">
             <BellRing className="h-4 w-4 @max-[15rem]/sun-updates:size-[16px]" aria-hidden="true" />
           </span>
           <div className="min-w-0 flex-1">
@@ -266,11 +266,11 @@ function SunUpdatesForm({ contextKey, locale, brandName, productName, tenantSlug
         </div>
 
         {state === "success" ? (
-          <div className="mt-3 flex items-start gap-3 rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3 text-emerald-100" role="status">
+          <div className="sun-updates-success mt-3 flex items-start gap-3 rounded-xl border p-3" role="status">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <div>
-              <strong className="block text-xs">Suscripción solicitada</strong>
-              <p className="mt-1 text-[10px] leading-4 opacity-80">La marca puede comunicarse por el canal autorizado. Podrás pedir la baja desde cualquier mensaje.</p>
+              <strong className="block text-sm">Suscripción solicitada</strong>
+              <p className="mt-1 text-xs leading-relaxed">La marca puede comunicarse por el canal autorizado. Podrás pedir la baja desde cualquier mensaje.</p>
             </div>
           </div>
         ) : (
@@ -284,7 +284,7 @@ function SunUpdatesForm({ contextKey, locale, brandName, productName, tenantSlug
               className="mt-3 flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/50 px-3 text-left text-xs font-black text-slate-100 transition hover:border-indigo-300/25 hover:bg-slate-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-300 @max-[15rem]/sun-updates:min-h-[44px] @max-[15rem]/sun-updates:gap-[8px] @max-[15rem]/sun-updates:px-[12px] @max-[15rem]/sun-updates:py-[8px]"
             >
               {open ? "Cerrar formulario" : "Elegir canal de contacto"}
-              <ChevronDown className={`h-4 w-4 shrink-0 text-indigo-200 transition @max-[15rem]/sun-updates:size-[16px] ${open ? "rotate-180" : ""}`} aria-hidden="true" />
+              <ChevronDown className={`sun-updates-icon h-4 w-4 shrink-0 text-indigo-200 transition @max-[15rem]/sun-updates:size-[16px] ${open ? "rotate-180" : ""}`} aria-hidden="true" />
             </button>
 
             {open ? (
@@ -327,15 +327,20 @@ function SunUpdatesForm({ contextKey, locale, brandName, productName, tenantSlug
                     />
                     Autorizo a {brandName} a enviarme novedades de este producto por el canal indicado. Este consentimiento es opcional y revocable.
                   </label>
+                  {state === "error" ? (
+                    <p id="sun-updates-send-error" className="text-xs leading-relaxed text-rose-200" role="alert">
+                      No pudimos confirmar la solicitud. Tus datos siguen en el formulario. Sólo se reenvía si elegís reintentar.
+                    </p>
+                  ) : null}
                   <button
                     type="submit"
                     disabled={pending || !consent || !contactPayload || !nameIsValid || !contextReady}
+                    aria-describedby={state === "error" ? "sun-updates-send-error" : undefined}
                     className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-indigo-400 px-4 text-xs font-black text-slate-950 transition hover:bg-indigo-300 disabled:cursor-not-allowed disabled:opacity-50 @max-[15rem]/sun-updates:min-h-[44px] @max-[15rem]/sun-updates:gap-[8px] @max-[15rem]/sun-updates:px-[12px] @max-[15rem]/sun-updates:py-[8px]"
                   >
                     <Send className="h-4 w-4 @max-[15rem]/sun-updates:size-[16px] @max-[15rem]/sun-updates:shrink-0" aria-hidden="true" />
                     {pending ? previousRequestPending ? "Terminando solicitud anterior..." : "Enviando solicitud..." : state === "error" ? "Reintentar solicitud" : "Confirmar suscripción"}
                   </button>
-                  {state === "error" ? <p className="text-center text-[10px] text-rose-200" role="alert">No pudimos confirmar la solicitud. Tus datos se conservan; no se envía otra automáticamente.</p> : null}
                 </form>
               </>
             ) : null}

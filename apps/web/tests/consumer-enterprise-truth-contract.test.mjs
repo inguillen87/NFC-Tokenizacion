@@ -71,8 +71,14 @@ test("club voting and loyalty values are tenant-reported or explicitly simulated
   assert.match(brands, /Puntos reportados/);
   assert.match(brands, /buildConsumerBrands/);
   assert.doesNotMatch(brands, /Drops|Promos|Mensajes del Viñedo|tierVisualTheme|nextMilestone|membership_progress|notificationCount/);
-  assert.match(rewards, /import \{ buildConsumerRewardsModel, findRequestedVoucher, rewardTenant \} from "\.\.\/_components\/consumer-rewards-model"/);
+  const rewardsModelImports = rewards.match(/import\s*\{([^{}]+)\}\s*from "\.\.\/_components\/consumer-rewards-model"/)?.[1]
+    .split(",").map(name => name.trim());
+  for (const name of ["buildConsumerRewardsModel", "findRequestedVoucher", "rewardTenant"]) {
+    assert.ok(rewardsModelImports?.includes(name), `Benefits must import ${name} from the consumer rewards model`);
+  }
   assert.match(rewards, /buildConsumerRewardsModel\(rewardsPayload,/);
+  assert.match(rewards, /findRequestedVoucher\(rewards, params\.voucher, params\.tenant\)/);
+  assert.match(rewards, /rewardTenant\(params\.tenant\)/);
   assert.match(rewards, /buildConsumerWalletPointsModel\(walletPayload\)/);
   assert.doesNotMatch(rewards, /can_redeem|eligible|puntos >=|balance >=|canRedeem|pointsToNext/);
   assert.doesNotMatch(rewards, /puntos reales|Emisor verificado por nexID/);

@@ -66,6 +66,21 @@ async function reservationFeedback(page,context,width,theme){
   const search=page.getByRole('searchbox',{name:'Buscar beneficio',exact:true});await search.focus();
   releaseRead();await notice.getByRole('link',{name:'Ver mi voucher',exact:true}).waitFor();
   check(await search.evaluate(node=>node===document.activeElement),`${width}/${theme} confirmation never steals a newer focus`);
+  const voucher=page.locator('#voucher-claim-'+claimId);
+  await page.getByRole('button',{name:'Publicados',exact:true}).click();
+  check(await voucher.count()===0,`${width}/${theme} filters can hide the owned voucher`);
+  const voucherLink=notice.getByRole('link',{name:'Ver mi voucher',exact:true});
+  await voucherLink.focus();
+  await page.keyboard.press('Enter');
+  const voucherSummary=voucher.locator('details > summary');
+  await page.waitForFunction(id=>{const details=document.getElementById(id)?.querySelector('details');return details?.open&&details.querySelector('summary')===document.activeElement;},'voucher-claim-'+claimId);
+  check(await voucherSummary.evaluate(node=>node===document.activeElement&&node.parentElement.open),`${width}/${theme} explicit voucher link restores the filtered record and focuses its open detail`);
+  await page.keyboard.press('Enter');
+  check(await voucherSummary.evaluate(node=>!node.parentElement.open),`${width}/${theme} voucher details remain manually collapsible`);
+  await voucherLink.focus();
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(id=>{const details=document.getElementById(id)?.querySelector('details');return details?.open&&details.querySelector('summary')===document.activeElement;},'voucher-claim-'+claimId);
+  check(await voucherSummary.evaluate(node=>node===document.activeElement&&node.parentElement.open),`${width}/${theme} the same voucher link can reopen the detail`);
   check(posts===1&&reads===1,`${width}/${theme} one synthetic POST and one explicit synthetic GET`);
   await noOverflow(page,`${width}/${theme} reservation status fits the viewport`);
  }finally{

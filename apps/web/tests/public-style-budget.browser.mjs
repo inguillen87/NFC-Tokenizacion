@@ -14,25 +14,37 @@ async function context(width,theme){const context=await browser.newContext({view
 const stable=p=>p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
 async function capture(page){return page.evaluate(()=>{const root=document.querySelector('.sun-tap-experience')||document.querySelector('[data-testid="sun-summary-product"]')?.parentElement;return [...root.querySelectorAll('*')].filter(el=>el instanceof HTMLElement&&el.offsetWidth&&el.offsetHeight).map(el=>{const cs=getComputedStyle(el);return{tag:el.tagName,classes:el.className,styles:Object.fromEntries(['display','position','color','backgroundColor','fontSize','fontWeight','lineHeight','paddingTop','paddingLeft','paddingBottom','paddingRight','marginTop','borderRadius','gridTemplateColumns','visibility'].map(k=>[k,cs[k]])),width:Math.round(el.getBoundingClientRect().width*10)/10};});});}
 async function measureSunUpdatesChannelCss(page){
- return page.evaluate(()=>{
-  const panel=document.createElement('div'),fields=document.createElement('div'),channels=document.createElement('div');
+ return page.evaluate(async()=>{
+  const surface=document.createElement('div'),panel=document.createElement('div'),fields=document.createElement('div'),channels=document.createElement('div');
+  surface.className='sun-tap-experience';
   panel.className='@container/sun-updates';
-  panel.style.cssText='position:fixed;inset:0 auto auto 0;visibility:hidden;pointer-events:none';
-  panel.setAttribute('aria-hidden','true');
+  panel.id='sun-updates-opt-in';
+  surface.style.cssText='position:fixed;inset:0 auto auto 0;inline-size:24rem;visibility:hidden;pointer-events:none';
+  surface.setAttribute('aria-hidden','true');
   fields.className='@max-[15rem]/sun-updates:[&_[data-sun-updates-contact-channels]]:grid-cols-1';
   channels.className='grid grid-cols-2';
   channels.setAttribute('data-sun-updates-contact-channels','');
-  channels.append(document.createElement('span'),document.createElement('span'));
-  fields.append(channels);panel.append(fields);document.body.append(panel);
+  const selected=document.createElement('button'),success=document.createElement('div');
+  selected.setAttribute('aria-pressed','true');
+  success.className='sun-updates-success';
+  channels.append(selected,document.createElement('button'));
+  fields.append(channels);panel.append(fields,success);surface.append(panel);document.body.append(surface);
   try{
-   const columns=()=>{
+   const measure=async size=>{
+    panel.style.inlineSize=size;
+    // Container queries update during layout. Wait for the resized container to settle.
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     const computed=getComputedStyle(channels);
-    return computed.display==='grid'&&computed.gridTemplateColumns!=='none'?computed.gridTemplateColumns.trim().split(/\s+/).length:0;
+    const columns=computed.display==='grid'&&computed.gridTemplateColumns!=='none'?computed.gridTemplateColumns.trim().split(/\s+/).length:0;
+    return {columns,width:panel.getBoundingClientRect().width};
    };
-   panel.style.inlineSize='12rem';const narrow=columns();
-   panel.style.inlineSize='16rem';const regular=columns();
-   return {named:getComputedStyle(panel).containerName==='sun-updates',narrow,regular};
-  }finally{panel.remove();}
+   const narrow=await measure('12rem');
+   const regular=await measure('16rem');
+   const style=getComputedStyle(success);
+   return {named:getComputedStyle(panel).containerName==='sun-updates',narrow,regular,
+    opaqueConfirmation:style.backgroundColor.startsWith('rgb(')&&style.backgroundImage==='none',
+    selectedOutline:getComputedStyle(selected).boxShadow.includes('inset')};
+  }finally{surface.remove();}
  });
 }
 try{
@@ -45,7 +57,8 @@ try{
    // Isolate the stylesheet from product eligibility. No application controls or requests are invoked.
    const channels=await measureSunUpdatesChannelCss(t.page);
    report.sunUpdatesGeneratedCss=channels;
-   check(channels.named&&channels.narrow===1&&channels.regular===2,'Generated SUN styles reflow only the scoped contact channels');
+   check(channels.named&&channels.narrow.width<channels.regular.width&&channels.narrow.columns===1&&channels.regular.columns===2,'Generated SUN styles reflow only the scoped contact channels');
+   check(channels.opaqueConfirmation&&channels.selectedOutline,'Generated SUN styles retain the confirmation surface and selected channel outline');
   }
   check(await t.page.locator('html').getAttribute('data-theme')===theme,'Server theme retained '+width+' '+theme);
   const before=await capture(t.page);await t.page.screenshot({path:join(output,`sun-${width}-${theme}.png`),fullPage:true});
