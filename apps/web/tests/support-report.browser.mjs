@@ -25,6 +25,11 @@ export async function checkSupportReports({ page, base, state, mode, assess, rep
   await review();
   assert.match(await form.innerText(), /QA-ONLY/);
   assert.ok((await form.innerText()).includes(description));
+  await form.getByRole('button', { name: 'Editar detalles', exact: true }).press('Enter');
+  await page.waitForFunction(() => document.activeElement === document.getElementById('report-description'));
+  assert.equal(await form.locator('#report-description').inputValue(), description);
+  await form.getByRole('button', { name: 'Revisar reporte', exact: true }).press('Enter');
+  await page.waitForFunction(() => document.activeElement?.textContent === 'Revisá antes de enviar');
   assert.equal((await calls()).length, initial, 'Review remains read-only');
   for (const [width, theme] of [[1440, 'light'], [1440, 'dark'], [390, 'light'], [390, 'dark']]) {
     await assess(page, '#report-problem', 'support-review', width, theme);
@@ -36,6 +41,7 @@ export async function checkSupportReports({ page, base, state, mode, assess, rep
   page.on('request', capture);
   await form.getByRole('button', { name: 'Confirmar reporte', exact: true }).evaluate(button => { button.click(); button.click(); });
   await form.getByTestId('report-problem-receipt').waitFor();
+  await page.waitForFunction(() => document.activeElement === document.querySelector('[data-testid="report-problem-receipt"] h3'));
   const completed = await calls();
   assert.equal(completed.length, initial + 1, 'Double click produces one submitted report');
   assert.ok(sentToken);
@@ -48,16 +54,33 @@ export async function checkSupportReports({ page, base, state, mode, assess, rep
   assert.equal(completed.at(-1).keys.includes('uid'), false);
   page.off('request', capture);
   report.checks.push('Support requires review and explicit confirmation; double-click sends once, with a real response reference and no capability in URL/storage or unrelated credentials upstream');
+  report.checks.push('Keyboard focus returns to the preserved report draft when editing, then follows review and the confirmed receipt');
 
   await mode('report-lost-response'); await visit(); await review();
   await form.getByRole('button', { name: 'Confirmar reporte', exact: true }).click();
   await form.getByRole('button', { name: 'Reintentar el mismo reporte', exact: true }).waitFor();
   assert.ok((await form.innerText()).includes(description));
   const failedAttempt = (await calls()).at(-1);
-  await form.getByRole('button', { name: 'Reintentar el mismo reporte', exact: true }).click();
+  const retryGate = Promise.withResolvers();
+  await page.route('**/api/public-cta/report-problem', async route => {
+    await retryGate.promise;
+    await route.fallback();
+  }, { times: 1 });
+  try {
+    await form.getByRole('button', { name: 'Reintentar el mismo reporte', exact: true }).press('Enter');
+    await page.waitForFunction(() => document.activeElement?.textContent === 'Revisá antes de enviar');
+    await page.waitForFunction(() => document.querySelector('[data-testid="report-problem-form"] [role="status"]')?.textContent === 'Enviando reporte…');
+    await form.getByTestId('report-problem-summary').focus();
+  } finally {
+    retryGate.resolve();
+  }
   await form.getByTestId('report-problem-receipt').waitFor();
+  const receiptTitle = await form.getByTestId('report-problem-receipt').getByRole('heading', { level: 3 }).textContent();
+  assert.equal(await form.getByRole('status').textContent(), receiptTitle);
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  assert.ok(await form.getByTestId('report-problem-summary').evaluate(node => node === document.activeElement));
   assert.equal((await calls()).at(-1).requestId, failedAttempt.requestId);
-  report.checks.push('A lost acknowledgement preserves the reviewed report and retries with the same operation identity');
+  report.checks.push('A lost acknowledgement preserves the reviewed report and retries with the same operation identity; the receipt respects focus moved during the request');
 
   for (const testMode of ['report-invalid', 'report-expired', 'report-conflict']) {
     await mode(testMode); await visit(); await review();

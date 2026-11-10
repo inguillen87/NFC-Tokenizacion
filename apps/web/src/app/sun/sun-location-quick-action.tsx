@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LocateFixed, CheckCircle2, ChevronDown, MapPin } from "lucide-react";
 import { SunLocationRequestButton, useSunLocationController } from "./sun-location-controller";
 import { useSunLocale } from "./sun-locale-provider";
@@ -14,11 +14,23 @@ export function SunLocationQuickAction() {
   const copy=COPY[locale==="en"||locale==="pt-BR"?locale:"es-AR"];
   const initiatedHere=useRef(false); const savedRef=useRef<HTMLElement>(null);
   const [dismissed,setDismissed]=useState(false);
+  const disclosureFocus = useRef(false);
+  const reopenButton = useRef<HTMLButtonElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
   const state=control?.state || "idle";
   const busy=state==="requesting"||state==="measuring"||state==="saving";
   const phase=state==="requesting"?copy.requesting:state==="measuring"?copy.measuring:state==="saving"?copy.saving:"";
   const status=state==="denied"?copy.denied:state==="timeout"?copy.timeout:state==="retryable"?copy.retryable:state==="uncertain"?copy.uncertain:state==="fresh_tap_required"?copy.fresh:state==="unsupported"?copy.unsupported:["invalid","stale","unavailable"].includes(state)?copy.failed:"";
   const actionLabel=["denied","timeout","invalid","stale","unavailable","retryable"].includes(state)?copy.retry:copy.cta;
+  function rememberDisclosureFocus(trigger: HTMLButtonElement) {
+    disclosureFocus.current = document.activeElement === trigger;
+  }
+  useLayoutEffect(() => {
+    if (!disclosureFocus.current) return;
+    disclosureFocus.current = false;
+    const destination = dismissed ? reopenButton.current : heading.current;
+    destination?.focus({ preventScroll: true });
+  }, [dismissed]);
   useEffect(()=>{if(state==="updated" && initiatedHere.current)savedRef.current?.focus({preventScroll:true});},[state]);
   if(state==="updated" && control?.receipt) {
     const area=[control.receipt.city,control.receipt.countryCode].filter(Boolean).join(", ");
@@ -30,9 +42,9 @@ export function SunLocationQuickAction() {
     </section>;
   }
   return <section onClickCapture={event=>{if(event.target instanceof Element && event.target.closest('[data-testid="sun-location-consent-cta"]'))initiatedHere.current=true;}} className={styles.card} id="share-phone-location" data-testid="sun-location-quick-action" data-state={state}>
-    <div className={styles.heading}><LocateFixed size={22} aria-hidden="true"/><div><h2>{copy.title}</h2>{!dismissed && <p>{copy.body}</p>}</div></div>
-    {dismissed ? <button type="button" className={styles.reopen} onClick={()=>setDismissed(false)}>{copy.cta}<ChevronDown size={16}/></button> : <>
-      <div className={styles.actions}><SunLocationRequestButton className={styles.primary}><LocateFixed size={19} aria-hidden="true"/><span>{actionLabel}</span></SunLocationRequestButton><button type="button" className={styles.secondary} disabled={busy} onClick={()=>setDismissed(true)}>{copy.later}</button></div>
+    <div className={styles.heading}><LocateFixed size={22} aria-hidden="true"/><div><h2 ref={heading} tabIndex={-1}>{copy.title}</h2>{!dismissed && <p>{copy.body}</p>}</div></div>
+    {dismissed ? <button ref={reopenButton} type="button" className={styles.reopen} onClick={event => { rememberDisclosureFocus(event.currentTarget); setDismissed(false); }}>{copy.cta}<ChevronDown size={16}/></button> : <>
+      <div className={styles.actions}><SunLocationRequestButton className={styles.primary}><LocateFixed size={19} aria-hidden="true"/><span>{actionLabel}</span></SunLocationRequestButton><button type="button" className={styles.secondary} disabled={busy} onClick={event => { rememberDisclosureFocus(event.currentTarget); setDismissed(true); }}>{copy.later}</button></div>
       {!control?.ready && <p className={styles.optional}>{copy.ready}</p>}
     </>}
     <div data-testid="sun-location-quick-status" role="status" aria-live="polite" aria-atomic="true">
