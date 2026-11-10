@@ -40,6 +40,21 @@ interface Reward {
 
 type RewardForm = { code: string; title: string; description: string; type: string; points_cost: number; stock_total: number | null; image_url: string; status: string; requires_age_gate: boolean; network_visible: boolean };
 
+export function rewardStockLabel(remaining: unknown, total: unknown): string {
+  if (remaining === null && total === null) return "Sin límite de stock registrado";
+  const isStockCount = (value: unknown): value is number =>
+    typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= 2_147_483_647;
+  if ((remaining != null && !isStockCount(remaining)) || (total != null && !isStockCount(total))) {
+    return "Stock inconsistente";
+  }
+  if (remaining == null) {
+    return total == null ? "Stock no informado" : `Stock: ${total} en total · disponibilidad sin confirmar`;
+  }
+  if (total == null) return `Disponibles: ${remaining} · total sin informar`;
+  if (remaining > total) return "Stock inconsistente";
+  return `Disponibles: ${remaining} de ${total}`;
+}
+
 export function buildRewardSavePayload(tenant: string, form: RewardForm, editing: Reward | null) {
   const uuid = /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i;
   const scope = (editing?.tenant_slug || tenant).trim().toLowerCase();
@@ -514,8 +529,8 @@ export default function RewardsClient({
                 <div className="mt-5 pt-4 border-t border-white/5 flex items-center justify-between">
                   <div>
                     <p className="text-lg font-black text-white">{item.points} <span className="text-xs font-normal text-slate-400">pts</span></p>
-                    <p className="text-[10px] text-slate-500">
-                      Stock: {item.stock_remaining ?? item.stock_total ?? "∞"} / {item.stock_total ?? "∞"}
+                    <p className="text-xs leading-snug text-slate-400">
+                      {rewardStockLabel(item.stock_remaining, item.stock_total)}
                     </p>
                   </div>
                   {canWrite ? (

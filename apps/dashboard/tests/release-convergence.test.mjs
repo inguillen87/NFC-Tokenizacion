@@ -1,6 +1,6 @@
 import {loyaltyOverviewReadinessPriorHash} from './helpers/loyalty-overview-readiness-reviewed-sources.mjs';
 import {loyaltyOverviewRecoveryPriorHash} from './helpers/loyalty-overview-recovery-reviewed-sources.mjs';
-import {REWARD_DIALOG_SOURCE_BASE,REWARD_DIALOG_REVIEWED_SOURCES,rewardDialogPriorHash} from './helpers/reward-dialog-reviewed-sources.mjs';
+import {REWARD_DIALOG_SOURCE_BASE,REWARD_DIALOG_REVIEWED_SOURCES,rewardDialogHistoricalPriorHash,rewardDialogPriorHash} from './helpers/reward-dialog-reviewed-sources.mjs';
 import {CUSTOMER_FEEDBACK_ADDED,customerFeedbackPriorHash,customerFeedbackPriorInventory,assertCustomerFeedbackAdded} from './helpers/customer-feedback-reviewed-sources.mjs';
 import {crmFilterContextPriorHash} from './helpers/crm-filter-context-reviewed-sources.mjs';
 import {catalogConfirmationPriorHash} from './helpers/catalog-confirmation-reviewed-sources.mjs';
@@ -142,11 +142,25 @@ test('reward dialog overlay permits exactly two pinned successors and retains in
  assert.equal(REWARD_DIALOG_SOURCE_BASE,'a38a432e96cea93df53f1fca6bd58335b42a290a');
  assert.deepEqual(Object.keys(REWARD_DIALOG_REVIEWED_SOURCES).sort(),['apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx','apps/dashboard/src/lib/permission-policy.ts']);
  for(const [path,pin]of Object.entries(REWARD_DIALOG_REVIEWED_SOURCES)){
-  assert.equal(rewardDialogPriorHash(path,pin.after),pin.before);
-  for(const changed of [pin.before,'0'.repeat(64),pin.after.slice(0,-1)+(pin.after.endsWith('0')?'1':'0')])assert.throws(()=>rewardDialogPriorHash(path,changed),/exact reviewed reward-dialog increment/);
+  assert.equal(rewardDialogHistoricalPriorHash(path,pin.after),pin.before);
+  for(const changed of [pin.before,'0'.repeat(64),pin.after.slice(0,-1)+(pin.after.endsWith('0')?'1':'0')])assert.throws(()=>rewardDialogHistoricalPriorHash(path,changed),/exact reviewed reward-dialog increment/);
  }
  const unrelated='apps/dashboard/src/lib/enterprise-runtime-rbac.ts';
  assert.equal(rewardDialogPriorHash(unrelated,'unreviewed-content'),'unreviewed-content');
  assert.throws(()=>assert.equal(rewardDialogPriorHash(unrelated,'unreviewed-content'),'historical-origin'));
- assert.throws(()=>rewardDialogPriorHash('apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx',REWARD_DIALOG_REVIEWED_SOURCES['apps/dashboard/src/lib/permission-policy.ts'].after),/exact reviewed reward-dialog increment/);
+ assert.throws(()=>rewardDialogHistoricalPriorHash('apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx',REWARD_DIALOG_REVIEWED_SOURCES['apps/dashboard/src/lib/permission-policy.ts'].after),/exact reviewed reward-dialog increment/);
+});
+
+test('the stock display requires the exact new rewards source and preserves the dialog and permission origins',async()=>{
+ const path='apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx';
+ const text=(await readFile(new URL('../src/app/(app)/loyalty/rewards/rewards-client.tsx',import.meta.url),'utf8')).replaceAll('\r\n','\n');
+ const actual=createHash('sha256').update(text).digest('hex');
+ const pin=REWARD_DIALOG_REVIEWED_SOURCES[path];
+ assert.equal(rewardDialogPriorHash(path,actual),pin.before);
+ assert.throws(()=>rewardDialogPriorHash(path,pin.after),/exact reviewed reward-stock display/);
+ assert.throws(()=>rewardDialogPriorHash(path,createHash('sha256').update(text+'\n').digest('hex')),/exact reviewed reward-stock display/);
+ const permissionPath='apps/dashboard/src/lib/permission-policy.ts';
+ const permissionPin=REWARD_DIALOG_REVIEWED_SOURCES[permissionPath];
+ assert.equal(rewardDialogPriorHash(permissionPath,permissionPin.after),permissionPin.before);
+ assert.throws(()=>rewardDialogPriorHash(permissionPath,actual),/exact reviewed reward-dialog increment/);
 });

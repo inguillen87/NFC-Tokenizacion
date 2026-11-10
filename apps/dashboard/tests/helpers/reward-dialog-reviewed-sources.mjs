@@ -5,6 +5,8 @@ import {ENGAGEMENT_GOVERNANCE_CHANGED} from './engagement-governance-reviewed-so
 // Only the exact reviewed R7 successor is projected to the independently pinned
 // D531 origin. Historical fixtures and every previous overlay remain unchanged.
 export const REWARD_DIALOG_SOURCE_BASE='a38a432e96cea93df53f1fca6bd58335b42a290a';
+const rewardsClientPath='apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx';
+const rewardStockDisplayAfter='9039f7d58c85752f1e431c0714965078ece8b4a604ebb01d743499c4381b2099';
 export const REWARD_DIALOG_REVIEWED_SOURCES=Object.freeze({
  'apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx':Object.freeze({
   before:'68e5c9f6d4ab1a4f707ee3a3cb650ec6632063b0721e8a644c53102231dff221',
@@ -20,10 +22,16 @@ function independentOrigin(path){
   ? REWARD_PROGRAM_CONTEXT_REVIEWED_SOURCES[path]?.after
   : ENGAGEMENT_GOVERNANCE_CHANGED[path]?.after;
 }
-export function rewardDialogPriorHash(path,actual){
+export function rewardDialogHistoricalPriorHash(path,actual){
  if(!Object.hasOwn(REWARD_DIALOG_REVIEWED_SOURCES,path))return actual;
  const pin=REWARD_DIALOG_REVIEWED_SOURCES[path];
  assert.equal(pin.before,independentOrigin(path),path+' independently pinned D531 origin');
  assert.equal(actual,pin.after,path+' exact reviewed reward-dialog increment');
  return pin.before;
+}
+
+export function rewardDialogPriorHash(path,actual){
+ if(path!==rewardsClientPath)return rewardDialogHistoricalPriorHash(path,actual);
+ assert.equal(actual,rewardStockDisplayAfter,path+' exact reviewed reward-stock display');
+ return rewardDialogHistoricalPriorHash(path,REWARD_DIALOG_REVIEWED_SOURCES[path].after);
 }

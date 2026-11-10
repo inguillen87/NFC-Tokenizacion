@@ -7,9 +7,35 @@ const source = readFileSync(new URL("../src/app/(app)/loyalty/rewards/rewards-cl
 const code = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText;
 const module = { exports: {} };
 new Function("require", "module", "exports", code)(() => ({}), module, module.exports);
-const { buildRewardSavePayload, rewardSaveErrorCopy } = module.exports;
+const { buildRewardSavePayload, rewardSaveErrorCopy, rewardStockLabel } = module.exports;
 const reward = { id: "10000000-0000-4000-8000-000000000001", program_id: "20000000-0000-4000-8000-000000000001", tenant_slug: "tenant-a", code: "VISIT", title: "Visita", stock_total: 10, stock_remaining: 2, requires_age_gate: true, network_visible: false };
 const form = overrides => ({ code: "VISIT", title: "Título editado", description: "Descripción", type: "TOUR", points_cost: 0, stock_total: 10, image_url: "", status: "active", requires_age_gate: true, network_visible: false, ...overrides });
+
+test("reward cards distinguish confirmed, missing and inconsistent stock", () => {
+  for (const [remaining, total, label] of [
+    [0, 5, "Disponibles: 0 de 5"],
+    [0, 0, "Disponibles: 0 de 0"],
+    [1, 5, "Disponibles: 1 de 5"],
+    [0, null, "Disponibles: 0 · total sin informar"],
+    [2, undefined, "Disponibles: 2 · total sin informar"],
+    [null, 5, "Stock: 5 en total · disponibilidad sin confirmar"],
+    [undefined, 0, "Stock: 0 en total · disponibilidad sin confirmar"],
+    [null, null, "Sin límite de stock registrado"],
+    [undefined, null, "Stock no informado"],
+    [null, undefined, "Stock no informado"],
+    [undefined, undefined, "Stock no informado"],
+    [2_147_483_647, 2_147_483_647, "Disponibles: 2147483647 de 2147483647"],
+    [6, 5, "Stock inconsistente"],
+    [1, 0, "Stock inconsistente"],
+  ]) {
+    assert.equal(rewardStockLabel(remaining, total), label);
+  }
+  for (const value of ["0", false, {}, NaN, Infinity, -1, 1.5, 2_147_483_648]) {
+    assert.equal(rewardStockLabel(value, 5), "Stock inconsistente");
+    assert.equal(rewardStockLabel(0, value), "Stock inconsistente");
+  }
+  assert.match(source, /\{rewardStockLabel\(item\.stock_remaining, item\.stock_total\)\}/);
+});
 
 test("editing metadata sends saved program identity and flags without resetting stock", () => {
   const payload = buildRewardSavePayload("tenant-other", form(), reward);
