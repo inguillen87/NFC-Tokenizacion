@@ -85,6 +85,22 @@ jobs:
           QA_OUTPUT="$RUNNER_TEMP/nexid-assignment-continuity/browser" node apps/dashboard/tests/supplier-assignment-continuity.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-pilot-launchpad/browser" node apps/dashboard/tests/pilot-launchpad.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-draft-reconcile/browser" node apps/dashboard/tests/supplier-draft-comparison.browser.mjs
+          git --no-optional-locks ls-files --error-unmatch -- apps/dashboard/next-env.d.ts apps/dashboard/tsconfig.json >/dev/null
+          if ! git --no-optional-locks diff --quiet HEAD --; then
+            echo '::error::Loyalty browser QA requires a clean tracked checkout'
+            exit 1
+          fi
+          loyalty_status=0
+          QA_OUTPUT="$RUNNER_TEMP/nexid-loyalty-overview/browser" timeout --signal=TERM --kill-after=10s 210s node apps/dashboard/tests/loyalty-overview.browser.mjs || loyalty_status=$?
+          if ! git --no-optional-locks diff --quiet HEAD --; then
+            echo '::error::Loyalty browser QA left tracked checkout changes or could not verify cleanliness'
+            exit 1
+          fi
+          if [ "$loyalty_status" -ne 0 ]; then
+            printf '::error::Loyalty browser QA failed with exit code %s\n' "$loyalty_status"
+            exit "$loyalty_status"
+          fi
+          echo 'Loyalty browser QA and tracked checkout verified'
           export NEXT_QA_ORIGIN=http://127.0.0.1:33982
           map_log="$RUNNER_TEMP/nexid-map-next.log"
           node node_modules/next/dist/bin/next start apps/dashboard --hostname 127.0.0.1 --port 33982 > "$map_log" 2>&1 &
