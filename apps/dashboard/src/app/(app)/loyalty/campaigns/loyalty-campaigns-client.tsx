@@ -1648,21 +1648,13 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData, can
         </div>
 
         <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">
-                <BookmarkCheck className="h-4 w-4" />
-                Voucher desk
-              </div>
-              <h3 className="mt-1 text-sm font-black text-white">Validar código de canje en bodega / comercio</h3>
-              <p className="mt-1 text-[11px] text-slate-400">
-                Pegá el código que muestra el cliente. El sello y últimos 4 dígitos son control extra cuando el staff necesita más seguridad.
-              </p>
-            </div>
-            <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-200">
-              staff-ready
-            </span>
-          </div>
+          <h3 className="flex items-center gap-2 text-base font-bold text-white">
+            <BookmarkCheck aria-hidden="true" className="h-5 w-5 shrink-0 text-emerald-300" />
+            Comprobantes de canje
+          </h3>
+          <p className="mt-2 text-sm text-slate-300">
+            Ingresá el código que muestra el cliente. Consultá su estado y registrá el canje después de entregar el beneficio.
+          </p>
 
           <div className="mt-3 grid gap-2 md:grid-cols-[1.2fr_.9fr_.7fr_auto]">
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -1672,7 +1664,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData, can
                 placeholder="12345678"
                 value={voucherCode}
                 onChange={(event) => setVoucherCode(event.target.value.toUpperCase())}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-emerald-400"
+                className="mt-1 min-h-11 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-base normal-case tracking-normal text-white focus:border-emerald-400 md:text-sm"
               />
             </label>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -1682,7 +1674,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData, can
                 placeholder="opcional"
                 value={voucherSeal}
                 onChange={(event) => setVoucherSeal(event.target.value.toUpperCase())}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-emerald-400"
+                className="mt-1 min-h-11 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-base normal-case tracking-normal text-white focus:border-emerald-400 md:text-sm"
               />
             </label>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -1690,18 +1682,19 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData, can
               <input
                 title="Últimos cuatro dígitos del teléfono para control del staff"
                 placeholder="8608"
+                inputMode="numeric"
                 value={voucherPhoneLast4}
                 onChange={(event) => setVoucherPhoneLast4(event.target.value.replace(/[^\d]/g, "").slice(0, 4))}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-emerald-400"
+                className="mt-1 min-h-11 w-full rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-base normal-case tracking-normal text-white focus:border-emerald-400 md:text-sm"
               />
             </label>
-            <div className="flex items-end gap-2">
+            <div className="grid grid-cols-2 items-end gap-2">
               <button
                 type="button"
                 title="Consultar estado, beneficio, consumidor y vencimiento sin marcarlo como usado"
                 disabled={voucherChecking || !voucherCode.trim() || !tenantScope}
                 onClick={() => handleValidateVoucher("lookup")}
-                className="rounded-lg border border-emerald-400/30 px-3 py-2 text-xs font-black text-emerald-200 hover:bg-emerald-400/10 disabled:opacity-40"
+                className="min-h-11 rounded-lg border border-emerald-400/30 px-2 py-2 text-sm font-bold text-emerald-200 hover:bg-emerald-400/10 disabled:opacity-40"
               >
                 Consultar
               </button>
@@ -1710,7 +1703,7 @@ export default function LoyaltyCampaignsClient({ tenantScope, allowDemoData, can
                 title="Marcar el voucher como canjeado después de entregar premio, cena, experiencia o descuento"
                 disabled={voucherChecking || !voucherCode.trim() || !tenantScope}
                 onClick={() => handleValidateVoucher("redeem")}
-                className="rounded-lg bg-emerald-400 px-3 py-2 text-xs font-black text-slate-950 hover:bg-emerald-300 disabled:opacity-40"
+                className="min-h-11 rounded-lg bg-emerald-400 px-2 py-2 text-sm font-bold text-slate-950 hover:bg-emerald-300 disabled:opacity-40"
               >
                 Canjear
               </button>
