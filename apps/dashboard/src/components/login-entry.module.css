@@ -45,6 +45,20 @@
 .page .submitButton { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 52px; border-radius: 12px; font-size: .96rem; font-weight: 800; }
 .page .submitButton:disabled { opacity: .72; cursor: wait; }
 .selectedProfile, .pendingMessage { margin: 0; color: var(--auth-muted); font-size: .8rem; line-height: 1.5; }
+.sessionClosed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--entry-highlight-soft);
+  color: var(--auth-text);
+  font-size: .85rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.sessionClosed svg { flex-shrink: 0; color: var(--entry-highlight); }
 .tenantForm > div:empty { display: none; }
 .accessHint { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: var(--auth-soft); font-size: .78rem; line-height: 1.55; }
 .accessHint svg { flex-shrink: 0; margin-top: 2px; }

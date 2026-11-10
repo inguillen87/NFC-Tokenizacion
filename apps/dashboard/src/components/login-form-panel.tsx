@@ -21,6 +21,7 @@ type Props = {
   clerkEnabled?: boolean;
   clerkRecoveryRequired?: boolean;
   authNotice?: string;
+  sessionClosedNotice?: string;
   nextPath?: string;
 };
 
@@ -35,6 +36,7 @@ export function LoginFormPanel({
   clerkEnabled,
   clerkRecoveryRequired = false,
   authNotice,
+  sessionClosedNotice,
   nextPath = "/",
 }: Props) {
   const LOGIN_TIMEOUT_MS = 10_000;
@@ -160,6 +162,12 @@ export function LoginFormPanel({
         <p id="tenant-access-description" className={styles.formDescription}>
           Consultá tus TAP físicos, productos y CRM con la cuenta que te asignó tu empresa.
         </p>
+        {sessionClosedNotice ? (
+          <p role="status" className={styles.sessionClosed}>
+            <CheckCircle2 aria-hidden="true" size={18} />
+            {sessionClosedNotice}
+          </p>
+        ) : null}
         <div className={styles.field}>
           <label htmlFor="tenant-email">Correo electrónico</label>
           <input suppressHydrationWarning
