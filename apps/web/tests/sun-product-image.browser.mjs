@@ -27,6 +27,26 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : "playwright-core");
 const report = { syntheticComponentFixture: true, productionOrPhysicalTapVerified: false, checks: [], contexts: [], errors: [], browserClosed: false, serverClosed: false };
 const check = (passed, name) => report.checks.push({ name, passed: Boolean(passed) });
+async function capturePaint(page, image, name) {
+  const png = await image.screenshot({ path: join(output, name + ".png"), scale: "css", animations: "disabled" });
+  return page.evaluate(async (base64) => {
+    const screenshot = new Image();
+    screenshot.src = "data:image/png;base64," + base64;
+    await screenshot.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = screenshot.naturalWidth;
+    canvas.height = screenshot.naturalHeight;
+    const context = canvas.getContext("2d");
+    context.drawImage(screenshot, 0, 0);
+    const y = Math.floor(canvas.height / 2);
+    return {
+      body: Array.from(context.getImageData(Math.floor(canvas.width * 0.15), y, 1, 1).data),
+      center: Array.from(context.getImageData(Math.floor(canvas.width / 2), y, 1, 1).data),
+    };
+  }, png.toString("base64"));
+}
+
+const syntheticPhotoPixels = { body: [16, 135, 125, 255], center: [255, 255, 255, 255] };
 let browser;
 try {
   browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || undefined });
@@ -39,7 +59,18 @@ try {
     let slowRequestObserved;
     const slowRequest = new Promise((done) => { slowRequestObserved = done; });
     try {
-      await context.addInitScript(({ theme }) => { document.addEventListener("DOMContentLoaded", () => { document.documentElement.dataset.theme = theme; }); window.__imageGeoCalls = 0; Object.defineProperty(navigator, "geolocation", { value: { getCurrentPosition() { window.__imageGeoCalls++; }, watchPosition() { window.__imageGeoCalls++; }, clearWatch() {} } }); }, { theme });
+      await context.addInitScript(({ theme }) => {
+        document.addEventListener("DOMContentLoaded", () => { document.documentElement.dataset.theme = theme; });
+        window.__imageGeoCalls = 0;
+        Object.defineProperty(navigator, "geolocation", { value: { getCurrentPosition() { window.__imageGeoCalls++; }, watchPosition() { window.__imageGeoCalls++; }, clearWatch() {} } });
+        const decode = HTMLImageElement.prototype.decode;
+        HTMLImageElement.prototype.decode = function () {
+          const nativeDecode = decode.call(this);
+          if (this.getAttribute("src") !== "/slow-photo.svg") return nativeDecode;
+          // Chromium can paint this bitmap while the app's decode continuation waits.
+          return nativeDecode.then(() => new Promise(resolve => { window.__releaseSunImageDecode = resolve; }));
+        };
+      }, { theme });
       const page = await context.newPage(); page.setDefaultTimeout(10000); page.on("pageerror", (error) => entry.errors.push(error.message));
       await page.route("**/*", async (route) => {
         const request = route.request(), url = new URL(request.url());
@@ -57,8 +88,25 @@ try {
       try { await Promise.race([slowRequest, new Promise((_, reject) => { slowTimer = setTimeout(() => reject(new Error("native_delayed_image_request_timeout")), 10000); })]); }
       finally { clearTimeout(slowTimer); }
       assert(release, "native_delayed_image_request_required"); release(); release = null;
-      await page.locator('[data-testid="sun-product-image"][data-image-state="ready"]').waitFor();
       const image = page.getByTestId("sun-product-image"), opener = page.getByTestId("sun-image-zoom");
+      const notice = page.getByTestId("sun-image-loading");
+      await page.waitForFunction(() => typeof window.__releaseSunImageDecode === "function");
+      check(await image.getAttribute("data-image-state") === "loading" && await notice.isVisible() && await opener.count() === 0, `App decode still pending after native decode ${name}`);
+      const imageBox = await image.boundingBox(), noticeBox = await notice.boundingBox();
+      check(imageBox && noticeBox && noticeBox.y > imageBox.y + imageBox.height / 2, `Loading notice leaves the photograph's center unobstructed ${name}`);
+      const pendingPaint = await capturePaint(page, image, `native-paint-pending-${name}`);
+      check(JSON.stringify(pendingPaint) === JSON.stringify(syntheticPhotoPixels), `Native photo pixels are visible while the loading notice remains ${name}`);
+      await page.evaluate(() => {
+        const releaseDecode = window.__releaseSunImageDecode;
+        window.__releaseSunImageDecode = null;
+        releaseDecode();
+      });
+      await page.locator('[data-testid="sun-product-image"][data-image-state="ready"]').waitFor();
+      await notice.waitFor({ state: "detached" });
+      const readyPaint = await capturePaint(page, image, `native-paint-ready-${name}`);
+      entry.nativePaint = { pending: pendingPaint, ready: readyPaint };
+      check(JSON.stringify(readyPaint) === JSON.stringify(syntheticPhotoPixels), `Photo pixels persist after the notice closes ${name}`);
+      check(entry.requests.filter(request => request.path === "/slow-photo.svg").length === 1, `Native paint and readiness use one photo request ${name}`);
       check(await image.evaluate((element) => element.complete && element.naturalWidth === 240 && element.naturalHeight === 360), `Loaded native image ${name}`);
       check(await image.getAttribute("referrerpolicy") === "no-referrer" && entry.requests.filter((request) => request.path === "/slow-photo.svg").every((request) => request.referrer === null), `Image request has no referrer ${name}`);
       check(await image.evaluate((element) => getComputedStyle(element).animationName === "none"), `Reduced motion image ${name}`);
