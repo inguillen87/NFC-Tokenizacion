@@ -28,10 +28,14 @@ function leadContactPayload(draft: ConsumerContactDraft) {
   return payload;
 }
 
+// Feedback policy only: this does not time out or cancel the pending request.
+const UPDATES_PENDING_NOTICE_MS = 8_000;
+
 type SubmitState = "idle" | "success" | "error";
 type Flight = { contextKey: string };
 type FlightOwner = {
   active: Flight | null;
+  delayed: Flight | null;
   reserve: (contextKey: string) => Flight | null;
   release: (flight: Flight) => void;
   pending: () => boolean;
@@ -58,12 +62,21 @@ export function SunUpdatesOptIn({
 }: SunUpdatesOptInProps) {
   const { locale } = useSunLocale();
   const [active, setActive] = useState<Flight | null>(null);
+  const [delayed, setDelayed] = useState<Flight | null>(null);
   const inFlight = useRef<Flight | null>(null);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
     return () => { mounted.current = false; };
   }, []);
+
+  useEffect(() => {
+    if (!active) return;
+    const timer = setTimeout(() => {
+      if (mounted.current && inFlight.current === active) setDelayed(active);
+    }, UPDATES_PENDING_NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [active]);
 
   // Only explicit handlers reserve/release a send. Context renders never edit
   // the shared owner, so an abandoned render cannot revoke committed controls.
@@ -97,7 +110,7 @@ export function SunUpdatesOptIn({
     eventId={eventId}
     bid={bid}
     contextReady={contextReady}
-    owner={{ active, reserve, release, pending: () => inFlight.current !== null, owns: (flight) => inFlight.current === flight }}
+    owner={{ active, delayed, reserve, release, pending: () => inFlight.current !== null, owns: (flight) => inFlight.current === flight }}
   />;
 }
 
@@ -130,6 +143,7 @@ function SunUpdatesForm({ contextKey, locale, brandName, productName, tenantSlug
   const mounted = useRef(true);
   const pending = owner.active !== null;
   const previousRequestPending = pending && owner.active !== localFlight;
+  const showDelay = pending && owner.delayed === owner.active;
   const contactPayload = leadContactPayload(contactDraft);
   const contact = consumerContactDraftValue(contactDraft);
   const nameIsValid = name.trim().length <= 120;
@@ -241,7 +255,14 @@ function SunUpdatesForm({ contextKey, locale, brandName, productName, tenantSlug
         <p>No activa premios, propiedad ni garantía. No solicita ubicación ni datos del dispositivo.</p>
       </details>
       {!contextReady ? <p role="status" className="mt-3 text-xs text-slate-300">{CONTEXT_RECOVERY_COPY}</p> : null}
-      {previousRequestPending ? <p role="status" aria-live="polite" className="mt-3 text-xs text-slate-300">Estamos terminando una solicitud anterior. Este producto necesita una nueva autorización.</p> : null}
+      <div id="sun-updates-request-status" role="status" aria-live="polite" aria-atomic="true">
+        {showDelay ? <div className="mt-3 text-sm leading-relaxed text-slate-200">
+          <p>{previousRequestPending
+            ? "Seguimos esperando la confirmación de una solicitud anterior. Podría haberse guardado; este producto todavía necesita una nueva autorización."
+            : "Seguimos esperando la confirmación de tu solicitud. Podría haberse guardado; no enviamos otra automáticamente."}</p>
+          <a href="#sun-summary" className="mt-1 inline-flex min-h-11 items-center underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-300">Volver a la ficha</a>
+        </div> : previousRequestPending ? <p className="mt-3 text-xs text-slate-300">Estamos terminando una solicitud anterior. Este producto necesita una nueva autorización.</p> : null}
+      </div>
 
       {state === "success" ? (
         <div className="mt-3 flex items-start gap-3 rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3 text-emerald-100" role="status">
