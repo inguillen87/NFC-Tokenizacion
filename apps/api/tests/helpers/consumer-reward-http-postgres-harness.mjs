@@ -5,7 +5,7 @@ import ts from "typescript";
 
 const QA_DATABASE = /^(?:nexid_e2e[a-z0-9_]*|codex_qa_[a-z0-9_]+)$/;
 const OWN_SCHEMA = /^consumer_reward_http_qa_[0-9a-f]{32}$/;
-export const REWARD_HTTP_POSTGRES_EXPECTED = Object.freeze({ claimChecks: 29, adminChecks: 16, lockObservations: 9, wallClockExpiryObservations: 1, portalLockObservations: 6 });
+export const REWARD_HTTP_POSTGRES_EXPECTED = Object.freeze({ claimChecks: 29, adminChecks: 16, receiptChecks: 3, lockObservations: 9, wallClockExpiryObservations: 1, portalLockObservations: 6 });
 function identifier(value) { assert.match(value, OWN_SCHEMA, "Only this harness generated schema may be mutated"); return '"' + value + '"'; }
 function queryAdapter(client, mode = "Date", observe) {
   return async (strings, ...values) => {
@@ -109,8 +109,8 @@ async function createFixtureSchema(client, schema) {
 export async function runConsumerRewardHttpPostgresQa({ connect } = {}) {
   assert.equal(typeof connect, "function", "An explicit QA connection factory is required");
   const clients = [], pids = [], schema = "consumer_reward_http_qa_" + randomUUID().replaceAll("-", ""), s = identifier(schema);
-  const report = { kind: "synthetic-postgresql-handler-integration", ok: false, claimChecks: [], adminChecks: [], lockObservations: [],
-    sqlExecutions: { claim: 0, admin: 0 }, sources: [], sqlCopiedIntoHarness: false,
+  const report = { kind: "synthetic-postgresql-handler-integration", ok: false, claimChecks: [], adminChecks: [], receiptChecks: [], lockObservations: [],
+    sqlExecutions: { claim: 0, admin: 0, receipt: 0 }, sources: [], receiptRouteSource: null, sqlCopiedIntoHarness: false,
     portalLockObservations: [], serializableIsolationObservations: [], serializationConflicts: 0,
     boundaries: { consumerAuthentication: "synthetic-owner-or-deny", adminAuthentication: "synthetic-forced-tenant-or-deny", rateLimit: "synthetic-allow-or-deny", schemaInitializer: "synthetic-noop", originConfiguration: "production-default-allowlist", sql: "real-pg", serializableTransport: "synthetic-pg-adapter-BEGIN-SERIALIZABLE; production-db-wrapper-unchanged", createdAtModes: ["Date", "string"], physicalDelivery: "not-exercised", phoneAndSealConcurrentAuthority: "outside-this-increment" },
     cleanup: { schemaDropped: false, connectionsClosed: false } };
@@ -134,11 +134,14 @@ export async function runConsumerRewardHttpPostgresQa({ connect } = {}) {
     const modules = Object.fromEntries([
       ["claim-route", "app/consumer/rewards/[rewardId]/claim/route.ts"],
       ["admin-route", "app/admin/rewards/redemptions/validate/route.ts"],
+      ["receipt-route", "app/consumer/redemptions/[redemptionId]/route.ts"],
       ["queries", "lib/consumer-reward-queries.ts"], ["model", "lib/consumer-rewards-read-model.ts"],
       ["origin", "lib/consumer-mutation-origin.ts"], ["bounded", "lib/bounded-request-body.ts"], ["http", "lib/http.ts"],
     ].map(([name, relativePath]) => {
       const bytes = readFileSync(new URL(relativePath, sourceRoot));
-      const sha256 = createHash("sha256").update(bytes).digest("hex"); report.sources.push({ relativePath: "apps/api/src/" + relativePath, sha256 });
+      const source = { relativePath: "apps/api/src/" + relativePath, sha256: createHash("sha256").update(bytes).digest("hex") };
+      if (name === "receipt-route") report.receiptRouteSource = source;
+      else report.sources.push(source);
       return [name, ts.transpileModule(bytes.toString("utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText];
     }));
     function instantiate(name, deps = {}) {
@@ -221,6 +224,24 @@ export async function runConsumerRewardHttpPostgresQa({ connect } = {}) {
         "commercial-runtime-schema":{ensureConsumerPortalSchema:async()=>{calls.schema++;}}});
       return {calls,post:async(body={})=>POST(new Request("https://nexid.lat/admin/rewards/redemptions/validate",{method:"POST",body:JSON.stringify({code:f.code,...body})}))};
     }
+    async function receiptHttp(consumerId, redemptionId) {
+      const sql = queryAdapter(first, "Date", () => { report.sqlExecutions.receipt++; });
+      const model = instantiate("model", { db: { sql } });
+      const { GET } = instantiate("receipt-route", {
+        http, "consumer-rewards-read-model": model,
+        "consumer-auth": { getConsumerFromRequest: async () => consumerId ? { id: consumerId } : null },
+      });
+      await first.query("BEGIN READ ONLY");
+      try {
+        const response = await GET(new Request("https://nexid.lat/api/consumer/redemptions/" + redemptionId), {
+          params: Promise.resolve({ redemptionId }),
+        });
+        assert.equal(response.headers.get("cache-control"), "private, no-store");
+        return { status: response.status, body: await response.json() };
+      } finally {
+        await first.query("ROLLBACK");
+      }
+    }
     async function issued() {
       const f=await fixture(), rewardText=f.rewardId.toUpperCase();
       const [row]=await writer.insertConsumerRewardClaim(queryAdapter(first),{consumerId:f.consumerId,rewardId:rewardText,idempotencyKey:"consumer-reward-claim:"+f.consumerId+":"+rewardText,redemptionCode:"QA-"+randomUUID().toUpperCase(),locale:"es-AR"});
@@ -277,6 +298,52 @@ async function portalRead(f) {
       try { return await read.getPrivateConsumerRewards(f.consumerId, queryAdapter(first)); }
       finally { await first.query("ROLLBACK"); }
     }
+    await check("receiptChecks", "receipt_returns_only_own_exact_issued_projection_without_writes", async () => {
+      const f = await issued();
+      const before = await snapshot(f);
+      const expiry = before.consumer_reward_claims[0].metadata_json.expires_at;
+      assert.deepEqual(await receiptHttp(f.consumerId, f.claimId.toUpperCase()), {
+        status: 200,
+        body: { ok: true, receipt: { id: f.claimId, reward_id: f.rewardId, tenant_slug: f.slug, status: "claimed", expires_at: expiry } },
+      });
+      assert.deepEqual(await snapshot(f), before);
+    });
+    await check("receiptChecks", "receipt_foreign_missing_and_mismatched_rows_share_opaque_denial", async () => {
+      const f = await issued();
+      const mismatchedId = randomUUID();
+      await admin.query(`INSERT INTO ${s}.consumer_reward_claims(id,consumer_id,tenant_id,reward_id,points_spent,redemption_code,idempotency_key)
+        VALUES ($1::uuid,$2::uuid,$3::uuid,$4::uuid,0,'QA-MISMATCH-' || ($1::uuid)::text,'qa-mismatch:' || ($1::uuid)::text)`,
+      [mismatchedId, f.consumerId, f.otherTenantId, f.rewardId]);
+      const before = await snapshot(f);
+      const expected = { status: 404, body: { ok: false, error: "receipt_not_found" } };
+      assert.deepEqual(await receiptHttp(f.otherConsumerId, f.claimId), expected);
+      assert.deepEqual(await receiptHttp(f.consumerId, randomUUID()), expected);
+      assert.deepEqual(await receiptHttp(f.consumerId, mismatchedId), expected);
+      const reads = report.sqlExecutions.receipt;
+      assert.deepEqual(await receiptHttp(null, f.claimId), { status: 401, body: { ok: false, error: "unauthorized" } });
+      assert.equal(report.sqlExecutions.receipt, reads);
+      assert.deepEqual(await snapshot(f), before);
+    });
+    await check("receiptChecks", "receipt_resolves_terminal_history_outside_the_bounded_portal_list", async () => {
+      const f = await issued();
+      const newerIds = Array.from({ length: 100 }, () => randomUUID());
+      await admin.query(`UPDATE ${s}.consumer_reward_claims SET status='redeemed', created_at=clock_timestamp()-interval '2 days' WHERE id=$1`, [f.claimId]);
+      await admin.query(`UPDATE ${s}.rewards SET status='inactive' WHERE id=$1`, [f.rewardId]);
+      await admin.query(`INSERT INTO ${s}.consumer_reward_claims(id,consumer_id,tenant_id,reward_id,status,points_spent,redemption_code,idempotency_key,created_at)
+        SELECT newer.id,$1::uuid,$2::uuid,$3::uuid,'cancelled',0,'QA-NEWER-' || newer.id::text,'qa-newer:' || newer.id::text,
+          clock_timestamp()-interval '1 hour' FROM unnest($4::uuid[]) AS newer(id)`,
+      [f.consumerId, f.tenantId, f.otherRewardId, newerIds]);
+      const before = await snapshot(f);
+      const items = await portalRead(f);
+      assert.equal(items.length, newerIds.length);
+      assert.ok(items.every(item => item.claim_id !== f.claimId));
+      const expiry = before.consumer_reward_claims.find(claim => claim.id === f.claimId).metadata_json.expires_at;
+      assert.deepEqual(await receiptHttp(f.consumerId, f.claimId), {
+        status: 200,
+        body: { ok: true, receipt: { id: f.claimId, reward_id: f.rewardId, tenant_slug: f.slug, status: "redeemed", expires_at: expiry } },
+      });
+      assert.deepEqual(await snapshot(f), before);
+    });
     await check("claimChecks", "portal_expected_cost_is_mandatory_and_early_validated", async () => {
       const f = await fixture(), before = await snapshot(f);
       for (const expectedPointsCost of [undefined, null, "40", -1, 0.5, 2147483648, {}, []]) {
@@ -484,12 +551,14 @@ async function portalRead(f) {
     await check("claimChecks","legacy_and_portal_race_share_one_historical_receipt_under_same_lock",()=>portalLockedCase("mixed-uuid-case",{protocols:["legacy","portal"]}));
 
     assert.equal(report.claimChecks.length,REWARD_HTTP_POSTGRES_EXPECTED.claimChecks);assert.equal(report.adminChecks.length,REWARD_HTTP_POSTGRES_EXPECTED.adminChecks);
+    assert.equal(report.receiptChecks.length, REWARD_HTTP_POSTGRES_EXPECTED.receiptChecks);
     assert.equal(report.lockObservations.length,REWARD_HTTP_POSTGRES_EXPECTED.lockObservations);assert.equal(report.lockObservations.filter(r=>r.wallClockExpiryReached).length,1);
     assert.equal(report.portalLockObservations.length, REWARD_HTTP_POSTGRES_EXPECTED.portalLockObservations);
     assert.ok(report.portalLockObservations.every(row => row.waitingBackends === 2 && row.blockedByOwnedRewardLock && row.automaticMutationRetries === 0));
     assert.ok(report.serializableIsolationObservations.length > 0 && report.serializableIsolationObservations.every(mode => mode === "serializable"));
     assert.ok(report.serializationConflicts > 0);
-    assert.ok(report.sqlExecutions.claim>0&&report.sqlExecutions.admin>0);report.ok=[...report.claimChecks,...report.adminChecks].every(check=>check.ok);
+    assert.ok(report.sqlExecutions.claim>0&&report.sqlExecutions.admin>0&&report.sqlExecutions.receipt>0);
+    report.ok=[...report.claimChecks,...report.adminChecks,...report.receiptChecks].every(check=>check.ok);
   } catch(error) {executionError=error;}
   finally {
     if(schemaCreated){try{await clients[0].query("ROLLBACK");await clients[0].query("DROP SCHEMA "+identifier(schema)+" CASCADE");report.cleanup.schemaDropped=true;}catch{report.cleanup.error="Could not drop the harness generated schema";report.ok=false;}}
