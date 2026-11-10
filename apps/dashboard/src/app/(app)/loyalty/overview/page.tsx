@@ -138,7 +138,7 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
                           <p className="text-xs text-slate-400">Código: {item.code}</p>
                        </div>
                        <div className="text-right">
-                          <span className="text-sm font-bold text-emerald-400">{item.points} pts</span>
+                          <span className="text-sm font-bold text-[color:var(--dash-emerald)]">{item.points} pts</span>
                           <p className="text-[10px] text-slate-500 uppercase tracking-widest">{item.status}</p>
                        </div>
                     </li>

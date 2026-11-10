@@ -12,7 +12,7 @@ import {readHistoricalBaseline,tenantSyncHistoricalSourceHash} from './helpers/t
 import {ENGAGEMENT_GOVERNANCE_ADDED,governancePublishedSourceHash,assertGovernanceAddedSource,governanceSourceHash} from './helpers/engagement-governance-reviewed-sources.mjs';
 import {TENANT_MARKETPLACE_ADDED,marketplacePublishedSourceHash,assertMarketplaceAddedSource} from './helpers/tenant-marketplace-reviewed-sources.mjs';
 import {REWARD_NOTICE_ADDED,rewardNoticePriorInventory,assertRewardNoticeAddedSource} from './helpers/reward-notice-reviewed-sources.mjs';
-import {rewardProgramContextPublishedSourceHash} from './helpers/reward-program-context-reviewed-sources.mjs';
+import {loyaltyPointsContrastPriorHash,rewardProgramContextPublishedSourceHash} from './helpers/reward-program-context-reviewed-sources.mjs';
 import {CRM_ORDER_REQUEST_ADDED,crmOrderRequestPublishedSourceHash,crmOrderRequestPriorInventory,assertCrmOrderRequestAddedSource} from './helpers/crm-order-request-reviewed-sources.mjs';
 import {physicalTapPublishedSourceHash} from './helpers/physical-tap-reviewed-sources.mjs';
 import {TICKET_STATUS_SYNC_ADDED,ticketStatusSyncPublishedSourceHash,ticketStatusSyncPriorInventory,assertTicketStatusSyncAddedSource} from './helpers/ticket-status-sync-reviewed-sources.mjs';
@@ -59,7 +59,7 @@ test('the diagnostic UI preserves all operational sources outside the exact revi
  for(const p of baseline.paths){
   const content=(await readFile(new URL('../'+p.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');
   const actual=customerFeedbackPriorHash(p,crmFilterContextPriorHash(p,catalogConfirmationPriorHash(p,rewardDialogPriorHash(p,createHash('sha256').update(content).digest('hex')))));
-  digest.update(p+'\0'+tenantSyncHistoricalSourceHash(p,governancePublishedSourceHash(p,marketplacePublishedSourceHash(p,rewardProgramContextPublishedSourceHash(p,crmOrderRequestPublishedSourceHash(p,physicalTapPublishedSourceHash(p,ticketStatusSyncPublishedSourceHash(p,actual,origins.expected[p]),origins.expected[p]),origins.expected[p])))),origins.expected[p])+'\n');
+  digest.update(p+'\0'+tenantSyncHistoricalSourceHash(p,governancePublishedSourceHash(p,marketplacePublishedSourceHash(p,rewardProgramContextPublishedSourceHash(p,crmOrderRequestPublishedSourceHash(p,physicalTapPublishedSourceHash(p,ticketStatusSyncPublishedSourceHash(p,loyaltyPointsContrastPriorHash(p,actual),origins.expected[p]),origins.expected[p]),origins.expected[p])))),origins.expected[p])+'\n');
  }
  assert.equal(digest.digest('hex'),baseline.digest);
  const root=new URL('../src/',import.meta.url),actual=[];
