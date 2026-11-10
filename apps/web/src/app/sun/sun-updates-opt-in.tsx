@@ -327,15 +327,20 @@ function SunUpdatesForm({ contextKey, locale, brandName, productName, tenantSlug
                     />
                     Autorizo a {brandName} a enviarme novedades de este producto por el canal indicado. Este consentimiento es opcional y revocable.
                   </label>
+                  {state === "error" ? (
+                    <p id="sun-updates-send-error" className="text-xs leading-relaxed text-rose-200" role="alert">
+                      No pudimos confirmar la solicitud. Tus datos siguen en el formulario. Sólo se reenvía si elegís reintentar.
+                    </p>
+                  ) : null}
                   <button
                     type="submit"
                     disabled={pending || !consent || !contactPayload || !nameIsValid || !contextReady}
+                    aria-describedby={state === "error" ? "sun-updates-send-error" : undefined}
                     className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-indigo-400 px-4 text-xs font-black text-slate-950 transition hover:bg-indigo-300 disabled:cursor-not-allowed disabled:opacity-50 @max-[15rem]/sun-updates:min-h-[44px] @max-[15rem]/sun-updates:gap-[8px] @max-[15rem]/sun-updates:px-[12px] @max-[15rem]/sun-updates:py-[8px]"
                   >
                     <Send className="h-4 w-4 @max-[15rem]/sun-updates:size-[16px] @max-[15rem]/sun-updates:shrink-0" aria-hidden="true" />
                     {pending ? previousRequestPending ? "Terminando solicitud anterior..." : "Enviando solicitud..." : state === "error" ? "Reintentar solicitud" : "Confirmar suscripción"}
                   </button>
-                  {state === "error" ? <p className="text-center text-[10px] text-rose-200" role="alert">No pudimos confirmar la solicitud. Tus datos se conservan; no se envía otra automáticamente.</p> : null}
                 </form>
               </>
             ) : null}
