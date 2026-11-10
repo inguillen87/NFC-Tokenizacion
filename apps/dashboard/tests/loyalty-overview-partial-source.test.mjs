@@ -8,7 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import * as permissions from "../src/lib/permission-policy.ts";
 import * as consumerTruth from "../src/lib/consumer-network-overview-truth.ts";
-import { loyaltyOverviewReadinessPriorHash, LOYALTY_OVERVIEW_READINESS_REVIEWED_SOURCES, LOYALTY_OVERVIEW_METRIC_COPY_SOURCE } from "./helpers/loyalty-overview-readiness-reviewed-sources.mjs";
+import { loyaltyOverviewReadinessPriorHash, LOYALTY_OVERVIEW_READINESS_REVIEWED_SOURCES, LOYALTY_OVERVIEW_METRIC_COPY_SOURCE, LOYALTY_OVERVIEW_COVERAGE_SOURCE } from "./helpers/loyalty-overview-readiness-reviewed-sources.mjs";
 import { resolveDashboardTenantScope } from "../src/lib/dashboard-tenant-scope-policy.ts";
 import { LOYALTY_OVERVIEW_RECOVERY_SOURCE_BASE, LOYALTY_OVERVIEW_RECOVERY_REVIEWED_SOURCES, loyaltyOverviewRecoveryPriorHash } from "./helpers/loyalty-overview-recovery-reviewed-sources.mjs";
 import { REWARD_PROGRAM_CONTEXT_REVIEWED_SOURCES } from "./helpers/reward-program-context-reviewed-sources.mjs";
@@ -294,7 +294,12 @@ test("loyalty cards distinguish program enrollments and point credits/debits fro
   assert.equal(copy.base, "34cbe641978f7525a8c832de60a23c80d6e42315");
   assert.equal(copy.before, LOYALTY_OVERVIEW_READINESS_REVIEWED_SOURCES[path].after);
   const actual = createHash("sha256").update(pageSource.replaceAll("\r\n", "\n")).digest("hex");
-  assert.equal(actual, copy.after);
+  const coverage = LOYALTY_OVERVIEW_COVERAGE_SOURCE;
+  assert.equal(coverage.path, path);
+  assert.equal(coverage.base, "4c1f42c683ca97fa0c0afa62a0fd82143d439636");
+  assert.equal(coverage.before, copy.after);
+  assert.equal(actual, coverage.after);
+  assert.equal(loyaltyOverviewReadinessPriorHash(path, copy.after), LOYALTY_OVERVIEW_READINESS_REVIEWED_SOURCES[path].before);
   assert.equal(loyaltyOverviewReadinessPriorHash(path, actual), LOYALTY_OVERVIEW_READINESS_REVIEWED_SOURCES[path].before);
 });
 function assertConsumerWithheld(result) {
@@ -368,6 +373,18 @@ test("consumer channels have independent missing states while retaining explicit
   assert.equal(metricValue(result, "WhatsApp opt-in"), "—");
   assert.equal(metricValue(result, "Teléfono opt-in"), "2");
   assert.equal(metricValue(result, "Actores conocidos"), "20");
+  const sections = nodes(result.node).filter(node => node.type === "section");
+  const identityGroup = sections.find(section => section.props["aria-labelledby"] === "loyalty-coverage-identity");
+  const consentGroup = sections.find(section => section.props["aria-labelledby"] === "loyalty-coverage-consent");
+  assert.ok(identityGroup && consentGroup);
+  assert.match(text(identityGroup), /Vínculos e identidad/);
+  assert.match(text(consentGroup), /Consentimientos por canal/);
+  assert.ok(nodes(identityGroup).includes(metricCard(result, "Identidad verificada")));
+  for (const label of ["Email opt-in", "WhatsApp opt-in", "Teléfono opt-in"]) {
+    assert.ok(nodes(consentGroup).includes(metricCard(result, label)), label);
+  }
+  assert.match(text(metricCard(result, "WhatsApp opt-in")), /No informado por la fuente/);
+  assert.doesNotMatch(text(metricCard(result, "Email opt-in")), /No informado por la fuente/);
 });
 
 test("identity and channel groups need the member denominator and marketing purpose", async () => {

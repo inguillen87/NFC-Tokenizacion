@@ -142,6 +142,25 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
     actorLinkedActivityRate: projection?.rate || unavailableField(),
     consentedActorsByChannel: projection?.channels || { email: unavailableField(), whatsapp: unavailableField(), phone: unavailableField() },
   };
+  const coverageGroups = [
+    {
+      id: "loyalty-coverage-identity",
+      title: "Vínculos e identidad",
+      metrics: [
+        { label: "Actores conocidos", field: consumer.knownActors },
+        { label: "Identidad verificada", field: consumer.verifiedIdentityActors },
+      ],
+    },
+    {
+      id: "loyalty-coverage-consent",
+      title: "Consentimientos por canal",
+      metrics: [
+        { label: "Email opt-in", field: consumer.consentedActorsByChannel.email },
+        { label: "WhatsApp opt-in", field: consumer.consentedActorsByChannel.whatsapp },
+        { label: "Teléfono opt-in", field: consumer.consentedActorsByChannel.phone },
+      ],
+    },
+  ];
   const catalog = overviewRewards(rewardsRead, tenantScope);
   const rewardsReady = catalog !== null;
   const rewards = catalog || [];
@@ -239,39 +258,48 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
             )}
          </div>
 
-         <div className="rounded-xl border border-white/10 bg-slate-900/50 p-6" data-source-mode={consumerRead.source}>
-            <h2 className="text-sm font-bold text-white mb-2">Cobertura de relación y permisos</h2>
-            {consumerRead.source === "demo" ? <p className="mb-2 text-xs font-semibold text-amber-200">Demo</p> : null}
-            <p className="mb-5 text-xs text-slate-400">Actividad, actores conocidos y permisos son métricas independientes. Un UID o dispositivo no se cuenta como persona.</p>
-            <div className="space-y-5">
+         <section aria-labelledby="loyalty-coverage-title" className="min-w-0 space-y-5 rounded-xl border border-[color:var(--dash-border)] bg-[color:var(--dash-panel)] p-4 text-[color:var(--dash-text)] sm:p-6" data-source-mode={consumerRead.source}>
+            <div>
+               <h2 id="loyalty-coverage-title" className="text-base font-semibold">Cobertura de relación y permisos</h2>
+               {consumerRead.source === "demo" ? <p className="mt-2 inline-block rounded-full border border-[color:var(--dash-border)] px-2 py-1 text-xs font-semibold">Demo</p> : null}
+               <p className="mt-2 text-sm text-[color:var(--dash-muted)]">Actividad, actores conocidos y permisos son métricas independientes. Una etiqueta o dispositivo no se cuenta como persona.</p>
+            </div>
+            <div className="space-y-4 rounded-lg border border-[color:var(--dash-border)] bg-[color:var(--dash-panel-strong)] p-3">
                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                     <span className="text-slate-300">Actividad registrada</span>
-                     <span className="font-bold text-white">{metricText(consumer.totalActivity, consumerReady)}</span>
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-sm">
+                     <span>Actividad registrada</span>
+                     <span className="min-w-0 font-semibold tabular-nums [overflow-wrap:anywhere]">{metricText(consumer.totalActivity, consumerReady)}</span>
                   </div>
-                  <p className="text-[11px] text-slate-500">{missingMetricCopy(consumer.totalActivity, consumerRead.reason, "Actividad operativa registrada por la plataforma.")}</p>
+                  <p className="mt-1 text-xs text-[color:var(--dash-muted)]">{missingMetricCopy(consumer.totalActivity, consumerRead.reason, "Actividad operativa registrada por la plataforma.")}</p>
                </div>
                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                     <span className="text-slate-300">Actividad vinculada a un actor conocido</span>
-                     <span className="font-bold text-white">{rateText(consumer.actorLinkedActivityRate, consumerReady)}</span>
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-sm">
+                     <span>Actividad vinculada a un actor conocido</span>
+                     <span className="min-w-0 font-semibold tabular-nums [overflow-wrap:anywhere]">{rateText(consumer.actorLinkedActivityRate, consumerReady)}</span>
                   </div>
                   {consumerReady && consumer.actorLinkedActivityRate.state === "ready" ? (
-                    <div className="h-2 bg-slate-800 rounded-full overflow-hidden" aria-hidden="true">
-                       <div className="h-full bg-cyan-500" style={{ width: `${consumer.actorLinkedActivityRate.value}%` }}></div>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-[color:var(--dash-border)]" aria-hidden="true">
+                       <div className="h-full bg-[color:var(--dash-cyan)]" style={{ width: `${consumer.actorLinkedActivityRate.value}%` }} />
                     </div>
                   ) : null}
-                  {consumer.actorLinkedActivityRate.state !== "ready" && consumer.actorLinkedActivityRate.state !== "no_base" ? <p className="mt-1 text-[11px] text-slate-500">{missingMetricCopy(consumer.actorLinkedActivityRate, consumerRead.reason)}</p> : null}
-               </div>
-               <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
-                  <div className="min-w-0 rounded-lg border border-white/10 bg-slate-950/60 p-3"><p className="text-slate-400">Actores conocidos</p><p className="mt-1 text-lg font-bold text-white tabular-nums [overflow-wrap:anywhere]">{metricText(consumer.knownActors, consumerReady)}</p>{consumer.knownActors.state !== "ready" ? <p className="mt-1 text-[11px] text-slate-400">{missingMetricCopy(consumer.knownActors, consumerRead.reason)}</p> : null}</div>
-                  <div className="min-w-0 rounded-lg border border-white/10 bg-slate-950/60 p-3"><p className="text-slate-400">Identidad verificada</p><p className="mt-1 text-lg font-bold text-sky-300 tabular-nums [overflow-wrap:anywhere]">{metricText(consumer.verifiedIdentityActors, consumerReady)}</p>{consumer.verifiedIdentityActors.state !== "ready" ? <p className="mt-1 text-[11px] text-slate-400">{missingMetricCopy(consumer.verifiedIdentityActors, consumerRead.reason)}</p> : null}</div>
-                  <div className="min-w-0 rounded-lg border border-white/10 bg-slate-950/60 p-3"><p className="text-slate-400">Email opt-in</p><p className="mt-1 text-lg font-bold text-emerald-300 tabular-nums [overflow-wrap:anywhere]">{metricText(consumer.consentedActorsByChannel.email, consumerReady)}</p>{consumer.consentedActorsByChannel.email.state !== "ready" ? <p className="mt-1 text-[11px] text-slate-400">{missingMetricCopy(consumer.consentedActorsByChannel.email, consumerRead.reason)}</p> : null}</div>
-                  <div className="min-w-0 rounded-lg border border-white/10 bg-slate-950/60 p-3"><p className="text-slate-400">WhatsApp opt-in</p><p className="mt-1 text-lg font-bold text-emerald-300 tabular-nums [overflow-wrap:anywhere]">{metricText(consumer.consentedActorsByChannel.whatsapp, consumerReady)}</p>{consumer.consentedActorsByChannel.whatsapp.state !== "ready" ? <p className="mt-1 text-[11px] text-slate-400">{missingMetricCopy(consumer.consentedActorsByChannel.whatsapp, consumerRead.reason)}</p> : null}</div>
-                  <div className="min-w-0 rounded-lg border border-white/10 bg-slate-950/60 p-3"><p className="text-slate-400">Teléfono opt-in</p><p className="mt-1 text-lg font-bold text-emerald-300 tabular-nums [overflow-wrap:anywhere]">{metricText(consumer.consentedActorsByChannel.phone, consumerReady)}</p>{consumer.consentedActorsByChannel.phone.state !== "ready" ? <p className="mt-1 text-[11px] text-slate-400">{missingMetricCopy(consumer.consentedActorsByChannel.phone, consumerRead.reason)}</p> : null}</div>
+                  {consumer.actorLinkedActivityRate.state !== "ready" && consumer.actorLinkedActivityRate.state !== "no_base" ? <p className="mt-1 text-xs text-[color:var(--dash-muted)]">{missingMetricCopy(consumer.actorLinkedActivityRate, consumerRead.reason)}</p> : null}
                </div>
             </div>
-         </div>
+            {coverageGroups.map(group => (
+               <section key={group.id} aria-labelledby={group.id}>
+                  <h3 id={group.id} className="mb-2 text-sm font-semibold">{group.title}</h3>
+                  <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-2">
+                     {group.metrics.map(({ label, field }) => (
+                        <div key={label} className="min-w-0 rounded-lg border border-[color:var(--dash-border)] bg-[color:var(--dash-panel-strong)] p-3">
+                           <p className="text-sm font-medium leading-snug text-[color:var(--dash-muted)] [overflow-wrap:anywhere]">{label}</p>
+                           <p className={field.state === "ready" ? "mt-1 text-xl font-bold tabular-nums [overflow-wrap:anywhere]" : "mt-1 text-xl text-[color:var(--dash-muted)]"}>{metricText(field, consumerReady)}</p>
+                           {field.state !== "ready" ? <p className="mt-1 text-xs leading-snug text-[color:var(--dash-muted)] [overflow-wrap:anywhere]">{missingMetricCopy(field, consumerRead.reason)}</p> : null}
+                        </div>
+                     ))}
+                  </div>
+               </section>
+            ))}
+         </section>
       </div>
     </div>
   );

@@ -24,6 +24,13 @@ export const LOYALTY_OVERVIEW_METRIC_COPY_SOURCE=Object.freeze({
  before:'e41b68835d3de5ce817502315a0b8df93a18bdbe16b091d8d0ff84aaffe0ead5',
  after:'280f1a9f5b964734a2027a734056eb32e6b2b3dfa3954f490410aa049a9002db',
 });
+// Coverage presentation successor. Admit only this Page over the exact copy source.
+export const LOYALTY_OVERVIEW_COVERAGE_SOURCE=Object.freeze({
+ path:LOYALTY_OVERVIEW_METRIC_COPY_SOURCE.path,
+ base:'4c1f42c683ca97fa0c0afa62a0fd82143d439636',
+ before:'280f1a9f5b964734a2027a734056eb32e6b2b3dfa3954f490410aa049a9002db',
+ after:'84a05a540358265f885e0c56b6f1d4ba8b3b81b27fc1b612f61964dd19078810',
+});
 const baseline=readHistoricalBaseline('release-convergence',readFileSync(new URL('../fixtures/release-convergence-baseline.json',import.meta.url),'utf8'));
 function independentOrigin(path){
  if(path==='apps/dashboard/src/app/(app)/loyalty/overview/page.tsx')return LOYALTY_OVERVIEW_RECOVERY_REVIEWED_SOURCES[path]?.after;
@@ -34,6 +41,10 @@ export function loyaltyOverviewReadinessPriorHash(path,actual){
  if(!Object.hasOwn(LOYALTY_OVERVIEW_READINESS_REVIEWED_SOURCES,path))return actual;
  const pin=LOYALTY_OVERVIEW_READINESS_REVIEWED_SOURCES[path];
  assert.equal(pin.before,independentOrigin(path),path+' independently pinned preceding overview source');
+ if(path===LOYALTY_OVERVIEW_COVERAGE_SOURCE.path&&actual===LOYALTY_OVERVIEW_COVERAGE_SOURCE.after){
+  assert.equal(LOYALTY_OVERVIEW_COVERAGE_SOURCE.before,LOYALTY_OVERVIEW_METRIC_COPY_SOURCE.after,path+' exact preceding Page before coverage presentation');
+  actual=LOYALTY_OVERVIEW_COVERAGE_SOURCE.before;
+ }
  if(path===LOYALTY_OVERVIEW_METRIC_COPY_SOURCE.path&&actual===LOYALTY_OVERVIEW_METRIC_COPY_SOURCE.after){
   assert.equal(LOYALTY_OVERVIEW_METRIC_COPY_SOURCE.before,pin.after,path+' exact preceding Page before metric-copy successor');
   actual=LOYALTY_OVERVIEW_METRIC_COPY_SOURCE.before;
