@@ -9,7 +9,7 @@ import { handleAdminRewardPost } from "../../../../lib/admin-reward-request";
 import { toAdminRewardReadItem } from "../../../../lib/admin-reward-read-model";
 
 export async function GET(req: Request) {
-  const auth = await checkAdmin(req);
+  const auth = await checkAdmin(req, ["super_admin", "tenant_admin", "tenant_operator"]);
   if (auth) return auth;
   const permission = checkAdminPermission(req, "rewards:read");
   if (permission) return permission;
