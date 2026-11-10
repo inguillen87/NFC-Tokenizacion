@@ -35,11 +35,27 @@ try {
   const page=await context.newPage();page.on('pageerror',error=>report.errors.push(error.message));
   await page.goto(origin+entry.url+'&lang='+entry.locale,{waitUntil:'networkidle'});await page.evaluate(async()=>{await document.fonts.ready;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
   const name=entry.kind+'-'+entry.width+'-'+entry.theme+'-'+entry.locale+'-'+report.views.length;
-  const observed=await page.evaluate(()=>{
+  const observed=await page.evaluate(kind=>{
    const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
    const button=document.querySelector('[data-testid="sun-location-quick-action"] [data-testid="sun-location-consent-cta"]');
-   return {scrollWidth:document.documentElement.scrollWidth,geoCalls:window.qaGeoCalls,locationButton:rect(button),locationDisabled:button?.disabled,locationHit:button?document.elementFromPoint(button.getBoundingClientRect().x+button.clientWidth/2,button.getBoundingClientRect().y+button.clientHeight/2)?.closest('button')===button:false};
-  });
+   const baseline={scrollWidth:document.documentElement.scrollWidth,geoCalls:window.qaGeoCalls,locationButton:rect(button),locationDisabled:button?.disabled,locationHit:button?document.elementFromPoint(button.getBoundingClientRect().x+button.clientWidth/2,button.getBoundingClientRect().y+button.clientHeight/2)?.closest('button')===button:false};
+   if(kind!=='location')return baseline;
+
+   // This is diagnostic geometry before any focus, click or test-driven scroll.
+   const viewport={width:window.innerWidth,height:window.innerHeight,scrollY:window.scrollY};
+   const actions=document.querySelectorAll('#sun-summary a[data-testid="sun-summary-primary"]');
+   const action=actions[0];
+   const bounds=rect(action);
+   const center=bounds?document.elementFromPoint(bounds.x+bounds.width/2,bounds.y+bounds.height/2):null;
+   return {...baseline,primaryAction:{
+    count:actions.length,
+    destination:action?.getAttribute('href')==='#consumer-choice'?'#consumer-choice':null,
+    destinationCount:document.querySelectorAll('#consumer-choice').length,
+    rect:bounds,viewport,
+    inViewport:Boolean(bounds&&bounds.x>=0&&bounds.y>=0&&bounds.right<=viewport.width&&bounds.bottom<=viewport.height),
+    centerHit:Boolean(center&&action?.contains(center)),
+   }};
+  },entry.kind);
   check(observed.scrollWidth<=entry.width,'No horizontal overflow '+name,observed);check(observed.geoCalls===0,'No automatic phone location '+name);
   const credit=page.getByTestId('sun-demo-photo-source');
   if(entry.kind==='reference'){
@@ -63,6 +79,9 @@ try {
   if(entry.kind==='location'){
    const b=observed.locationButton;
    check(b&&b.width>=44&&b.height>=44&&b.x>=0&&b.right<=entry.width&&b.y>=0&&b.bottom<=844&&observed.locationHit&&!observed.locationDisabled,'Phone location request visible and reachable at opening '+name,observed);
+   const primary=observed.primaryAction;
+   check(primary.count===1&&primary.destination==='#consumer-choice'&&primary.destinationCount===1,'Fresh reading retains the primary warranty and benefits link '+name,primary);
+   check(primary.rect&&primary.rect.width>=44&&primary.rect.height>=44,'Fresh primary action retains a touch-sized target '+name,primary);
    const quick=page.getByTestId('sun-location-quick-action');check(await quick.locator('details').getAttribute('open')===null,'Privacy starts collapsed '+name);
    if(entry.width===390){await page.screenshot({path:join(output,name+'.png'),fullPage:false});}
    const decline=quick.getByRole('button',{name:entry.locale==='en'?'Not now':entry.locale==='pt-BR'?'Agora não':'Ahora no',exact:true});await decline.focus();await page.keyboard.press('Enter');
