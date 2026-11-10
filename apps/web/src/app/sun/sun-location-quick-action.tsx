@@ -34,9 +34,11 @@ export function SunLocationQuickAction() {
     {dismissed ? <button type="button" className={styles.reopen} onClick={()=>setDismissed(false)}>{copy.cta}<ChevronDown size={16}/></button> : <>
       <div className={styles.actions}><SunLocationRequestButton className={styles.primary}><LocateFixed size={19} aria-hidden="true"/><span>{actionLabel}</span></SunLocationRequestButton><button type="button" className={styles.secondary} disabled={busy} onClick={()=>setDismissed(true)}>{copy.later}</button></div>
       {!control?.ready && <p className={styles.optional}>{copy.ready}</p>}
-      {phase && <p className={`${styles.feedback} ${styles.phase}`} data-testid="sun-location-phase" role="status">{phase}</p>}
-      {status && <p className={styles.feedback} role="status">{status}</p>}
-      <details className={styles.details}><summary>{copy.details}<ChevronDown size={16} aria-hidden="true"/></summary><p>{copy.optional}</p><p>{copy.privacy}</p><p>{copy.network}</p></details>
     </>}
+    <div data-testid="sun-location-quick-status" role="status" aria-live="polite" aria-atomic="true">
+      {!dismissed && phase && <p className={`${styles.feedback} ${styles.phase}`} data-testid="sun-location-phase">{phase}</p>}
+      {!dismissed && status && <p className={styles.feedback}>{status}</p>}
+    </div>
+    {!dismissed && <details className={styles.details}><summary>{copy.details}<ChevronDown size={16} aria-hidden="true"/></summary><p>{copy.optional}</p><p>{copy.privacy}</p><p>{copy.network}</p></details>}
   </section>;
 }

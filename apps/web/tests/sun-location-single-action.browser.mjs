@@ -130,8 +130,15 @@ try {
     }
     await page.waitForFunction(() => !document.querySelector('[data-testid="sun-location-consent-cta"]').disabled);
     assert.equal(await page.evaluate(() => window.fixtureGeoCalls), 0, "No permission on mount");
+    let quickStatus;
     if(scenario === "success") {
       const quick=page.getByTestId("sun-location-quick-action");
+      quickStatus=await quick.getByTestId("sun-location-quick-status").elementHandle();
+      assert.ok(quickStatus, "The announcement region is mounted before permission or measurement");
+      assert.equal(await quickStatus.getAttribute("role"), "status");
+      assert.equal(await quickStatus.getAttribute("aria-live"), "polite");
+      assert.equal(await quickStatus.getAttribute("aria-atomic"), "true");
+      assert.equal(await quickStatus.textContent(), "");
       const entryBounds=await quick.boundingBox();
       assert.ok(entryBounds && entryBounds.height<=190,"Optional location prompt remains compact at 390px");
       assert.match(await quick.locator("h2 + p").innerText(),/Opcional.*aproximada/,"Optional scope is visible before consent");
@@ -153,6 +160,10 @@ try {
     if (scenario !== "permission_pregranted") {
       assert.match(await firstButton.textContent(), /Solicitando permiso/);
       assert.match(await page.getByTestId("sun-location-phase").textContent(), /Si aparece el permiso/);
+      if (quickStatus) {
+        assert.ok(await quickStatus.evaluate(node => node.isConnected && !node.closest('[aria-busy="true"]')), "Permission is announced in the original region outside busy controls");
+        assert.match(await quickStatus.textContent(), /Si aparece el permiso/);
+      }
       await page.evaluate(() => window.fixtureGrantPermission());
     }
     if (noPermissionInspection) {
@@ -225,6 +236,11 @@ try {
       assert.equal(posts.length, 1);
       assert.match(await firstButton.textContent(), /Guardando zona/);
       assert.match(await page.getByTestId("sun-location-phase").textContent(), /Esperamos el comprobante/);
+      if (quickStatus) {
+        assert.ok(await quickStatus.evaluate(node => node.isConnected && !node.closest('[aria-busy="true"]')), "Sending updates the same region without marking the location saved");
+        assert.match(await quickStatus.textContent(), /Esperamos el comprobante/);
+        await quickStatus.dispose();
+      }
       if(scenario === "success" && process.env.QA_OUTPUT)await page.screenshot({path:join(process.env.QA_OUTPUT,"location-saving.png"),fullPage:false});
       assert.equal(await page.getByTestId("sun-summary-location-confirmed").count(), 0, "Not saved before receipt");
       assert.equal(posts[0].geoConsent, true);

@@ -21,6 +21,59 @@ const browser=await chromium.launch({headless:true,executablePath:process.env.CH
 const report={localOnly:true,realProductionBuild:!process.env.QA_BASE_URL,actualNextRouter:true,syntheticConsumerAndNotices:true,physicalTapMeasured:false,checks:[],views:[],errors:[],blockedWrites:[],geolocationCalls:0};
 report.marketplaceBindingBefore=await marketplaceBinding(repo,web);
 const check=(value,name)=>{report.checks.push({name,passed:Boolean(value)});assert.ok(value,name);};
+async function reservationFeedback(page,context,width,theme){
+ const rewardId='1a000000-0000-4000-8000-000000000001',claimId='1a000000-0000-4000-8000-000000000002';
+ const postPath='/api/consumer/rewards/'+rewardId+'/claim',readPath='/api/consumer/rewards';
+ const postUrl=base+postPath,readUrl=base+readPath;
+ let posts=0,reads=0,releasePost,releaseRead;
+ const holdPost=new Promise(resolve=>{releasePost=resolve;}),holdRead=new Promise(resolve=>{releaseRead=resolve;});
+ const post=async route=>{
+  const request=route.request();assert.equal(request.url(),postUrl);assert.equal(request.method(),'POST');assert.equal(++posts,1);
+  assert.deepEqual(request.postDataJSON(),{claimIntent:'portal-first-reservation.v1',expectedPointsCost:40,locale:'es-AR'});
+  await holdPost;
+  await route.fulfill({status:503,json:{ok:false}});
+ };
+ const read=async route=>{
+  const request=route.request();assert.equal(request.url(),readUrl);assert.equal(request.method(),'GET');assert.equal(++reads,1);
+  await holdRead;
+  await route.fulfill({status:200,json:{ok:true,scope:'own_brands',limit:100,items:[{
+   id:rewardId,title:'Visita de ensayo',tenant_slug:'consumer-qa',tenant_name:'Bodega de ensayo',program_name:'Club de ensayo',
+   program_points_balance:60,points_cost:40,points_spent:40,state:'claimed',catalog_state:'reported',
+   claim_id:claimId,claim_status:'claimed',claim_expires_at:'2099-01-01T00:00:00.000Z',redemption_code:null,can_claim:false,
+  }]}});
+ };
+ await context.addCookies([{name:'consumer_reservation_qa',value:'focus',url:base,httpOnly:true,sameSite:'Lax'}]);
+ await page.route(postUrl,post);await page.route(readUrl,read);
+ try{
+  await page.goto(base+'/me/rewards',{waitUntil:'networkidle'});
+  const reserve=page.getByRole('button',{name:'Reservar beneficio',exact:true});await reserve.focus();await page.keyboard.press('Enter');
+  const confirm=page.getByRole('button',{name:'Confirmar reserva por 40 puntos',exact:true});
+  await page.waitForFunction(()=>document.activeElement?.textContent?.trim()==='Confirmar reserva por 40 puntos');
+  check(await confirm.isVisible()&&posts===0,`${width}/${theme} reward confirmation is keyboard reachable and has no automatic write`);
+  await page.keyboard.press('Enter');
+  const notice=page.getByRole('group',{name:'Estado de la reserva',exact:true});
+  const status=notice.getByRole('status');
+  await status.getByText('Estamos preparando tu reserva. Esperá la confirmación.',{exact:true}).waitFor();
+  check(await notice.evaluate(node=>node===document.activeElement),`${width}/${theme} pending reservation retains a visible keyboard destination`);
+  check(await status.evaluate(node=>!node.closest('[aria-busy="true"]')&&node.getAnimations({subtree:true}).length===0),`${width}/${theme} pending status is live with reduced motion`);
+  releasePost();
+  const recover=notice.getByRole('button',{name:'Comprobar mi reserva',exact:true});await recover.waitFor();
+  await page.keyboard.press('Tab');
+  check(await recover.evaluate(node=>node===document.activeElement),`${width}/${theme} the recovery action is next after the status`);
+  await page.keyboard.press('Enter');
+  await status.getByText('Estamos consultando tu reserva. Esta consulta no descuenta puntos.',{exact:true}).waitFor();
+  check(await notice.evaluate(node=>node===document.activeElement),`${width}/${theme} lookup retains focus while its button is removed`);
+  const search=page.getByRole('searchbox',{name:'Buscar beneficio',exact:true});await search.focus();
+  releaseRead();await notice.getByRole('link',{name:'Ver mi voucher',exact:true}).waitFor();
+  check(await search.evaluate(node=>node===document.activeElement),`${width}/${theme} confirmation never steals a newer focus`);
+  check(posts===1&&reads===1,`${width}/${theme} one synthetic POST and one explicit synthetic GET`);
+  await noOverflow(page,`${width}/${theme} reservation status fits the viewport`);
+ }finally{
+  releasePost();releaseRead();
+  await page.unroute(postUrl,post);await page.unroute(readUrl,read);
+  await context.clearCookies({name:'consumer_reservation_qa'});
+ }
+}
 async function assessment(page,selector,name,width,theme){
  await page.addScriptTag({content:axe});
  const violations=await page.evaluate(async selector=>(await axe.run(selector,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}})).violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target),failures:v.nodes.map(n=>n.failureSummary)})),selector);
@@ -307,6 +360,7 @@ try{
   await runMarketplaceScenarios({page,base,width,theme,report,check,assessment,noOverflow});
   await runClaimPinScenarios({page,base,width,theme,report,check,assessment,noOverflow});
   await runBenefitConfirmationScenarios({page,base,width,theme,report,check,assessment,noOverflow});
+  if(width===390)await reservationFeedback(page,context,width,theme);
   await context.close();
  }
  const anonymous=await browser.newContext();const page=await anonymous.newPage();page.on('pageerror',error=>report.errors.push({name:'anonymous',message:error.message}));

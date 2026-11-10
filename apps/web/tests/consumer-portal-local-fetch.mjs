@@ -5,6 +5,12 @@ if(process.env.CONSUMER_PORTAL_QA!=='1')throw Error('consumer_portal_fixture_req
 const original=globalThis.fetch;
 const date='2026-10-01T12:00:00Z';
 const syntheticConsumer={id:'synthetic-portal-consumer',display_name:'Cuenta sintética de ensayo',phone:'+5491112345678',status:'verified'};
+const reservationReward={
+ id:'1a000000-0000-4000-8000-000000000001',title:'Visita de ensayo',tenant_slug:'consumer-qa',tenant_name:'Bodega de ensayo',
+ program_name:'Club de ensayo',program_points_balance:100,points_cost:40,state:'reported',catalog_state:'reported',
+ claim_id:null,claim_status:null,claim_expires_at:null,redemption_code:null,points_spent:null,
+ can_claim:true,claimIntent:'portal-first-reservation.v1',
+};
 const currentEditorial=(state='published')=>({protocol:'nexid.current-editorial.v1',source:'passport_studio',state,observedAt:'2026-10-05T15:00:00Z',version:3,publishedAt:'2026-10-04T15:00:00Z',contentDigest:'a'.repeat(64),
  document:{schemaVersion:'nexid.passport-editorial.v1',template:'agro',locale:'es-AR',identity:{product_name:'Ficha actual de ensayo',public_lot_label:'LOTE-PUBLICADO-QA',sku:null,winery:'Empresa publicada de ensayo',region:null,image_url:null},agro_product_profile:{technicalSheetUrl:'https://docs.example.test/current-qa.pdf',safetySheetUrl:null}}});
 const items=[
@@ -33,6 +39,9 @@ globalThis.fetch=async(input,init)=>{
   }
   if(url.pathname.startsWith('/consumer/')){
    if(!authorized)return reply({ok:false},401);
+   if(url.pathname==='/consumer/rewards'&&/(?:^|;\s*)consumer_reservation_qa=focus(?:;|$)/.test(headers.get('cookie')||'')){
+    return reply({ok:true,scope:'own_brands',limit:100,items:[reservationReward]});
+   }
    if(url.pathname==='/consumer/products')return reply({ok:true,items:photoQa?items.map((item,index)=>index===0?{...item,image_url:photoQa==='failed'?'/qa-photo/failed.svg':'/qa-photo/updated.svg'}:item):items});
    if(url.pathname==='/consumer/me')return reply({ok:true,consumer:syntheticConsumer,stats:{products:items.length,taps:3}});
    if(url.pathname==='/consumer/privacy')return reply({ok:true,consumer:syntheticConsumer,consents:[]});
