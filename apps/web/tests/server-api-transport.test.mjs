@@ -179,8 +179,9 @@ test("Native fetch does not contact a redirect destination even if the redirect 
 });
 
 test("Consumer SSR session reader uses the protected server transport, preserves session and adds no synthesized Origin", async () => {
+  const accountId = "96a0d192-6ef5-490c-a38e-f7823035a321";
   const calls = [], fetchRuntimeApi = transport(previewEnv(), async (url, init) => {
-    calls.push({ url, init }); return Response.json({ ok: true, authenticated: true });
+    calls.push({ url, init }); return Response.json({ ok: true, authenticated: true, consumer: { id: accountId, email: "fixture@example.test" } });
   });
   const api = load("app/me/_components/consumer-api.ts", { modules: {
     "next/headers": { headers: async () => new Headers({ cookie: "consumer_session=synthetic; nexid_tap_715=one-use", "user-agent": "Synthetic SSR" }) },
@@ -193,6 +194,8 @@ test("Consumer SSR session reader uses the protected server transport, preserves
   assert.equal(calls[0].init.headers.get("cookie"), "consumer_session=synthetic");
   assert.equal(calls[0].init.headers.get("origin"), null); assert.equal(calls[0].init.headers.get("x-vercel-protection-bypass"), SECRET);
   assert.equal(calls[0].init.headers.get("user-agent"), "Synthetic SSR");
+  assert.deepEqual(await api.readConsumerSession("/me/marketplace", { includeAccountId: true }), { status: "ready", accountId });
+  assert.equal(calls.length, 2, "one private session read per page load");
 });
 
 const publishedConfiguration = { version: "nexid.tenant-actions.v1", status: "published", allowedActions: ["sommelier", "marketplace"],

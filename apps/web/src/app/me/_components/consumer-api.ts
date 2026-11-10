@@ -50,17 +50,22 @@ export async function fetchConsumerSession() {
   return fetchJson("/consumer/session");
 }
 
-export type ConsumerSessionRead = { status: "ready" } | { status: "unavailable" };
+export type ConsumerSessionRead = { status: "ready"; accountId?: string } | { status: "unavailable" };
 export type ConsumerHomeSessionRead = ConsumerSessionRead;
 
 /** Expected lookup failures are recoverable; only confirmed sessions open private pages. */
-export async function readConsumerSession(nextPath = "/me"): Promise<ConsumerSessionRead> {
+export async function readConsumerSession(nextPath = "/me", { includeAccountId = false } = {}): Promise<ConsumerSessionRead> {
   const result = await readJson("/consumer/session");
   const state = consumerSessionState(result);
   if (state === "unauthenticated") {
     redirect(`/login?consumer=1&next=${encodeURIComponent(nextPath)}`);
   }
-  return { status: state === "authenticated" ? "ready" : "unavailable" };
+  if (state !== "authenticated" || result.status !== "ready") return { status: "unavailable" };
+  const accountId = includeAccountId ? jsonRecord(jsonRecord(result.data)?.consumer)?.id : undefined;
+  if (typeof accountId === "string" && /^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i.test(accountId)) {
+    return { status: "ready", accountId: accountId.toLowerCase() };
+  }
+  return { status: "ready" };
 }
 
 /** Retain the home reader's public contract for independently maintained callers. */
