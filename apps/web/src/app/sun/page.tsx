@@ -4,6 +4,7 @@ import { ProductNoticeProvider } from "../../lib/product-notice-resource";
 import { PassportEssentialSignals } from "./passport-essential-signals";
 import { PassportEvidenceResources } from "./passport-evidence-resources";
 import { ConsumerPassportLink } from "./consumer-passport-link";
+import { inspectConsumerTapCapability } from "../api/_lib/consumer-tap-handoff";
 import { ProductNotices } from "./product-notices";
 import { SunLocationQuickAction } from "./sun-location-quick-action";
 import { SunProductImage } from "./sun-product-image";
@@ -1139,6 +1140,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     nextParams.set("action", action);
     return `${pathname}?${nextParams.toString()}${hash ? `#${hash}` : ""}`;
   };
+  const saveToAccount = postTapQuickActions.save && isFreshCommercialTap && isFreshHandoff && !isQrScan
+    && inspectConsumerTapCapability(freshToken, eventId)
+    ? { href: withTapQuery("/me/products", "save"), eventId, freshToken }
+    : undefined;
   const registerHref = localizeHref(result.cta?.registerUrl) || withTapQuery("/me", "register");
   const walletHref = withTapQuery("/me/wallet", "wallet");
   const rewardsHref = localizeHref(result.cta?.rewardsUrl) || withTapQuery("/me/rewards", "rewards");
@@ -1990,7 +1995,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </div>
             </details>
 
-            {!isDemoPreview && <ConsumerPassportLink href={isFreshCommercialTap && freshToken ? withTapQuery("/me/products","products") : "/me/products"} eventId={eventId} freshToken={isFreshCommercialTap ? freshToken : ""} />}
+            {!isDemoPreview && <ConsumerPassportLink save={saveToAccount} />}
           </div>
         </section>
 

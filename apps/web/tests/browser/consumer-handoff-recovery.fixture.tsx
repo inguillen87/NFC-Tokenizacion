@@ -54,7 +54,7 @@ function Fixture() {
       <p>Referencia sintética. No guarda, reclama ni consulta datos de clientes.</p>
       <button id="leave-reading" className="min-h-11 rounded-lg border px-3 py-2" onClick={() => setVisible(false)}>Salir de esta lectura</button>
       {visible ? <section aria-label="Acceso al portal" className="mt-4" data-testid="fixture-current-reading" data-event-id={eventId}>
-        <ConsumerPassportLink href={`/me/products?fromTap=1&eventId=${eventId}&tenant=qa-only&action=products`} eventId={eventId} freshToken={`synthetic-capability-${eventId}`} />
+        <ConsumerPassportLink save={{ href: `/me/products?fromTap=1&eventId=${eventId}&tenant=qa-only&action=products`, eventId, freshToken: `synthetic-capability-${eventId}` }} />
       </section> : <p data-testid="fixture-left-reading">Otra pantalla del ensayo</p>}
     </main>
   </SunLocaleProvider></StrictMode>;

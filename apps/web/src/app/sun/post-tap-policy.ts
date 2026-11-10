@@ -19,6 +19,7 @@ export type SecurePostTapActionKey =
 
 export type PostTapQuickActionAvailability = {
   primary: boolean;
+  save: boolean;
   warranty: boolean;
   trace: boolean;
   certificate: boolean;
@@ -91,9 +92,14 @@ export function resolvePostTapQuickActionAvailability({
   const primary = isPostTapPolicyActionAllowed("claim", allowedActions, blockedActions);
   const warranty = isPostTapPolicyActionAllowed("warranty", allowedActions, blockedActions);
   const provenance = isPostTapPolicyActionAllowed("provenance", allowedActions, blockedActions);
+  const allowed = normalizeActions(allowedActions);
+  const blocked = normalizeActions(blockedActions);
 
   return {
     primary,
+    // Saving also links the account to the company. This offer needs explicit grants for both.
+    save: verifiedTenant && canEngage && !isDemoPreview
+      && allowed.has("save") && allowed.has("join") && !blocked.has("save") && !blocked.has("join"),
     warranty,
     trace: provenance,
     certificate: provenance,
