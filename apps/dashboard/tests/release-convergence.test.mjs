@@ -15,7 +15,7 @@ import {readHistoricalBaseline,TENANT_SYNC_REVIEWED_SOURCES,TENANT_SYNC_SOURCE_B
 import {ENGAGEMENT_GOVERNANCE_BASE,ENGAGEMENT_GOVERNANCE_CHANGED,ENGAGEMENT_GOVERNANCE_ADDED,governancePublishedSourceHash,assertGovernanceInventory,assertGovernanceAddedSource,governanceSourceHash} from './helpers/engagement-governance-reviewed-sources.mjs';
 import {TENANT_MARKETPLACE_ADDED,marketplacePublishedSourceHash,marketplacePriorInventory,assertMarketplaceAddedSource} from './helpers/tenant-marketplace-reviewed-sources.mjs';
 import {REWARD_NOTICE_SOURCE_BASE,REWARD_NOTICE_ADDED,rewardNoticePriorInventory,assertRewardNoticeAddedSource} from './helpers/reward-notice-reviewed-sources.mjs';
-import {rewardProgramContextPublishedSourceHash} from './helpers/reward-program-context-reviewed-sources.mjs';
+import {LOYALTY_POINTS_CONTRAST_PATH,loyaltyCatalogStatusPriorHash,loyaltyPointsContrastPriorHash,rewardProgramContextPublishedSourceHash} from './helpers/reward-program-context-reviewed-sources.mjs';
 import {CRM_ORDER_REQUEST_ADDED,crmOrderRequestPublishedSourceHash,crmOrderRequestPriorInventory,assertCrmOrderRequestAddedSource} from './helpers/crm-order-request-reviewed-sources.mjs';
 import {physicalTapPublishedSourceHash} from './helpers/physical-tap-reviewed-sources.mjs';
 import {TICKET_STATUS_SYNC_ADDED,ticketStatusSyncPublishedSourceHash,ticketStatusSyncPriorInventory,assertTicketStatusSyncAddedSource} from './helpers/ticket-status-sync-reviewed-sources.mjs';
@@ -66,7 +66,7 @@ test('every merged source file retains its immutable origin except the exact rev
  const root=new URL('../src/',import.meta.url),actual=[];
  async function walk(dir,prefix='apps/dashboard/src'){for(const e of await readdir(dir,{withFileTypes:true})){if(e.isDirectory())await walk(new URL(e.name+'/',dir),prefix+'/'+e.name);else if(e.isFile())actual.push(prefix+'/'+e.name);}}
  await walk(root);assertGovernanceInventory(marketplacePriorInventory(rewardNoticePriorInventory(crmOrderRequestPriorInventory(ticketStatusSyncPriorInventory(customerFeedbackPriorInventory(actual),baseline.expected),baseline.expected),baseline.expected),baseline.expected,Object.keys(ENGAGEMENT_GOVERNANCE_ADDED)),baseline.expected);
- for(const [path,expected]of Object.entries(baseline.expected)){const text=(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');const actual=customerFeedbackPriorHash(path,crmFilterContextPriorHash(path,catalogConfirmationPriorHash(path,rewardDialogPriorHash(path,createHash('sha256').update(text).digest('hex')))));assert.equal(tenantSyncHistoricalSourceHash(path,governancePublishedSourceHash(path,marketplacePublishedSourceHash(path,rewardProgramContextPublishedSourceHash(path,crmOrderRequestPublishedSourceHash(path,physicalTapPublishedSourceHash(path,ticketStatusSyncPublishedSourceHash(path,actual,baseline.expected[path]),baseline.expected[path]),baseline.expected[path])))),expected),expected,path);}
+ for(const [path,expected]of Object.entries(baseline.expected)){const text=(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');const actual=customerFeedbackPriorHash(path,crmFilterContextPriorHash(path,catalogConfirmationPriorHash(path,rewardDialogPriorHash(path,createHash('sha256').update(text).digest('hex')))));assert.equal(tenantSyncHistoricalSourceHash(path,governancePublishedSourceHash(path,marketplacePublishedSourceHash(path,rewardProgramContextPublishedSourceHash(path,crmOrderRequestPublishedSourceHash(path,physicalTapPublishedSourceHash(path,ticketStatusSyncPublishedSourceHash(path,loyaltyPointsContrastPriorHash(path,loyaltyCatalogStatusPriorHash(path,actual)),baseline.expected[path]),baseline.expected[path]),baseline.expected[path])))),expected),expected,path);}
  for(const path of Object.keys(ENGAGEMENT_GOVERNANCE_ADDED))assertGovernanceAddedSource(path,rewardProgramContextPublishedSourceHash(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8'))));
  for(const path of Object.keys(TENANT_MARKETPLACE_ADDED))assertMarketplaceAddedSource(path,customerFeedbackPriorHash(path,catalogConfirmationPriorHash(path,governanceSourceHash(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')))));
  for(const name of Object.keys(CUSTOMER_FEEDBACK_ADDED))assertCustomerFeedbackAdded(name,governanceSourceHash(await readFile(new URL('../'+name.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')));
@@ -147,4 +147,24 @@ test('reward dialog overlay permits exactly two pinned successors and retains in
  assert.equal(rewardDialogPriorHash(unrelated,'unreviewed-content'),'unreviewed-content');
  assert.throws(()=>assert.equal(rewardDialogPriorHash(unrelated,'unreviewed-content'),'historical-origin'));
  assert.throws(()=>rewardDialogPriorHash('apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx',REWARD_DIALOG_REVIEWED_SOURCES['apps/dashboard/src/lib/permission-policy.ts'].after),/exact reviewed reward-dialog increment/);
+});
+
+test('loyalty points contrast preserves the exact published source and rejects stale or altered bytes', async () => {
+ const prior = '6d57395ccb0c6da0f3da6be971567ded7ea60f8ced2322fdad0b662c952f7b5a';
+ const source = await readFile(new URL('../' + LOYALTY_POINTS_CONTRAST_PATH.replace(/^apps\/dashboard\//, ''), import.meta.url), 'utf8');
+ const current = governanceSourceHash(source);
+ assert.equal(loyaltyPointsContrastPriorHash(LOYALTY_POINTS_CONTRAST_PATH, loyaltyCatalogStatusPriorHash(LOYALTY_POINTS_CONTRAST_PATH, current)), prior);
+ assert.throws(() => loyaltyPointsContrastPriorHash(LOYALTY_POINTS_CONTRAST_PATH, prior), /exact reviewed points contrast successor/);
+ assert.throws(() => loyaltyPointsContrastPriorHash(LOYALTY_POINTS_CONTRAST_PATH, '0'.repeat(64)), /exact reviewed points contrast successor/);
+ assert.equal(loyaltyPointsContrastPriorHash('unrelated', prior), prior);
+});
+
+test('loyalty catalog status preserves the exact contrast source and rejects stale or altered bytes', async () => {
+ const prior = '446838313dba80a4adfcf03203cd87b9c2fb7b4a0f36c1a04edb77f59efc2a4b';
+ const source = await readFile(new URL('../' + LOYALTY_POINTS_CONTRAST_PATH.replace(/^apps\/dashboard\//, ''), import.meta.url), 'utf8');
+ const current = governanceSourceHash(source);
+ assert.equal(loyaltyCatalogStatusPriorHash(LOYALTY_POINTS_CONTRAST_PATH, current), prior);
+ assert.throws(() => loyaltyCatalogStatusPriorHash(LOYALTY_POINTS_CONTRAST_PATH, prior), /exact reviewed catalog status successor/);
+ assert.throws(() => loyaltyCatalogStatusPriorHash(LOYALTY_POINTS_CONTRAST_PATH, '0'.repeat(64)), /exact reviewed catalog status successor/);
+ assert.equal(loyaltyCatalogStatusPriorHash('unrelated', prior), prior);
 });

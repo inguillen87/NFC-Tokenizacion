@@ -29,3 +29,22 @@ export function rewardProgramContextPublishedSourceHash(path,actual){
  assert.equal(actual,reviewed.after,path+' exact reviewed program-context successor');
  return reviewed.origin;
 }
+
+// Dashboard 3eb3e8dc is the independently pinned predecessor for this contrast adjustment.
+export const LOYALTY_POINTS_CONTRAST_PATH = 'apps/dashboard/src/app/(app)/loyalty/overview/page.tsx';
+const LOYALTY_POINTS_CONTRAST_SHA256 = '446838313dba80a4adfcf03203cd87b9c2fb7b4a0f36c1a04edb77f59efc2a4b';
+
+export function loyaltyPointsContrastPriorHash(path, actual) {
+  if (path !== LOYALTY_POINTS_CONTRAST_PATH) return actual;
+  assert.equal(actual, LOYALTY_POINTS_CONTRAST_SHA256, path + ' exact reviewed points contrast successor');
+  return REWARD_PROGRAM_CONTEXT_REVIEWED_SOURCES[path].after;
+}
+
+// Dashboard 8da80146 is the pinned contrast predecessor for the catalog wording.
+const LOYALTY_CATALOG_STATUS_SHA256 = 'ad54a6fb359bbd99947e7dfdf19ee0734ef7ebbfb026a7af1c3f1cae8a6d181b';
+
+export function loyaltyCatalogStatusPriorHash(path, actual) {
+  if (path !== LOYALTY_POINTS_CONTRAST_PATH) return actual;
+  assert.equal(actual, LOYALTY_CATALOG_STATUS_SHA256, path + ' exact reviewed catalog status successor');
+  return LOYALTY_POINTS_CONTRAST_SHA256;
+}

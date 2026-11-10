@@ -27,6 +27,16 @@ function rateWidth(value: unknown, available: boolean) {
   return `${Math.max(0, Math.min(100, Number(value || 0)))}%`;
 }
 
+function rewardStatusLabel(status: unknown) {
+  switch (status) {
+    case "active": return "Activo";
+    case "paused": return "Pausado";
+    case "draft": return "Borrador";
+    case "archived": return "Archivado";
+    default: return "Estado sin confirmar";
+  }
+}
+
 function tenantDisplayName(tenantSlug: string | null) {
   const normalized = String(tenantSlug || "").trim().toLowerCase();
   if (!normalized) return "Red multi-tenant";
@@ -128,7 +138,8 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
 
       <div className="grid gap-6 lg:grid-cols-2">
          <div className="rounded-xl border border-white/10 bg-slate-900/50 p-6">
-            <h3 className="text-sm font-bold text-white mb-4">Catálogo de Beneficios Activos</h3>
+            <h3 className="mb-2 text-sm font-bold text-white">Últimos beneficios configurados</h3>
+            <p className="mb-4 text-xs text-slate-400">Hasta cinco beneficios recientes. La posibilidad de reservar se comprueba en el portal.</p>
             {rewards.length ? (
               <ul className="space-y-4">
                  {rewards.slice(0, 5).map((item: any, idx: number) => (
@@ -138,8 +149,8 @@ export default async function LoyaltyOverviewPage({ searchParams }: { searchPara
                           <p className="text-xs text-slate-400">Código: {item.code}</p>
                        </div>
                        <div className="text-right">
-                          <span className="text-sm font-bold text-emerald-400">{item.points} pts</span>
-                          <p className="text-[10px] text-slate-500 uppercase tracking-widest">{item.status}</p>
+                          <span className="text-sm font-bold text-[color:var(--dash-emerald)]">{item.points} pts</span>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-widest">{rewardStatusLabel(item.status)}</p>
                        </div>
                     </li>
                  ))}
