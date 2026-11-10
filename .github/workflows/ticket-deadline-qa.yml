@@ -85,11 +85,34 @@ jobs:
           QA_OUTPUT="$RUNNER_TEMP/nexid-assignment-continuity/browser" node apps/dashboard/tests/supplier-assignment-continuity.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-pilot-launchpad/browser" node apps/dashboard/tests/pilot-launchpad.browser.mjs
           QA_OUTPUT="$RUNNER_TEMP/nexid-draft-reconcile/browser" node apps/dashboard/tests/supplier-draft-comparison.browser.mjs
-          node node_modules/next/dist/bin/next start apps/dashboard --hostname 127.0.0.1 --port 33982 > "$RUNNER_TEMP/nexid-map-next.log" 2>&1 &
+          export NEXT_QA_ORIGIN=http://127.0.0.1:33982
+          map_log="$RUNNER_TEMP/nexid-map-next.log"
+          node node_modules/next/dist/bin/next start apps/dashboard --hostname 127.0.0.1 --port 33982 > "$map_log" 2>&1 &
           map_server=$!
           trap 'kill "$map_server" 2>/dev/null || true' EXIT
-          node --input-type=module -e 'let ready=false; for(let i=0;i<30;i++){try{const r=await fetch("http://127.0.0.1:33982/vendor/maplibre-gl/6.4.1/maplibre-gl-worker.mjs");if(r.ok){ready=true;break}}catch{} await new Promise(r=>setTimeout(r,500))} if(!ready)process.exit(1)'
-          NEXT_QA_ORIGIN=http://127.0.0.1:33982 QA_OUTPUT="$RUNNER_TEMP/nexid-next-map/browser" node apps/dashboard/tests/dependency-map.browser.mjs
+          if ! node apps/dashboard/tests/wait-for-next-map-worker.mjs; then
+            if kill -0 "$map_server" 2>/dev/null; then
+              echo "Next map server process is still running"
+            else
+              map_exit=0
+              wait "$map_server" || map_exit=$?
+              printf 'Next map server exited before readiness: %s\n' "$map_exit"
+            fi
+            if [[ ! -s "$map_log" ]]; then
+              echo "Next map server emitted no startup output"
+            elif grep -Fq 'EADDRINUSE' "$map_log"; then
+              echo "Next map server reported a port conflict"
+            elif grep -Fq 'Could not find a production build' "$map_log"; then
+              echo "Next map server reported a missing production build"
+            elif grep -Fq 'Ready in' "$map_log"; then
+              echo "Next map server reported ready, but the worker request did not pass"
+            else
+              echo "Next map server startup output did not match a known readiness message"
+            fi
+            exit 1
+          fi
+          echo "Running browser checks with the Next-served map worker"
+          QA_OUTPUT="$RUNNER_TEMP/nexid-next-map/browser" node apps/dashboard/tests/dependency-map.browser.mjs
       - name: Record verification identity
         if: always()
         env:
