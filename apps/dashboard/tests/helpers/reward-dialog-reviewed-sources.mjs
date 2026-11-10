@@ -8,6 +8,7 @@ export const REWARD_DIALOG_SOURCE_BASE='a38a432e96cea93df53f1fca6bd58335b42a290a
 const rewardsPagePath='apps/dashboard/src/app/(app)/loyalty/rewards/page.tsx';
 const rewardsClientPath='apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx';
 const rewardStockDisplayAfter='9039f7d58c85752f1e431c0714965078ece8b4a604ebb01d743499c4381b2099';
+const rewardDialogAppearanceAfter='f09a91e2e26e57e7b7b8d9f1f8caf66676a7d35f78aa2104c57322d514d30404';
 const rewardCatalogSources=Object.freeze({
  [rewardsPagePath]:Object.freeze({
   before:'211ddba0d83e18aa6e60dc86ffd57b718e0533f67c760e88cfd6f577c92ca158',
@@ -47,9 +48,15 @@ export function rewardStockDisplayHistoricalPriorHash(path,actual){
  return rewardDialogHistoricalPriorHash(path,REWARD_DIALOG_REVIEWED_SOURCES[path].after);
 }
 
-export function rewardDialogPriorHash(path,actual){
+export function rewardCatalogHistoricalPriorHash(path,actual){
  if(!Object.hasOwn(rewardCatalogSources,path))return rewardStockDisplayHistoricalPriorHash(path,actual);
  const pin=rewardCatalogSources[path];
  assert.equal(actual,pin.after,path+' exact reviewed reward catalog');
  return rewardStockDisplayHistoricalPriorHash(path,pin.before);
+}
+
+export function rewardDialogPriorHash(path,actual){
+ if(path!==rewardsClientPath)return rewardCatalogHistoricalPriorHash(path,actual);
+ assert.equal(actual,rewardDialogAppearanceAfter,path+' exact reviewed reward dialog appearance');
+ return rewardCatalogHistoricalPriorHash(path,rewardCatalogSources[path].after);
 }

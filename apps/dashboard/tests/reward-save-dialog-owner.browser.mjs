@@ -1,5 +1,5 @@
 // Real React/component/styles; synthetic props, router observer and owned loopback
-// transports. Identical assertions can run against the pre-owner baseline source.
+// transports.
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
@@ -44,6 +44,23 @@ const server=createServer(async(req,res)=>{
 });
 const check=(item,value,description)=>{report.checks.push({scenario:item.name,description,passed:Boolean(value)});assert.ok(value,description);};
 const settle=page=>page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
+async function checkFeedbackContrast(item,feedback){
+ const colors=await feedback.evaluate(node=>{
+  const canvas=document.createElement('canvas');canvas.width=canvas.height=1;
+  const context=canvas.getContext('2d',{willReadFrequently:true});
+  const rgba=color=>{context.clearRect(0,0,1,1);context.fillStyle=color;context.fillRect(0,0,1,1);return Array.from(context.getImageData(0,0,1,1).data);};
+  const surface=getComputedStyle(node),foreground=getComputedStyle(node.querySelector('span'));
+  let opaque=true;
+  for(let ancestor=node;ancestor;ancestor=ancestor.parentElement)opaque&&=getComputedStyle(ancestor).opacity==='1';
+  return {foreground:rgba(foreground.color),background:rgba(surface.backgroundColor),opaque:opaque&&surface.backgroundImage==='none'};
+ });
+ const luminance=rgba=>rgba.slice(0,3).map(value=>value/255).map(value=>value<=0.04045?value/12.92:((value+0.055)/1.055)**2.4)
+  .reduce((total,value,index)=>total+value*[0.2126,0.7152,0.0722][index],0);
+ const [text,background]=[luminance(colors.foreground),luminance(colors.background)];
+ const ratio=(Math.max(text,background)+0.05)/(Math.min(text,background)+0.05);
+ item.feedbackContrast={...colors,ratio};
+ check(item,colors.opaque&&colors.foreground[3]===255&&colors.background[3]===255&&ratio>=4.5,'rendered feedback text has at least 4.5:1 contrast on an opaque surface');
+}
 async function waitFor(label,predicate){const end=Date.now()+12000;while(!predicate()){assert(Date.now()<end,label);await new Promise(done=>setTimeout(done,15));}}
 async function open(width,theme,name){
  const context=await browser.newContext({viewport:{width,height:950},locale:'es-AR',colorScheme:theme,reducedMotion:'reduce',serviceWorkers:'block'});contexts.add(context);const page=await context.newPage();page.setDefaultTimeout(10000);
@@ -93,7 +110,24 @@ async function runCase(width,theme,name){const f=await open(width,theme,name),{p
    check(item,item.posts[0].body.reward_id===REWARD&&item.posts[0].body.program_id===PROGRAM&&!Object.hasOwn(item.posts[0].body,'creationIntent'),'exact edit retains persisted identities and no creation intent');
    await f.releasePost(409,{ok:false,error:'reward_update_conflict'});await dialog.getByRole('alert').waitFor();
   }else{
-   await f.fillNew();await f.submit();
+   await f.fillNew();
+   if(name==='current-409-retains-fields'){
+    const options=dialog.getByRole('group',{name:'Opciones de imagen'});
+    const tasting=options.getByRole('button',{name:'Degustación en bodega',exact:true});
+    const crate=options.getByRole('button',{name:'Caja de seis botellas',exact:true});
+    const noImage=options.getByRole('button',{name:'Sin imagen',exact:true});
+    const custom=dialog.getByLabel('URL personalizada de imagen (opcional)',{exact:true});
+    check(item,await tasting.getAttribute('aria-pressed')==='true'&&await custom.inputValue()===''&&!(await options.innerText()).includes('/images/'),'default image has a descriptive selected button and hides its asset path');
+    await noImage.click();
+    check(item,await noImage.getAttribute('aria-pressed')==='true'&&await tasting.getAttribute('aria-pressed')==='false'&&await custom.inputValue()==='','removing the preset explicitly selects no image');
+    await custom.fill('https://example.invalid/beneficio.png');
+    check(item,await custom.inputValue()==='https://example.invalid/beneficio.png'&&await options.getByRole('button',{pressed:true}).count()===0,'a custom URL remains editable and clears the image option selection');
+    await crate.click();
+    check(item,await crate.getAttribute('aria-pressed')==='true'&&await noImage.getAttribute('aria-pressed')==='false'&&await custom.inputValue()==='','selecting another image updates its accessible state');
+   }else if(name==='success-no-timer'){
+    await dialog.getByRole('button',{name:'Sin imagen',exact:true}).click();
+   }
+   await f.submit();
    if(name==='double-submit'){
     await dialog.locator('form').evaluate(form=>{form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));});await settle(page);
     check(item,item.posts.length===1,'repeated current-owner submit events cannot issue another POST');await f.releasePost();
@@ -104,7 +138,9 @@ async function runCase(width,theme,name){const f=await open(width,theme,name),{p
     check(item,await page.getByRole('button',{name:'Consultar catálogo',exact:true}).count()>0&&item.posts.length===1,'uncertain close retains a real recovery action and never rePOSTs');
     check(item,await page.evaluate(()=>window.__rewardRefreshes)===0,'late result cannot refresh the page after its owner closes');
    }else if(name==='success-no-timer'){
-    await f.releasePost(200,{ok:true,reward:row});await dialog.getByRole('status').filter({hasText:/Nuevo beneficio creado/}).waitFor();
+    check(item,item.posts[0].body.image_url==='','removing a suggested image submits the existing empty image value');
+    await f.releasePost(200,{ok:true,reward:row});const success=dialog.getByRole('status').filter({hasText:/Nuevo beneficio creado/});await success.waitFor();
+    await checkFeedbackContrast(item,success);
     await dialog.locator('form').evaluate(form=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
     await dialog.getByRole('button',{name:'Cerrar edición del beneficio',exact:true}).click();await dialog.waitFor({state:'detached'});
     await f.fillNew('SECOND','Otra operación QA');await page.waitForTimeout(1700);
@@ -134,6 +170,8 @@ async function runCase(width,theme,name){const f=await open(width,theme,name),{p
     check(item,item.posts.length===1&&item.posts[0].body.tenant_slug==='qa-a','source change does not forward the old action into another tenant');
    }else if(name==='current-409-retains-fields'){
     await f.releasePost();const alert=dialog.getByRole('alert');await alert.waitFor();
+    await checkFeedbackContrast(item,alert);
+    check(item,item.posts[0].body.image_url==='/images/wine_crate.png'&&await dialog.getByRole('button',{name:'Caja de seis botellas',pressed:true}).count()===1,'preset uses its existing asset value and survives a refused save');
     check(item,await dialog.getByLabel('Código de Control',{exact:true}).inputValue()==='NEW'&&await dialog.getByLabel('Título del Beneficio',{exact:true}).inputValue()==='Título conservado QA','current refusal preserves the typed fields');
     check(item,(await alert.innerText()).includes('otro código')&&await alert.evaluate(node=>node===document.activeElement),'current duplicate refusal offers deliberate recovery and focuses neutral feedback');
    }else if(name==='old-api-404'){

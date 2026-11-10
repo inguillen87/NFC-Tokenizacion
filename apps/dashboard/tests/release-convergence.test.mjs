@@ -1,6 +1,6 @@
 import {loyaltyOverviewReadinessPriorHash} from './helpers/loyalty-overview-readiness-reviewed-sources.mjs';
 import {loyaltyOverviewRecoveryPriorHash} from './helpers/loyalty-overview-recovery-reviewed-sources.mjs';
-import {REWARD_DIALOG_SOURCE_BASE,REWARD_DIALOG_REVIEWED_SOURCES,rewardDialogHistoricalPriorHash,rewardDialogPriorHash,rewardStockDisplayHistoricalPriorHash} from './helpers/reward-dialog-reviewed-sources.mjs';
+import {REWARD_DIALOG_SOURCE_BASE,REWARD_DIALOG_REVIEWED_SOURCES,rewardCatalogHistoricalPriorHash,rewardDialogHistoricalPriorHash,rewardDialogPriorHash,rewardStockDisplayHistoricalPriorHash} from './helpers/reward-dialog-reviewed-sources.mjs';
 import {CUSTOMER_FEEDBACK_ADDED,customerFeedbackPriorHash,customerFeedbackPriorInventory,assertCustomerFeedbackAdded} from './helpers/customer-feedback-reviewed-sources.mjs';
 import {crmFilterContextPriorHash} from './helpers/crm-filter-context-reviewed-sources.mjs';
 import {catalogConfirmationPriorHash} from './helpers/catalog-confirmation-reviewed-sources.mjs';
@@ -164,20 +164,29 @@ test('the historical stock display preserves the exact dialog and permission ori
  assert.throws(()=>rewardDialogPriorHash(permissionPath,stock),/exact reviewed reward-dialog increment/);
 });
 
-test('the rewards catalog requires exact current page and card sources',async()=>{
+test('the rewards catalog preserves exact page and historical card origins',async()=>{
  const baseline=readHistoricalBaseline('release-convergence',await readFile(new URL('./fixtures/release-convergence-baseline.json',import.meta.url),'utf8'));
  const page='apps/dashboard/src/app/(app)/loyalty/rewards/page.tsx';
  const client='apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx';
  const pageOrigin='211ddba0d83e18aa6e60dc86ffd57b718e0533f67c760e88cfd6f577c92ca158';
  assert.equal(pageOrigin,baseline.expected[page]);
  const stock='9039f7d58c85752f1e431c0714965078ece8b4a604ebb01d743499c4381b2099';
- const sources=await Promise.all([page,client].map(async path=>{
-  const text=(await readFile(new URL('../'+path.replace(/^apps\/dashboard\//,''),import.meta.url),'utf8')).replaceAll('\r\n','\n');
-  return {actual:createHash('sha256').update(text).digest('hex'),changed:createHash('sha256').update(text+'\n').digest('hex')};
- }));
- for(const [index,path,old,origin] of [[0,page,pageOrigin,pageOrigin],[1,client,stock,REWARD_DIALOG_REVIEWED_SOURCES[client].before]]){
-  const {actual,changed}=sources[index];
-  assert.equal(rewardDialogPriorHash(path,actual),origin);
-  for(const rejected of [old,changed,sources[1-index].actual])assert.throws(()=>rewardDialogPriorHash(path,rejected),/exact reviewed reward catalog/);
+ const catalogClient='9c1af29f8e415cee6c4c6084a650af70682e0ee413215d9eb89cdd784715ffcc';
+ const text=(await readFile(new URL('../src/app/(app)/loyalty/rewards/page.tsx',import.meta.url),'utf8')).replaceAll('\r\n','\n');
+ const pageHash=createHash('sha256').update(text).digest('hex');
+ assert.equal(rewardDialogPriorHash(page,pageHash),pageOrigin);
+ assert.equal(rewardCatalogHistoricalPriorHash(client,catalogClient),REWARD_DIALOG_REVIEWED_SOURCES[client].before);
+ for(const [path,rejected] of [[page,[pageOrigin,createHash('sha256').update(text+'\n').digest('hex'),catalogClient]],[client,[stock,catalogClient.slice(0,-1)+'0',pageHash]]]){
+  for(const hash of rejected)assert.throws(()=>rewardCatalogHistoricalPriorHash(path,hash),/exact reviewed reward catalog/);
  }
+});
+
+test('the reward dialog appearance requires the exact current client source',async()=>{
+ const path='apps/dashboard/src/app/(app)/loyalty/rewards/rewards-client.tsx';
+ const text=(await readFile(new URL('../src/app/(app)/loyalty/rewards/rewards-client.tsx',import.meta.url),'utf8')).replaceAll('\r\n','\n');
+ const actual=createHash('sha256').update(text).digest('hex');
+ assert.equal(rewardDialogPriorHash(path,actual),REWARD_DIALOG_REVIEWED_SOURCES[path].before);
+ const priorCatalog='9c1af29f8e415cee6c4c6084a650af70682e0ee413215d9eb89cdd784715ffcc';
+ const priorProposal='7f20baf68320068e1f06a7bfb7270706bc39c405c4b3a387bd29edf762603b86';
+ for(const rejected of [priorCatalog,priorProposal,createHash('sha256').update(text+'\n').digest('hex')])assert.throws(()=>rewardDialogPriorHash(path,rejected),/exact reviewed reward dialog appearance/);
 });

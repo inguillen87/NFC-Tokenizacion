@@ -134,10 +134,11 @@ function parseRewardCatalogReview(value: unknown, tenant: string): Reward[] | nu
 
 const sameRewardDialogSource = (a: RewardDialogSource, b: RewardDialogSource) => a.initialRewards === b.initialRewards && a.tenantScope === b.tenantScope && a.canWrite === b.canWrite && a.isDemo === b.isDemo && a.dataSource === b.dataSource && a.availability === b.availability;
 
-const PRESET_IMAGES = [
-  { label: "Degustación Sunset (Mendoza)", value: "/images/wine_tasting.png" },
-  { label: "Caja de Madera Premium (Mix 6)", value: "/images/wine_crate.png" },
-  { label: "Botella Magnum 1.5L", value: "/images/premium_magnum.png" }
+const REWARD_IMAGE_OPTIONS = [
+  { label: "Degustación en bodega", value: "/images/wine_tasting.png" },
+  { label: "Caja de seis botellas", value: "/images/wine_crate.png" },
+  { label: "Botella magnum (1,5 L)", value: "/images/premium_magnum.png" },
+  { label: "Sin imagen", value: "" },
 ];
 
 const REWARD_TYPES = [
@@ -631,14 +632,14 @@ export default function RewardsClient({
                   tabIndex={-1}
                   className={`flex items-start gap-3 p-3 rounded-xl border text-sm ${
                     message.type === "success"
-                      ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-                      : "bg-red-500/15 border-red-500/30 text-red-400"
+                      ? "bg-emerald-50 border-emerald-300 text-emerald-900 dark:bg-emerald-950 dark:border-emerald-700 dark:text-emerald-100"
+                      : "bg-rose-50 border-rose-300 text-rose-900 dark:bg-rose-950 dark:border-rose-700 dark:text-rose-100"
                   }`}
                 >
                   {message.type === "success" ? (
-                    <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" />
+                    <CheckCircle2 aria-hidden="true" className="h-5 w-5 shrink-0 mt-0.5" />
                   ) : (
-                    <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                    <AlertCircle aria-hidden="true" className="h-5 w-5 shrink-0 mt-0.5" />
                   )}
                   <span>{message.text}</span>
                 </div>
@@ -773,36 +774,43 @@ export default function RewardsClient({
               </div>
 
               {/* Image selector */}
-              <div>
-                <label htmlFor="reward-edit-image" className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+              <fieldset className="min-w-0">
+                <legend className="mb-1 text-xs font-semibold text-slate-400 uppercase tracking-wider">
                   Imagen del beneficio
-                </label>
-                <div className="grid grid-cols-1 gap-2 mb-2">
-                  {PRESET_IMAGES.map((img) => (
-                    <button
-                      key={img.value}
-                      type="button"
-                      onClick={() => setImageUrl(img.value)}
-                      className={`flex items-center justify-between px-3 py-2 text-xs rounded-xl border text-left transition-all ${
-                        imageUrl === img.value
-                          ? "bg-cyan-500/10 border-cyan-500 text-cyan-300 font-semibold"
-                          : "bg-slate-900 border-white/5 text-slate-400 hover:border-white/15"
-                      }`}
-                    >
-                      <span>{img.label}</span>
-                      <span className="text-[10px] font-mono opacity-60">{img.value}</span>
-                    </button>
-                  ))}
+                </legend>
+                <div role="group" aria-label="Opciones de imagen" className="mb-2 grid grid-cols-1 gap-2">
+                  {REWARD_IMAGE_OPTIONS.map((img) => {
+                    const selected = imageUrl === img.value;
+                    return (
+                      <button
+                        key={img.value}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => setImageUrl(img.value)}
+                        className={`flex min-h-11 items-center justify-between gap-2 px-3 py-2 text-xs rounded-xl border text-left transition-all ${
+                          selected
+                            ? "bg-cyan-500/10 border-cyan-500 text-cyan-300 font-semibold"
+                            : "bg-slate-900 border-white/5 text-slate-400 hover:border-white/15"
+                        }`}
+                      >
+                        <span>{img.label}</span>
+                        {selected && <CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0" />}
+                      </button>
+                    );
+                  })}
                 </div>
+                <label htmlFor="reward-edit-image" className="mb-1 block text-xs text-slate-400">
+                  URL personalizada de imagen (opcional)
+                </label>
                 <input
                   id="reward-edit-image"
                   type="text"
-                  value={imageUrl}
+                  value={REWARD_IMAGE_OPTIONS.some((img) => img.value === imageUrl) ? "" : imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="O ingresá una URL personalizada..."
+                  placeholder="https://…"
                   className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none"
                 />
-              </div>
+              </fieldset>
 
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div>
