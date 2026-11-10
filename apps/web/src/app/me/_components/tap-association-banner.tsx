@@ -128,6 +128,7 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
 
   const selectedResult = selected ? state.results[selected] : null;
   const hasResults = Object.keys(state.results).length > 0;
+  const savedProduct = state.results.save?.outcome === "saved";
   const enrollmentConfirmed = state.results.rewards?.outcome === "enrolled";
   const loginHref = tapAssociationLoginHref({ ...context, preferred: selected });
   const renderChoice = (action: TapAssociationAction) => <label key={action} className={styles.choice} data-selected={selected === action} data-primary={action === primaryChoice}>
@@ -169,7 +170,10 @@ function AssociationCard({ context }: { context: TapAssociationContext }) {
         <span className={styles.resultAction}>{copy.actions[action].label}</span><h4>{copy.titles[state.results[action]!.outcome]}</h4><p>{copy.outcomes[state.results[action]!.outcome]}</p>
       </li> : null)}</ul>
       {enrollmentConfirmed ? <Link href="/me/rewards" className={styles.collectionLink} data-testid="tap-association-benefits" prefetch={false}>{copy.benefits}</Link> : null}
-      <Link href={`/me/products?focus=${context.eventId}`} className={enrollmentConfirmed ? styles.historyLink : styles.collectionLink} prefetch={false}>{copy.products}</Link>
+      <Link href={savedProduct ? `/me/products?focus=${context.eventId}` : "/me/products"} className={enrollmentConfirmed ? styles.historyLink : styles.collectionLink}
+        data-testid={savedProduct ? "tap-association-open-saved" : undefined} prefetch={false}>
+        {savedProduct ? copy.savedProductAction : copy.products}
+      </Link>
       <Link href="/me/taps" className={styles.historyLink} prefetch={false}>{copy.history}</Link>
     </section> : null}
     <details className={styles.readingDetails}>

@@ -359,10 +359,12 @@ test("product return with a missing save handoff gives localized recovery while 
   const missing = loadProductsPage(list(), false, false);
   const html = await render(missing);
   assert.deepEqual(missing.calls, ["session", "products", "handoff:715"]);
-  assert.match(html, /data-testid="save-handoff-required"[\s\S]*?Necesitás otra lectura[\s\S]*?Mis productos y avisos/);
+  assert.match(html, /data-testid="save-handoff-required"[\s\S]*?Necesitás otra lectura[\s\S]*?Guardar en mi cuenta/);
   assert.match(html, /Todavía no hay productos guardados/);
   const portuguese = loadProductsPage(list(), false, false, "pt-BR");
-  assert.match(await render(portuguese, { ...query, action: "save" }), /É necessária outra leitura/);
+  assert.match(await render(portuguese, { ...query, action: "save" }), /É necessária outra leitura[\s\S]*?Salvar na minha conta/);
+  const english = loadProductsPage(list(), false, false, "en");
+  assert.match(await render(english, { ...query, action: "save" }), /Save to my account/);
   for (const result of [true, null]) assert.doesNotMatch(await render(loadProductsPage(list(), false, result)), /save-handoff-required/);
   for (const params of [{ ...query, action: "join" }, { ...query, eventId: ["715", "716"] }, { eventId: "715" }]) {
     const unrelated = loadProductsPage(list(), false, false);

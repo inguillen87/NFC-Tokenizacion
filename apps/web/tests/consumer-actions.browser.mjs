@@ -186,6 +186,9 @@ try {
   assert.ok(!(await page.evaluate(() => document.cookie)).includes(issued.token));
   assert.ok(!(await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }))).includes(issued.token));
   await confirm(page, 'saved');
+  const savedReceipt = page.getByTestId('tap-association-open-saved');
+  assert.equal(await savedReceipt.getAttribute('href'), `/me/products?focus=${issued.eventId}`);
+  assert.equal(await savedReceipt.innerText(), 'Abrir ficha guardada');
   const writes = actions(await state()).slice(before);
   assert.equal(writes.length, 1); assert.ok(writes[0].path.endsWith('/consumer/save-product')); assert.equal(writes[0].hasCapability, true); assert.equal(writes[0].leakedCookie, false);
   assert.equal(await page.getByTestId('tap-association-confirm').isDisabled(), true);
@@ -212,6 +215,8 @@ try {
   report.checks.push('An unconfirmed response preserves context and permits a deliberate retry without executing other actions');
   await mode('invalid-response'); await fresh(page); await confirm(page, 'unconfirmed');
   assert.equal(await page.locator('[data-outcome="saved"]').count(), 0);
+  assert.equal(await savedReceipt.count(), 0);
+  assert.equal(await page.getByTestId('tap-association').locator('a[href="/me/products"]').count(), 1);
   await mode('manual-review'); await fresh(page, 'claim'); await confirm(page, 'review_required');
   assert.equal(await page.locator('[data-outcome="claimed"]').count(), 0);
   await mode('committed'); await fresh(page, 'claim'); await confirm(page, 'recorded_pending');
