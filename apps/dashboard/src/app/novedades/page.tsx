@@ -3,10 +3,17 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { BrandLockup, ThemeToggle } from "@product/ui";
 import { getDashboardI18n } from "../../lib/locale";
-import { DASHBOARD_RELEASE, DASHBOARD_RELEASE_DATE, releaseCopy } from "../../lib/dashboard-release";
+import releaseMarker from "../../../public/release.json";
+import { DASHBOARD_RELEASE_DATE, releaseCopy } from "../../lib/dashboard-release";
 import styles from "../../components/release-notes.module.css";
 
 export const metadata: Metadata = { title: "Novedades y versión | nexID", robots: { index: false, follow: false } };
+
+const notesDateByLocale = {
+  "es-AR": "Notas publicadas el",
+  "pt-BR": "Notas publicadas em",
+  en: "Notes published on",
+};
 
 /** Public release notes contain no tenant data and make no API or database calls. */
 export default async function ReleaseNotesPage() {
@@ -21,7 +28,9 @@ export default async function ReleaseNotesPage() {
       <div className={styles.hero}>
         <div><p className={styles.eyebrow}>{copy.eyebrow}</p><h1 className={styles.title}>{copy.title}</h1><p className={styles.description}>{copy.summary}</p></div>
         <aside className={styles.version} aria-label={copy.label}>
-          <span>{copy.label}</span><code data-testid="dashboard-release-id">{DASHBOARD_RELEASE}</code>
+          <span>{copy.label}</span>
+          <code data-testid="dashboard-release-id">{releaseMarker.release}</code>
+          <span>{notesDateByLocale[locale]}</span>
           <time dateTime={DASHBOARD_RELEASE_DATE}>{new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${DASHBOARD_RELEASE_DATE}T12:00:00Z`))}</time>
         </aside>
       </div>

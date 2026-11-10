@@ -44,7 +44,7 @@ test("navigation labels and notes exist in all supported locales", () => {
   assert.equal(dashboardTaskCopy("unknown"), dashboardTaskCopy("es-AR"));
   assert.equal(releaseCopy("unknown"), RELEASE_NOTES["es-AR"]);
 });
-test("public version marker agrees with the displayed release", async () => {
+test("the committed marker identifies the historical release notes edition", async () => {
   const marker = JSON.parse(await source("../public/release.json"));
   assert.equal(marker.release, DASHBOARD_RELEASE);
   assert.equal(marker.apiChangesIncluded, false);
@@ -73,6 +73,8 @@ test("release notes have no private API, database access or provider identifiers
   assert.doesNotMatch(page, /fetch\(|requireDashboardSession|createAdminPageContext|DATABASE_URL|tenant_id|team_BV|prj_/);
   assert.match(page, /releaseCopy\(locale\)/);
   assert.match(page, /data-testid="dashboard-release-id"/);
+  assert.match(page, /data-testid="dashboard-release-id">\{releaseMarker\.release\}/);
+  assert.match(page, /notesDateByLocale\[locale\]/);
   assert.match(page, /prefetch=\{false\}/);
 });
 test("shell connects existing permission-filtered candidates to the task groups", async () => {
@@ -99,4 +101,8 @@ test("release entry is discoverable at login and in authenticated navigation", a
   for (const path of ["../src/app/login/page.tsx", "../src/components/dashboard-shell.tsx"]) {
     assert.match(await source(path), /<ReleaseNotesLink locale=\{locale\}/);
   }
+  const link = await source("../src/components/release-notes-link.tsx");
+  assert.match(link, /<small>\{releaseMarker\.release\}<\/small>/);
+  const accountMenu = await source("../src/components/tenant-account-menu.tsx");
+  assert.match(accountMenu, /href: "\/novedades"[^\n]+meta: releaseMarker\.release/);
 });

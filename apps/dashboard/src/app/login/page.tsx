@@ -18,6 +18,12 @@ type LoginPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
+const sessionClosedByLocale = {
+  "es-AR": "Sesión cerrada.",
+  "pt-BR": "Sessão encerrada.",
+  en: "Signed out.",
+};
+
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -75,7 +81,6 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     || authErrorCode === "clerk_session_expired"
     || authErrorCode === "clerk_google_required"
     || authErrorCode === "clerk_super_admin_not_allowed";
-  const authNotice = authErrorNotice || (loggedOut ? "Sesión cerrada. Podés ingresar con una cuenta tenant real, abrir la demo simulada o usar Google allowlisted." : "");
   let session = null;
   if (!loggedOut && !authErrorNotice) {
     try {
@@ -130,7 +135,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                   profiles={credentialProfiles}
                   bodegaDemoAllowed={bodegaDemoAllowed}
                   clerkEnabled={isClerkConfiguredForRuntime()}
-                  authNotice={authNotice}
+                  authNotice={authErrorNotice}
+                  sessionClosedNotice={loggedOut && !authErrorNotice ? sessionClosedByLocale[locale] : undefined}
                   clerkRecoveryRequired={clerkRecoveryRequired}
                   nextPath={nextPath}
                 />

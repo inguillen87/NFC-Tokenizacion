@@ -147,7 +147,11 @@ test("login surfaces separate founder Google auth from tenant demo access", () =
   assert.match(loginPage, /authErrorCode === "clerk_session_invalid"/);
   assert.match(loginPage, /authErrorCode === "clerk_google_required"/);
   assert.match(loginPanel, /resetSessionOnStart=\{clerkRecoveryRequired\}/);
-  assert.match(loginPage, /Sesión cerrada\. Podés ingresar con una cuenta tenant real, abrir la demo simulada o usar Google allowlisted\./);
+  assert.match(loginPage, /authNotice=\{authErrorNotice\}/);
+  assert.match(loginPage, /sessionClosedNotice=\{loggedOut && !authErrorNotice \? sessionClosedByLocale\[locale\] : undefined\}/);
+  const tenantForm = loginPanel.slice(loginPanel.indexOf('id="tenant-credentials"'), loginPanel.indexOf("</form>"));
+  assert.match(tenantForm, /role="status" className=\{styles\.sessionClosed\}/);
+  assert.match(loginPanel, /open=\{Boolean\(authNotice\)\}/);
 
   assert.match(googleButton, /already signed in/);
   assert.match(googleButton, /completeUrl\.searchParams\.set\("next", safeNextPath\)/);
