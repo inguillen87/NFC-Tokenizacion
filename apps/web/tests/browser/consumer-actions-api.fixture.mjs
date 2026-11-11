@@ -38,6 +38,11 @@ function contract(u) {
   const qr = u.searchParams.get('qr') === '1', agro = trace.startsWith('agro'), token = u.searchParams.get('fresh');
   const fresh = !qr && valid(token || '', eventId);
   return { ok: true, verdict: qr ? 'identified' : 'valid', status: { code: qr ? 'IDENTIFIED' : 'VALID_CLOSED', productState: qr ? 'NOT_REGISTERED' : 'VALID_CLOSED', tone: 'good', tamperSupported: !qr, tamperStatus: qr ? 'UNKNOWN' : 'CLOSED', carrierProfileCode: qr ? 'qr_basic' : 'ntag424_dna_tt' },
+    ...(trace === 'benefits-ready' ? { engagement: { configuration: {
+      version: 'nexid.tenant-actions.v1', status: 'published', tenantSlug: 'qa-brand', allowedActions: [],
+      program: { id: 'qa-program', name: 'Club de ensayo', pointsName: 'Puntos', pointsPerValidTap: 0 },
+      trivia: null, catalogAvailable: false,
+    } } } : {}),
     ...(qr ? {} : { currentEditorial: editorial(trace) }),
     supportReport: trace === 'no-support' ? null : { token: supportCapability(eventId), eventId, expiresAt: new Date(Date.now() + 900000).toISOString() },
     identity: { bid: 'QA-ONLY', tenantSlug: 'qa-brand', eventId, tagStatus: 'active' },

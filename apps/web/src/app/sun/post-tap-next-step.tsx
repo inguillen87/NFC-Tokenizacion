@@ -101,7 +101,7 @@ const JOURNEY_COPY: Record<JourneyKind, JourneyCopy> = {
   },
 };
 
-function resolveJourneyKind(vertical: string, productName: string): JourneyKind {
+export function resolveJourneyKind(vertical: string, productName: string): JourneyKind {
   const haystack = `${vertical} ${productName}`.toLocaleLowerCase("es");
   if (/agroqu|quimic|químic|fitosanit|herbic|fungic|insectic|bidon|bidón|crop protection/.test(haystack)) return "chemicals";
   if (/logistic|pallet|shipment|cargo|container|cold chain|cadena fria|cadena fría|embarque/.test(haystack)) return "logistics";
@@ -223,8 +223,8 @@ export function PostTapNextStep({
     ...(supportsRewards ? [{
       key: "rewards",
       href: rewardsHref,
-      label: "Entrar al club de la marca",
-      help: "Beneficios y puntos sólo después de una acción explícita.",
+      label: "Inscribirme en el club de la marca",
+      help: "Revisá la solicitud antes de confirmarla.",
       icon: Sparkles,
       experienceEvent: "LOYALTY_OFFER_VIEWED",
       experiencePlacement: "post_tap_options",

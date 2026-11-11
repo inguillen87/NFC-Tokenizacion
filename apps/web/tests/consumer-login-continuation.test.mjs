@@ -65,6 +65,17 @@ test("normal consumer and legacy nonconsumer destinations do not change the OTP 
   }
 });
 
+test("a dotted brand selection survives email access to private benefits only", () => {
+  const next = "/me/rewards?tenant=brand.qa";
+  assert.equal(normalizeConsumerAuthReturnPath(next), next);
+  assert.deepEqual(consumerAuthStartPayload({ email: "persona@example.test" }, next), { email: "persona@example.test", next });
+  assert.deepEqual(consumerAuthStartPayload({ phone: "+5491155551234" }, next), { phone: "+5491155551234" });
+  assert.equal(normalizeConsumerAuthReturnPath(next + "&voucher=fixture-code&freshToken=fixture#private"), next);
+  for (const rejected of ["/me/rewards?tenant=.brand", next + "&tenant=other", "/me/rewards?tenant=brand%2Fqa", "/me/products?tenant=brand.qa"]) {
+    assert.equal(normalizeConsumerAuthReturnPath(rejected), "/me", rejected);
+  }
+});
+
 test("only existing consumer routes can be sent in the email link", () => {
   for (const route of ["/me", "/me/products", "/me/passport", "/me/brands", "/me/wallet", "/me/marketplace", "/me/rewards", "/me/experiences", "/me/sommelier", "/me/taps", "/me/privacy", "/me/security", "/me/cork-analyzer", "/me/taps/9223372036854775807"]) {
     assert.equal(normalizeConsumerAuthReturnPath(route), route, route);
