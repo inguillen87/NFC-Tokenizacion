@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, Check, ChevronDown, Copy, Gift, Search, Ticket } from "lucide-react";
 import { REWARD_STATE_LABELS, rewardAvailabilityNotice, rewardDateLabel, rewardTenant, type ConsumerReward } from "../_components/consumer-rewards-model";
 import { readConsumerReservation, reserveConsumerReward, rewardReservationQuote, sameReservationQuote, type RewardReservationLookup, type RewardReservationQuote } from "../_components/consumer-reward-reservation";
-import { rewardNextActions } from "../_components/consumer-reward-next-actions";
+import { rewardBrandRelationshipHref, rewardNextActions } from "../_components/consumer-reward-next-actions";
 import styles from "./rewards.module.css";
 
 function VoucherCode({ code }: { code: string }) {
@@ -62,6 +62,7 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
   const visible = displayedItems.filter(item => (!tenant || item.tenant === tenant) && (view === "all" || (view === "vouchers" ? item.hasClaim : !item.hasClaim))
     && (item.title + " " + item.brand + " " + (item.program || "")).toLocaleLowerCase("es-AR").includes(query.trim().toLocaleLowerCase("es-AR")));
   const filtered = Boolean(tenant || query || view !== "all");
+  const emptyBrandHref = visible.length === 0 && !query.trim() && view === "all" ? rewardBrandRelationshipHref(tenant) : null;
   function changeFilters(patch: Partial<Pick<typeof filters, "tenant" | "query" | "view">>) { setFilters({ ...currentFilters, ...patch, source: identity }); }
   function reset() { changeFilters({ tenant: "", query: "", view: "all" }); }
   function openReservation(item: ConsumerReward, button: HTMLButtonElement) {
@@ -136,7 +137,19 @@ export function ConsumerRewardsClient({ items, initialTenant, selectedVoucher }:
       <label className={styles.brandFilter}><span className={styles.srOnly}>Filtrar por marca</span><select value={tenant} onChange={event => changeFilters({ tenant: event.target.value })}><option value="">Todas las marcas</option>{initialTenant && !brands.some(([slug]) => slug === initialTenant) ? <option value={initialTenant}>Marca del enlace</option> : null}{brands.map(([slug,name]) => <option key={slug} value={slug}>{name}</option>)}</select></label>
     </div>
     <div className={styles.resultLine}><p role="status">{visible.length} {visible.length === 1 ? "registro" : "registros"}{filtered ? " con estos filtros" : " en esta consulta"}</p>{filtered ? <button type="button" onClick={reset}>Limpiar filtros</button> : null}</div>
-    {visible.length === 0 ? <div className={styles.empty}><Ticket aria-hidden="true" /><h3>{displayedItems.length === 0 ? "Tus próximos beneficios, acá" : "No hay coincidencias"}</h3><p>{displayedItems.length === 0 ? "Cuando una de tus marcas publique un beneficio o emita un voucher para vos, vas a poder consultarlo en esta sección." : "Probá otra búsqueda o volvé a mostrar todas las marcas."}</p>{filtered ? <button type="button" className={styles.primaryLink} onClick={reset}>Mostrar todos</button> : <Link className={styles.primaryLink} href="/me/brands">Ver mis marcas <ArrowUpRight aria-hidden="true" /></Link>}</div>
+    {visible.length === 0 ? <div className={styles.empty}>
+      <Ticket aria-hidden="true" />
+      {emptyBrandHref ? <>
+        <h3>Beneficios de esta marca</h3>
+        <p>Esta consulta no trajo beneficios ni vouchers de la marca. Podés revisar tu vínculo desde tu cuenta.</p>
+        <Link className={styles.primaryLink} href={emptyBrandHref} prefetch={false}>Ver mi relación con la marca <ArrowUpRight aria-hidden="true" /></Link>
+        {displayedItems.length > 0 ? <button type="button" className={styles.copyButton} onClick={reset}>Mostrar todos</button> : null}
+      </> : <>
+        <h3>{displayedItems.length === 0 ? "Tus próximos beneficios, acá" : "No hay coincidencias"}</h3>
+        <p>{displayedItems.length === 0 ? "Cuando una de tus marcas publique un beneficio o emita un voucher para vos, vas a poder consultarlo en esta sección." : "Probá otra búsqueda o volvé a mostrar todas las marcas."}</p>
+        {filtered ? <button type="button" className={styles.primaryLink} onClick={reset}>Mostrar todos</button> : <Link className={styles.primaryLink} href="/me/brands">Ver mis marcas <ArrowUpRight aria-hidden="true" /></Link>}
+      </>}
+    </div>
       : <div className={styles.cards}>{visible.map(item => {
         const quote = rewardReservationQuote(item);
         const availability = !item.hasClaim && !quote ? rewardAvailabilityNotice(item) : null;

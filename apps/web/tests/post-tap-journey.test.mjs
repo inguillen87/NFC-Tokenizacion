@@ -87,8 +87,9 @@ test("post-tap journey adapts the next action without implying ownership from a 
   assert.match(component, /role="status"/);
   assert.match(component, /aria-current="step"/);
 
-  assert.match(page, /import \{ PostTapNextStep \} from "\.\/post-tap-next-step"/);
-  assert.match(page, /<PostTapNextStep[\s\S]*vertical=\{`\$\{verticalLabel\}[\s\S]*isFreshTap=\{isFreshCommercialTap\}/);
+  assert.match(page, /import \{ PostTapNextStep, resolveJourneyKind \} from "\.\/post-tap-next-step"/);
+  assert.match(page, /const postTapJourney = resolveJourneyKind\(postTapVertical, productDisplayName\)/);
+  assert.match(page, /<PostTapNextStep[\s\S]*vertical=\{postTapVertical\}[\s\S]*isFreshTap=\{isFreshCommercialTap\}/);
   assert.match(page, /allowedActions=\{allowedActions\}[\s\S]*blockedActions=\{blockedActions\}/);
   assert.match(page, /primaryActionHref=\{bid && \(uid \|\| eventId\) \? "#protected-actions" : registerHref\}/);
   assert.match(page, /id="protected-actions"/);
