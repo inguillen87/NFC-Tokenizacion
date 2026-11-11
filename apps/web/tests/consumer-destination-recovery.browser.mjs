@@ -19,11 +19,93 @@ Object.assign(env,{NODE_ENV:'production',NEXT_TELEMETRY_DISABLED:'1',CONSUMER_DE
 const next=spawn(process.execPath,['--import',pathToFileURL(join(web,'tests/consumer-destination-recovery-local-fetch.mjs')).href,join(repo,'node_modules/next/dist/bin/next'),'start','-p',String(port),'-H','127.0.0.1'],{cwd:web,env,windowsHide:true,stdio:['ignore','pipe','pipe']});
 next.stdout.on('data',()=>{});next.stderr.on('data',()=>{});let serverFailed=false;next.on('error',()=>{serverFailed=true;});
 const origin=`http://127.0.0.1:${port}`;
-const report={localOnly:true,actualNextProductionBuild:true,syntheticSessionsAndData:true,realAuthenticationCertified:false,physicalTapMeasured:false,checks:[],views:[],cases:[],clientErrors:[],nativeWindowErrors:[],consoleErrors:[],blockedWrites:[],externalRequests:[],experienceMockPosts:[],expectedSyntheticHttpErrors:[],geolocationCalls:0};
+const report={localOnly:true,actualNextProductionBuild:true,syntheticSessionsAndData:true,realAuthenticationCertified:false,physicalTapMeasured:false,checks:[],views:[],cases:[],anonymousReturns:[],clientErrors:[],nativeWindowErrors:[],consoleErrors:[],blockedWrites:[],externalRequests:[],experienceMockPosts:[],expectedSyntheticHttpErrors:[],geolocationCalls:0};
 const paths=['consumer-destination-recovery.browser.mjs','consumer-destination-recovery-local-fetch.mjs','browser/consumer-destination-recovery-api.fixture.mjs','consumer-portal-loading-evidence.mjs'];
 const hashes=async()=>Object.fromEntries(await Promise.all(paths.map(async path=>[path,createHash('sha256').update(await readFile(join(web,'tests',path))).digest('hex')])));
 report.helperHashesStart=await hashes();
 const check=(value,name)=>{report.checks.push({name,passed:Boolean(value)});assert.ok(value,name);};
+// Ignore query entry order only. A continuation must remain relative, with its
+// literal canonical path, origin, fragment and complete query multimap intact.
+function destinationIdentity(value) {
+ if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) {
+  return null;
+ }
+ try {
+  const parsedUrl = new URL(value, origin);
+  const queryBoundary = value.indexOf('?');
+  const fragmentBoundary = value.indexOf('#');
+  let pathBoundary = value.length;
+  if (queryBoundary !== -1) pathBoundary = queryBoundary;
+  if (fragmentBoundary !== -1 && fragmentBoundary < pathBoundary) {
+   pathBoundary = fragmentBoundary;
+  }
+  const rawPath = value.slice(0, pathBoundary);
+  if (rawPath !== parsedUrl.pathname) return null;
+
+  const queryEntries = [...parsedUrl.searchParams.entries()];
+  queryEntries.sort((leftEntry, rightEntry) => {
+   const [leftKey, leftValue] = leftEntry;
+   const [rightKey, rightValue] = rightEntry;
+   if (leftKey < rightKey) return -1;
+   if (leftKey > rightKey) return 1;
+   if (leftValue < rightValue) return -1;
+   if (leftValue > rightValue) return 1;
+   return 0;
+  });
+  return {
+   rawPath,
+   origin: parsedUrl.origin,
+   username: parsedUrl.username,
+   password: parsedUrl.password,
+   pathname: parsedUrl.pathname,
+   fragmentPresent: parsedUrl.href.includes('#'),
+   hash: parsedUrl.hash,
+   queryEntries,
+  };
+ } catch {
+  return null;
+ }
+}
+
+function sameDestination(actual, expected) {
+ const observedDestination = destinationIdentity(actual);
+ const requestedDestination = destinationIdentity(expected);
+ if (observedDestination === null || requestedDestination === null) return false;
+ return JSON.stringify(observedDestination) === JSON.stringify(requestedDestination);
+}
+
+function verifyDestinationComparison() {
+ const requested = '/me/taps?event=900001&from=2026-10-01&to=2026-10-06';
+ const reordered = '/me/taps?from=2026-10-01&to=2026-10-06&event=900001';
+ check(sameDestination(reordered, requested), 'destination comparison permits equivalent reordered query entries');
+
+ const rejectedDestinations = [
+  ['/me/taps?event=900001&to=2026-10-06', 'missing date'],
+  ['/me/taps?event=900001&from=2026-10-02&to=2026-10-06', 'changed date'],
+  [requested + '&from=2026-10-01', 'added duplicate'],
+  [requested + '&unexpected=1', 'added query key'],
+  [requested + '#reading', 'added fragment'],
+  [requested + '#', 'added empty fragment'],
+  [origin.replace('127.0.0.1', 'localhost') + requested, 'different origin'],
+  [origin.replace('http:', 'https:') + requested, 'different scheme'],
+  [origin.replace('://', '://synthetic:password@') + requested, 'credentials'],
+  [requested.replace('/me/taps', '/me/products'), 'different pathname'],
+  [origin + requested, 'absolute same-origin continuation'],
+  [origin.replace('http:', '') + requested, 'protocol-relative continuation'],
+  [requested.replace('/me/taps', '/me/../me/taps'), 'normalized dot-segment pathname'],
+  [null, 'missing next'],
+ ];
+ for (const [actualDestination, reason] of rejectedDestinations) {
+  check(!sameDestination(actualDestination, requested), 'destination comparison rejects ' + reason);
+ }
+
+ const repeated = '/me/taps?event=900001&tag=a&tag=a&tag=b#reading';
+ const repeatedReordered = '/me/taps?tag=b&tag=a&event=900001&tag=a#reading';
+ check(sameDestination(repeatedReordered, repeated), 'destination comparison retains repeated keys as a multimap');
+ check(!sameDestination('/me/taps?event=900001&tag=a&tag=b#reading', repeated), 'destination comparison rejects a missing duplicate occurrence');
+ check(!sameDestination(repeated.replace('#reading', '#other'), repeated), 'destination comparison rejects a changed fragment');
+ check(!sameDestination(repeated.replace('#reading', ''), repeated), 'destination comparison rejects a removed fragment');
+}
 const destinations=[
  ['/me/products?focus=900001','Tus productos guardados'],
  ['/me/rewards?fromTap=1&eventId=900001&tenant=loading-qa&action=rewards','Tus beneficios'],
@@ -88,9 +170,38 @@ async function recover(destination,width,theme,scenario,capture=true){
   await page.evaluate(()=>Promise.all(window.__destinationDeliveries));
  }finally{await context.close();}
 }
-async function anonymous(destination,scenario){
- const[path]=destination,{context,page}=await open(390,'light',scenario),start=fixture.requests.length;
- try{await page.goto(origin+path,{waitUntil:'domcontentloaded'});await page.waitForURL(url=>url.pathname==='/login');check(new URL(page.url()).searchParams.get('next')===path,scenario+': login preserves '+path);check(fixture.requests.slice(start).every(row=>row.path==='/consumer/session'),scenario+': no private reads on '+path);await page.evaluate(()=>Promise.all(window.__destinationDeliveries));}finally{await context.close();}
+async function anonymous(destination, scenario) {
+ const [path] = destination;
+ const { context, page } = await open(390, 'light', scenario);
+ const readStart = fixture.requests.length;
+ try {
+  await page.goto(origin + path, { waitUntil: 'domcontentloaded' });
+  await page.waitForURL(url => url.pathname === '/login');
+  const observedLoginUrl = page.url();
+  const loginUrl = new URL(observedLoginUrl);
+  const nextValues = loginUrl.searchParams.getAll('next');
+  let actualNext = null;
+  if (nextValues.length === 1) actualNext = nextValues[0];
+
+  report.anonymousReturns.push({
+   scenario,
+   requestedPath: path,
+   observedLoginUrl,
+   nextValues,
+   requestedDestination: destinationIdentity(path),
+   observedDestination: destinationIdentity(actualNext),
+  });
+  const canonicalLocalLogin = loginUrl.origin === origin
+   && loginUrl.pathname === '/login'
+   && loginUrl.username === ''
+   && loginUrl.password === ''
+   && !loginUrl.href.includes('#');
+  check(canonicalLocalLogin && nextValues.length === 1 && sameDestination(actualNext, path), scenario + ': login preserves ' + path);
+  check(fixture.requests.slice(readStart).every(row => row.path === '/consumer/session'), scenario + ': no private reads on ' + path);
+  await page.evaluate(() => Promise.all(window.__destinationDeliveries));
+ } finally {
+  await context.close();
+ }
 }
 async function availability(path,marker,scenario,width,theme,readyText,emptyText){
  const{context,page}=await open(width,theme,scenario),name=marker+'-'+scenario+'-'+width+'-'+theme;
@@ -259,6 +370,7 @@ async function securityNavigation(width,theme){
  }
 }
 try{
+ verifyDestinationComparison();
  let ready=false;for(let i=0;i<120;i++){if(serverFailed||next.exitCode!==null)break;try{if((await fetch(origin+'/release.json',{signal:AbortSignal.timeout(1000)})).ok){ready=true;break;}}catch{}await new Promise(resolve=>setTimeout(resolve,250));}
  check(ready,'isolated production Next ready');browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH});
  for(const width of [320,1280])for(const theme of ['light','dark'])await securityNavigation(width,theme);
