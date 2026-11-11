@@ -7,7 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import * as tapHandoff from "../src/app/api/_lib/consumer-tap-handoff.ts";
 import * as boundedFetch from "../src/app/me/_components/consumer-bounded-fetch.ts";
-import { rewardNextActions } from "../src/app/me/_components/consumer-reward-next-actions.ts";
+import { rewardBrandRelationshipHref, rewardNextActions } from "../src/app/me/_components/consumer-reward-next-actions.ts";
 
 const require = createRequire(import.meta.url);
 const dir = new URL("../src/app/me/", import.meta.url);
@@ -43,7 +43,7 @@ const shared = {
   "./rewards.module.css": css,
   "../_components/consumer-rewards-model": model,
   "../_components/consumer-reward-reservation": reservation,
-  "../_components/consumer-reward-next-actions": { rewardNextActions },
+  "../_components/consumer-reward-next-actions": { rewardBrandRelationshipHref, rewardNextActions },
 };
 const { ConsumerRewardsClient } = compile(clientSource, shared);
 const NOW = "2026-09-08T12:00:00Z";
@@ -305,7 +305,8 @@ test("SSR client starts with all kinds, an empty search and only the requested b
   assert.doesNotMatch(filtered, /<h3>Beneficio de otra marca<\/h3>/);
   const unknownBrand = renderClient(items, { initialTenant: "absent-brand" });
   assert.match(unknownBrand, /<option value="absent-brand" selected="">Marca del enlace/);
-  assert.match(unknownBrand, /No hay coincidencias/);
+  assert.match(unknownBrand, /Beneficios de esta marca/);
+  assert.match(unknownBrand, /href="\/me\/brands\?tenant=absent-brand"/);
   assert.match(unknownBrand, /Mostrar todos/);
   assert.doesNotMatch(unknownBrand, /data-reward-state=/);
 });
@@ -392,9 +393,27 @@ test("missing, empty and invalid tenant scopes keep the existing unscoped catalo
 test("a valid explicit tenant with no matching benefits does not fall back to another brand", () => {
   const items = readModel(list([reward({ tenant_slug: "brand-b" })])).items;
   const html = renderClient(items, { initialTenant: "absent-brand" });
-  assert.match(html, /No hay coincidencias/);
+  assert.match(html, /Beneficios de esta marca/);
+  assert.match(html, /href="\/me\/brands\?tenant=absent-brand"/);
   assert.equal(marketplaceLinkHref(html), "/me/marketplace?tenant=absent-brand");
   assert.doesNotMatch(html, /data-reward-state=/);
+});
+
+test("an empty own benefits consultation offers the same brand relationship without enrollment", () => {
+  for (const tenant of ["brand-a", "brand_a", "brand.a", "a".repeat(120)]) {
+    const html = renderClient([], { initialTenant: tenant });
+    assert.match(html, /Beneficios de esta marca/);
+    assert.match(html, /Esta consulta no trajo beneficios ni vouchers de la marca/);
+    assert.ok(html.includes(`href="/me/brands?tenant=${encodeURIComponent(tenant)}"`));
+    assert.match(html, /Ver mi relación con la marca/);
+    assert.doesNotMatch(html, /Mostrar todos|data-reward-state=|fromTap|Inscribirme|Confirmar reserva/);
+  }
+  for (const tenant of ["", "../brand", "Brand.A", "brand&other=1", "c0264292-2a4a-4e78-8f4c-2ca6bb334df5"]) {
+    const html = renderClient([], { initialTenant: tenant });
+    assert.doesNotMatch(html, /Ver mi relación con la marca|Beneficios de esta marca/);
+  }
+  assert.match(clientSource, /href=\{emptyBrandHref\} prefetch=\{false\}/);
+  assert.match(clientSource, /visible\.length === 0 && !query\.trim\(\) && view === "all"/);
 });
 
 test("optional program balances preserve zero and safe amounts without borrowing brand or network fields", () => {

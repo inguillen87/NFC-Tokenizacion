@@ -65,15 +65,18 @@ test("normal consumer and legacy nonconsumer destinations do not change the OTP 
   }
 });
 
-test("a dotted brand selection survives email access to private benefits only", () => {
-  const next = "/me/rewards?tenant=brand.qa";
-  assert.equal(normalizeConsumerAuthReturnPath(next), next);
-  assert.deepEqual(consumerAuthStartPayload({ email: "persona@example.test" }, next), { email: "persona@example.test", next });
-  assert.deepEqual(consumerAuthStartPayload({ phone: "+5491155551234" }, next), { phone: "+5491155551234" });
-  assert.equal(normalizeConsumerAuthReturnPath(next + "&voucher=fixture-code&freshToken=fixture#private"), next);
-  for (const rejected of ["/me/rewards?tenant=.brand", next + "&tenant=other", "/me/rewards?tenant=brand%2Fqa", "/me/products?tenant=brand.qa"]) {
-    assert.equal(normalizeConsumerAuthReturnPath(rejected), "/me", rejected);
+test("a dotted brand selection survives email access to private benefits and its brand relationship", () => {
+  for (const route of ["/me/rewards", "/me/brands"]) {
+    const next = `${route}?tenant=brand.qa`;
+    assert.equal(normalizeConsumerAuthReturnPath(next), next);
+    assert.deepEqual(consumerAuthStartPayload({ email: "persona@example.test" }, next), { email: "persona@example.test", next });
+    assert.deepEqual(consumerAuthStartPayload({ phone: "+5491155551234" }, next), { phone: "+5491155551234" });
+    assert.equal(normalizeConsumerAuthReturnPath(next + "&voucher=fixture-code&freshToken=fixture#private"), next);
+    for (const rejected of [`${route}?tenant=.brand`, next + "&tenant=other", `${route}?tenant=brand%2Fqa`]) {
+      assert.equal(normalizeConsumerAuthReturnPath(rejected), "/me", rejected);
+    }
   }
+  assert.equal(normalizeConsumerAuthReturnPath("/me/products?tenant=brand.qa"), "/me");
 });
 
 test("only existing consumer routes can be sent in the email link", () => {
