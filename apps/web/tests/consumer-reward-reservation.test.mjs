@@ -6,7 +6,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import * as boundedFetch from "../src/app/me/_components/consumer-bounded-fetch.ts";
-import { rewardNextActions } from "../src/app/me/_components/consumer-reward-next-actions.ts";
+import { rewardBrandRelationshipHref, rewardNextActions } from "../src/app/me/_components/consumer-reward-next-actions.ts";
 
 const require = createRequire(import.meta.url);
 const read = path => readFileSync(new URL("../src/app/me/" + path, import.meta.url), "utf8");
@@ -131,10 +131,32 @@ test("malformed scope or envelope remains unavailable instead of becoming an emp
     assert.deepEqual(result, { status: "uncertain" });
   }
 });
-test("terminal own receipt preserves historical spend and never presents an expired code", async () => {
-  for (const extra of [{ claim_status: "redeemed" }, { claim_status: "cancelled" }, { claim_status: "claimed", claim_expires_at: "2026-10-14T05:00:00.000Z" }]) {
-    const result = await reservation.readConsumerReservation(quote(), CLAIM, { now: NOW, fetchImpl: async () => response(payload([ownClaim(extra)])) });
-    assert.equal(result.status, "confirmed"); assert.equal(result.items[0].cost, 40); assert.equal(result.items[0].code, null);
+test("own receipt feedback distinguishes issuance, historical states and an unconfirmed state", async () => {
+  const cases = [
+    ["claimed", {}, "Tu reserva figura en tu cuenta. Revisá el estado y vencimiento del voucher.", "Ver mi voucher"],
+    ["redeemed", { claim_status: "redeemed" }, "Este voucher ya figura como canjeado. Podés consultar el registro.", "Ver registro"],
+    ["cancelled", { claim_status: "cancelled" }, "La reserva figura cancelada. Podés consultar el registro.", "Ver registro"],
+    ["expired", { claim_status: "expired" }, "Este voucher figura vencido. Podés consultar el registro.", "Ver registro"],
+    ["expired", { claim_expires_at: "2026-10-14T05:00:00.000Z" }, "Este voucher figura vencido. Podés consultar el registro.", "Ver registro"],
+    ["unknown", { claim_expires_at: null }, "Encontramos el registro en tu cuenta. Su estado está por confirmar.", "Ver registro"],
+  ];
+  const otherReceipt = ownClaim({
+    id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    claim_id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    claim_status: "redeemed",
+  });
+  for (const [state, extra, message, actionLabel] of cases) {
+    const result = await reservation.readConsumerReservation(quote(), CLAIM, {
+      now: NOW,
+      fetchImpl: async () => response(payload([otherReceipt, ownClaim(extra)])),
+    });
+    assert.equal(result.status, "confirmed");
+    assert.equal(result.claimKey, "claim-" + CLAIM);
+    const matched = result.items.find(item => item.key === result.claimKey);
+    assert.equal(matched.state, state);
+    assert.equal(matched.cost, 40);
+    assert.equal(matched.code, state === "claimed" ? "NXR-OWNED" : null);
+    assert.deepEqual(reservation.rewardReceiptFeedback(result), { message, actionLabel });
   }
 });
 test("a true empty private collection is a completed read with no confirmed receipt", async () => {
@@ -147,7 +169,7 @@ test("SSR advertises an eligible button without requesting or reserving anything
   const client = compile(read("rewards/rewards-client.tsx"), {
     "next/link": ({ children, ...props }) => React.createElement("a", props, children),
     "./rewards.module.css": css, "../_components/consumer-rewards-model": model,
-    "../_components/consumer-reward-next-actions": { rewardNextActions },
+    "../_components/consumer-reward-next-actions": { rewardBrandRelationshipHref, rewardNextActions },
     "../_components/consumer-reward-reservation": { ...reservation, reserveConsumerReward: () => { calls++; throw Error("unexpected"); }, readConsumerReservation: () => { calls++; throw Error("unexpected"); } },
   });
   const html = renderToStaticMarkup(React.createElement(client.ConsumerRewardsClient, { items: [parsed(row())], initialTenant: "bodega-a", selectedVoucher: null }));

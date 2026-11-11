@@ -21,7 +21,7 @@ import type { SunVisualKind } from "./sun-product-hero-stage";
 import { SunPassportHeader } from "./sun-passport-header";
 import { SunLocaleProvider } from "./sun-locale-provider";
 import { formatSunDateTime, translateSunUiText, type SunLocale } from "./sun-locale";
-import { PostTapNextStep } from "./post-tap-next-step";
+import { PostTapNextStep, resolveJourneyKind } from "./post-tap-next-step";
 import { SunSectionNav } from "./sun-section-nav";
 import { SunServicesHub, type SunPublishedPromotion } from "./sun-services-hub";
 import { SunLocationExperience } from "./sun-location-experience";
@@ -1392,6 +1392,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   });
   const productVisualKind = (assetProfile.visualKind || resolveSunVisualKind(result)) as SunVisualKind;
   const productDisplayName = assetProfile.productName || productName;
+  const postTapVertical = `${verticalLabel} ${result.product?.vertical || ""} ${result.product?.category || ""}`;
+  const postTapJourney = resolveJourneyKind(postTapVertical, productDisplayName);
+  const configuredTenant = tenantActions.configuration?.tenantSlug;
+  const brandBenefitsTenant = isFreshCommercialTap && !isQrScan && engagementBaseEligible
+    && postTapQuickActions.rewards && tenantSlug && (!configuredTenant || configuredTenant === tenantSlug)
+    && (postTapJourney === "wine" || postTapJourney === "consumer")
+    ? tenantSlug
+    : null;
   const isWineProduct = [result.product?.vertical, result.tenant?.vertical, productDisplayName]
     .some((value) => /\b(wine|vino|malbec|reserva|bodega)\b/i.test(String(value || "")));
   const showEngagementSuite = (engagementBaseEligible || isDemoPreview) && isWineProduct;
@@ -2410,6 +2418,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 eventId={eventId}
                 freshToken={isFreshCommercialTap && !isQrScan && !isSnapshotView && !isRiskBlocked ? freshToken : ""}
                 promotion={publishedPromotion}
+                brandBenefitsTenant={brandBenefitsTenant}
                 purchaseHref={tapMarketplaceHref}
                 subscribeHref={canSubscribeToBrand ? (showEngagementSuite ? "#qr-engagement" : "#sun-updates-opt-in") : null}
                 claimOrManageHref={bid && (uid || eventId) ? protectedServiceHref : registerHref}
@@ -2465,7 +2474,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <PostTapNextStep
                   eventId={eventId}
                   freshToken={isFreshCommercialTap && !isQrScan && !isSnapshotView && !isRiskBlocked ? freshToken : ""}
-                  vertical={`${verticalLabel} ${result.product?.vertical || ""} ${result.product?.category || ""}`}
+                  vertical={postTapVertical}
                   productName={productDisplayName}
                   isFreshTap={isFreshCommercialTap}
                   isSnapshotView={isSnapshotView || isQrScan}

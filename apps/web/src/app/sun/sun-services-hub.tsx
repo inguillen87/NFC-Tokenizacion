@@ -34,6 +34,7 @@ export type SunPublishedPromotion = {
 
 export type SunServicesHubProps = {
   promotion?: SunPublishedPromotion | null;
+  brandBenefitsTenant?: string | null;
   purchaseHref?: string | null;
   subscribeHref?: string | null;
   claimOrManageHref?: string | null;
@@ -89,6 +90,12 @@ const PARTIAL_CONFIGURATION_COPY: Readonly<Record<AppLocale, string>> = {
   en: "We could not load some of the brand's options. You can continue with the options shown below.",
   "pt-BR": "Não foi possível carregar algumas opções da marca. Você pode continuar com as opções exibidas abaixo.",
 };
+
+const BRAND_BENEFITS_COPY = {
+  "es-AR": { label: "Mis beneficios de esta marca", detail: "Consultá los puntos y vouchers de tu cuenta." },
+  en: { label: "My benefits from this brand", detail: "Check the points and vouchers in your account." },
+  "pt-BR": { label: "Meus benefícios desta marca", detail: "Confira os pontos e vouchers da sua conta." },
+} as const;
 
 const DEMO_ACTION_ICONS: Readonly<Record<DemoExperienceAction, typeof ShieldCheck>> = {
   warranty: ShieldCheck,
@@ -192,6 +199,7 @@ const DEMO_COPY: Readonly<Record<AppLocale, DemoServicesCopy>> = {
 
 export function SunServicesHub({
   promotion,
+  brandBenefitsTenant,
   purchaseHref,
   subscribeHref,
   claimOrManageHref,
@@ -236,7 +244,14 @@ export function SunServicesHub({
     ? Math.floor(promotion.points)
     : null;
 
+  const validBenefitsTenant = typeof brandBenefitsTenant === "string" && /^[a-z0-9][a-z0-9._-]{0,119}$/.test(brandBenefitsTenant);
   const liveActions = [
+    ...(freshnessState === "fresh" && riskState !== "blocked" && verifiedTenant && validBenefitsTenant ? [{
+      key: "benefits",
+      href: `/me/rewards?tenant=${encodeURIComponent(brandBenefitsTenant)}`,
+      ...BRAND_BENEFITS_COPY[activeLocale || locale],
+      icon: Gift,
+    }] : []),
     ...(available.purchase ? [{
       key: "purchase",
       href: purchaseHref as string,
@@ -387,6 +402,9 @@ export function SunServicesHub({
                 </span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-slate-500 transition group-hover:translate-x-0.5 group-hover:text-cyan-200" aria-hidden="true" />
             </>;
+            if (action.key === "benefits") {
+              return <a key={action.key} href={action.href} data-testid="sun-brand-benefits-link" className={ACTION_CLASS_NAME}>{content}</a>;
+            }
             return /^\/me(?:[/?#]|$)/.test(action.href)
               ? <ConsumerTapLink key={action.key} href={action.href} eventId={eventId} freshToken={freshnessState === "fresh" && riskState !== "blocked" ? freshToken : ""} className={`${ACTION_CLASS_NAME} w-full`}>{content}</ConsumerTapLink>
               : <a key={action.key} href={action.href} className={ACTION_CLASS_NAME}>{content}</a>;

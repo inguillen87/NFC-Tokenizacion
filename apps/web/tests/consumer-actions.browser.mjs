@@ -178,7 +178,7 @@ try {
   assert.equal(actions(await state()).length, beforeEditorial);
   report.checks.push('Current publication version, date and documents stay separate from the old reading in three languages; missing, unpublished, legacy, inactive and invalid states never revive a removed current link');
   const before = actions(await state()).length;
-  await checkSupportReports({ page, base, state, mode, assess, report });
+  await checkSupportReports({ page, base, api, state, mode, assess, report });
   const issued = await fresh(page);
   assert.equal(actions(await state()).length, before, 'Entering the portal does not execute any action');
   const cookies = (await context.cookies()).filter(x => x.name.includes('nexid_tap_'));
@@ -200,11 +200,32 @@ try {
   }
   for (const [width, theme] of [[1440, 'light'], [1440, 'dark'], [390, 'light'], [390, 'dark']]) await assess(page, '[data-testid="tap-association"]', 'explicit-actions', width, theme);
   report.checks.push('One explicit request per action; HttpOnly handoff reaches only the matching BFF action and completed results persist independently');
+  const consultation = await (await fetch(api + '/qa-issue')).json();
+  await page.goto(`${base}/sun?snapshot=${consultation.eventId}&trace=benefits-ready&access=qa-only&fresh=${encodeURIComponent(consultation.token)}`, { waitUntil: 'load' });
+  const benefits = page.getByTestId('sun-brand-benefits-link');
+  assert.equal(await benefits.getAttribute('href'), '/me/rewards?tenant=qa-brand');
+  const beforeConsultation = actions(await state()).length;
+  const handoffRequests = [];
+  const observeHandoff = request => {
+    if (new URL(request.url()).pathname === '/api/consumer/tap-handoff') handoffRequests.push(request.method());
+  };
+  page.on('request', observeHandoff);
+  try {
+    await benefits.click();
+    await page.waitForURL(u => u.pathname === '/me/rewards' && u.search === '?tenant=qa-brand');
+    await page.getByRole('heading', { name: 'Beneficios y vouchers', exact: true }).waitFor();
+    assert.equal(await page.getByTestId('tap-association').count(), 0);
+    assert.deepEqual(handoffRequests, []);
+    assert.equal(actions(await state()).length, beforeConsultation);
+  } finally {
+    page.off('request', observeHandoff);
+  }
+  report.checks.push('Viewing own-brand benefits goes directly to the private catalogue without preparing or enrolling');
   const secondary = await (await fetch(api + '/qa-issue')).json();
   const beforeSecondary = actions(await state()).length;
-  await page.goto(`${base}/sun?snapshot=${secondary.eventId}&trace=qa-only&access=qa-only&fresh=${encodeURIComponent(secondary.token)}`, { waitUntil: 'load' });
+  await page.goto(`${base}/sun?snapshot=${secondary.eventId}&trace=benefits-ready&access=qa-only&fresh=${encodeURIComponent(secondary.token)}`, { waitUntil: 'load' });
   await page.locator('summary').filter({ hasText: 'Como se protege cada accion' }).click();
-  await page.getByTestId('post-tap-next-step').getByRole('button', { name: /Entrar al club de la marca/ }).click();
+  await page.getByTestId('post-tap-next-step').getByRole('button', { name: /Inscribirme en el club de la marca/ }).click();
   await page.waitForURL(u => u.pathname === '/me/rewards', { timeout: 60000 });
   assert.equal(actions(await state()).length, beforeSecondary);
   await confirm(page, 'enrolled');

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { CheckCircle2, ChevronDown, MessageSquareWarning } from "lucide-react";
 import { useSunLocale } from "./sun-locale-provider";
 import { reportProblemCopy } from "./report-problem-copy";
+import { REPORT_PROBLEM_FRAGMENT, revealReportProblem } from "./report-problem-navigation";
 import { REPORT_CATEGORIES, createReportProblemRunner, readReportProblemResponse, reportContextAvailable, type ReportAttempt, type ReportDraft, type ReportFieldErrors, type ReportOutcome, type ReportProblemProps } from "./report-problem-model";
 import styles from "./report-problem-form.module.css";
 
@@ -27,7 +28,6 @@ function ReportProblemSession(props: ReportProblemProps) {
   const [preparationError, setPreparationError] = useState<"context_unavailable" | "resolve_attempt" | "request_id_unavailable" | null>(null);
   const [outcome, setOutcome] = useState<ReportOutcome | null>(null);
   const [sending, setSending] = useState(false);
-  const details = useRef<HTMLDetailsElement>(null);
   const reviewHeading = useRef<HTMLHeadingElement>(null);
   const description = useRef<HTMLTextAreaElement>(null);
   const contact = useRef<HTMLInputElement>(null);
@@ -46,13 +46,25 @@ function ReportProblemSession(props: ReportProblemProps) {
     mounted.current = true;
     setReady(true);
     const reveal = () => {
-      if (window.location.hash !== "#report-problem" || !details.current) return;
-      details.current.open = true;
-      details.current.scrollIntoView({ block: "start" });
+      if (window.location.hash === REPORT_PROBLEM_FRAGMENT) revealReportProblem();
+    };
+    const activateLink = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey
+        || event.shiftKey || event.altKey || !(event.target instanceof Element)) return;
+      const link = event.target.closest<HTMLAnchorElement>(`a[href="${REPORT_PROBLEM_FRAGMENT}"]`);
+      if (!link || link.hasAttribute("download") || (link.target && link.target.toLowerCase() !== "_self")) return;
+      // Activate even when the current fragment already matches this link.
+      if (revealReportProblem(true)) event.preventDefault();
     };
     reveal();
     window.addEventListener("hashchange", reveal);
-    return () => { mounted.current = false; controller.current?.abort(); window.removeEventListener("hashchange", reveal); };
+    document.addEventListener("click", activateLink, true);
+    return () => {
+      mounted.current = false;
+      controller.current?.abort();
+      window.removeEventListener("hashchange", reveal);
+      document.removeEventListener("click", activateLink, true);
+    };
   }, []);
   useEffect(() => { if (review) reviewHeading.current?.focus(); }, [review]);
 
@@ -99,7 +111,7 @@ function ReportProblemSession(props: ReportProblemProps) {
     : fieldErrors[field] === "too_long" ? field === "description" ? copy.errors.tooLongDescription : copy.errors.tooLongContact : copy.errors.invalid;
 
   return <section id="report-problem" className={styles.root} aria-labelledby="report-problem-title" data-testid="report-problem-form" data-report-step={received ? "received" : review ? "review" : "description"} data-report-ready={ready} data-sun-server-evidence="true">
-    <details ref={details} className={styles.details}>
+    <details className={styles.details}>
       <summary className={styles.summary} data-testid="report-problem-summary"><h2 id="report-problem-title"><MessageSquareWarning size={19} aria-hidden="true" /><span>{copy.title}</span><ChevronDown size={18} aria-hidden="true" /></h2></summary>
       <div className={styles.content}>
         {props.isDemoPreview ? <p className={styles.note}>{copy.demo}</p> : received ? <div role="status" className={styles.receipt} data-testid="report-problem-receipt">

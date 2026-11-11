@@ -7,7 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import * as tapHandoff from "../src/app/api/_lib/consumer-tap-handoff.ts";
 import * as boundedFetch from "../src/app/me/_components/consumer-bounded-fetch.ts";
-import { rewardNextActions } from "../src/app/me/_components/consumer-reward-next-actions.ts";
+import { rewardBrandRelationshipHref, rewardNextActions } from "../src/app/me/_components/consumer-reward-next-actions.ts";
 
 const require = createRequire(import.meta.url);
 const dir = new URL("../src/app/me/", import.meta.url);
@@ -43,7 +43,7 @@ const shared = {
   "./rewards.module.css": css,
   "../_components/consumer-rewards-model": model,
   "../_components/consumer-reward-reservation": reservation,
-  "../_components/consumer-reward-next-actions": { rewardNextActions },
+  "../_components/consumer-reward-next-actions": { rewardBrandRelationshipHref, rewardNextActions },
 };
 const { ConsumerRewardsClient } = compile(clientSource, shared);
 const NOW = "2026-09-08T12:00:00Z";
@@ -78,9 +78,22 @@ function loadPage(payload, options = {}) {
   return { page, calls, clientProps };
 }
 
+async function resolveServerBoundaries(element) {
+  if (Array.isArray(element)) return Promise.all(React.Children.toArray(element).map(resolveServerBoundaries));
+  if (!React.isValidElement(element)) return element;
+  if (element.type === React.Suspense) {
+    const child = element.props.children;
+    const resolved = await child.type(child.props);
+    return React.isValidElement(resolved) ? React.cloneElement(resolved, { key: element.key }) : resolved;
+  }
+  if (element.props.children === undefined) return element;
+  return React.cloneElement(element, undefined, await resolveServerBoundaries(element.props.children));
+}
+
 async function render(payload, options = {}) {
   const setup = loadPage(payload, options);
-  return { ...setup, html: renderToStaticMarkup(await setup.page({ searchParams: Promise.resolve(options.params || {}) })) };
+  const page = await setup.page({ searchParams: Promise.resolve(options.params || {}) });
+  return { ...setup, html: renderToStaticMarkup(await resolveServerBoundaries(page)) };
 }
 
 const renderClient = (items, props = {}) => renderToStaticMarkup(React.createElement(ConsumerRewardsClient, { items, initialTenant: "", selectedVoucher: null, ...props }));
@@ -238,6 +251,32 @@ test("SSR authorizes before starting precisely the rewards and wallet reads in p
   assert.deepEqual(denied.calls, [["session", "/me/rewards"]]);
 });
 
+test("reward results and the voucher link can render while the wallet response is pending", async () => {
+  let resolveWallet;
+  const deferredWallet = new Promise((resolve) => { resolveWallet = resolve; });
+  const setup = loadPage(list(), {
+    fetch: (path) => path === "rewards" ? list([claim()]) : deferredWallet,
+  });
+  let page;
+  const pending = setup.page({ searchParams: Promise.resolve({ tenant: "demobodega", voucher: "BALMEC-1234" }) })
+    .then((result) => { page = result; });
+  try {
+    await new Promise(setImmediate);
+    assert.ok(page, "the authorized shell can render before either read finishes");
+    const [, rewardsBoundary, points] = page.props.children.props.children;
+    assert.equal(rewardsBoundary.type, React.Suspense);
+    assert.match(renderToStaticMarkup(rewardsBoundary.props.fallback), /Cargando tus beneficios/);
+    assert.match(renderToStaticMarkup(points.props.children[1].props.fallback), /Cargando puntos por marca/);
+    const readyRewards = renderToStaticMarkup(await resolveServerBoundaries(rewardsBoundary));
+    assert.match(readyRewards, /href="#voucher-claim-claim-1">Ver mi voucher/);
+    assert.match(readyRewards, /id="voucher-claim-claim-1" tabindex="-1"/);
+    assert.deepEqual(setup.calls.map(([call]) => call), ["session", "fetch", "fetch"]);
+  } finally {
+    resolveWallet(null);
+    await pending;
+  }
+});
+
 test("SSR distinguishes unavailable rewards from empty results and keeps wallet availability independent", async () => {
   const failed = await render({ ok: false, items: [] });
   assert.match(failed.html, /No pudimos cargar tus beneficios/);
@@ -277,6 +316,7 @@ test("SSR voucher links cannot announce confirmation for unmatched, cross-tenant
   assert.match(valid.html, /Encontramos el voucher en tu cuenta/);
   assert.match(valid.html, /data-selected="true"/);
   assert.match(valid.html, /<details[^>]*open=""/);
+  assert.ok(valid.html.indexOf("Ver mi voucher") < valid.html.indexOf('aria-labelledby="benefits-points-title"'));
   assert.equal(valid.clientProps[0].selectedVoucher, "claim-claim-1");
 });
 
@@ -305,7 +345,8 @@ test("SSR client starts with all kinds, an empty search and only the requested b
   assert.doesNotMatch(filtered, /<h3>Beneficio de otra marca<\/h3>/);
   const unknownBrand = renderClient(items, { initialTenant: "absent-brand" });
   assert.match(unknownBrand, /<option value="absent-brand" selected="">Marca del enlace/);
-  assert.match(unknownBrand, /No hay coincidencias/);
+  assert.match(unknownBrand, /Beneficios de esta marca/);
+  assert.match(unknownBrand, /href="\/me\/brands\?tenant=absent-brand"/);
   assert.match(unknownBrand, /Mostrar todos/);
   assert.doesNotMatch(unknownBrand, /data-reward-state=/);
 });
@@ -392,9 +433,27 @@ test("missing, empty and invalid tenant scopes keep the existing unscoped catalo
 test("a valid explicit tenant with no matching benefits does not fall back to another brand", () => {
   const items = readModel(list([reward({ tenant_slug: "brand-b" })])).items;
   const html = renderClient(items, { initialTenant: "absent-brand" });
-  assert.match(html, /No hay coincidencias/);
+  assert.match(html, /Beneficios de esta marca/);
+  assert.match(html, /href="\/me\/brands\?tenant=absent-brand"/);
   assert.equal(marketplaceLinkHref(html), "/me/marketplace?tenant=absent-brand");
   assert.doesNotMatch(html, /data-reward-state=/);
+});
+
+test("an empty own benefits consultation offers the same brand relationship without enrollment", () => {
+  for (const tenant of ["brand-a", "brand_a", "brand.a", "a".repeat(120)]) {
+    const html = renderClient([], { initialTenant: tenant });
+    assert.match(html, /Beneficios de esta marca/);
+    assert.match(html, /Esta consulta no trajo beneficios ni vouchers de la marca/);
+    assert.ok(html.includes(`href="/me/brands?tenant=${encodeURIComponent(tenant)}"`));
+    assert.match(html, /Ver mi relación con la marca/);
+    assert.doesNotMatch(html, /Mostrar todos|data-reward-state=|fromTap|Inscribirme|Confirmar reserva/);
+  }
+  for (const tenant of ["", "../brand", "Brand.A", "brand&other=1", "c0264292-2a4a-4e78-8f4c-2ca6bb334df5"]) {
+    const html = renderClient([], { initialTenant: tenant });
+    assert.doesNotMatch(html, /Ver mi relación con la marca|Beneficios de esta marca/);
+  }
+  assert.match(clientSource, /href=\{emptyBrandHref\} prefetch=\{false\}/);
+  assert.match(clientSource, /visible\.length === 0 && !query\.trim\(\) && view === "all"/);
 });
 
 test("optional program balances preserve zero and safe amounts without borrowing brand or network fields", () => {

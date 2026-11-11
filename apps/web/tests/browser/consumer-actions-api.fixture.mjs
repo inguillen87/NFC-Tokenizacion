@@ -37,10 +37,15 @@ function contract(u) {
   const trace = u.searchParams.get('trace') || '';
   const qr = u.searchParams.get('qr') === '1', agro = trace.startsWith('agro'), token = u.searchParams.get('fresh');
   const fresh = !qr && valid(token || '', eventId);
-  const opened = !qr && trace === 'save-opened';
+  const opened = !qr && ['save-opened', 'report-opened'].includes(trace);
   const nfcStatus = opened ? 'VALID_OPENED' : 'VALID_CLOSED';
   const sealBytes = opened ? '4f4f' : '4343';
   return { ok: true, verdict: qr ? 'identified' : opened ? 'valid_opened' : 'valid', status: { code: qr ? 'IDENTIFIED' : nfcStatus, productState: qr ? 'NOT_REGISTERED' : nfcStatus, tone: opened ? 'warn' : 'good', tamperSupported: !qr, tamperStatus: qr ? 'UNKNOWN' : opened ? 'OPENED' : 'CLOSED', carrierProfileCode: qr ? 'qr_basic' : 'ntag424_dna_tt' },
+    ...(trace === 'benefits-ready' ? { engagement: { configuration: {
+      version: 'nexid.tenant-actions.v1', status: 'published', tenantSlug: 'qa-brand', allowedActions: [],
+      program: { id: 'qa-program', name: 'Club de ensayo', pointsName: 'Puntos', pointsPerValidTap: 0 },
+      trivia: null, catalogAvailable: false,
+    } } } : {}),
     ...(qr ? {} : { currentEditorial: editorial(trace) }),
     supportReport: trace === 'no-support' ? null : { token: supportCapability(eventId), eventId, expiresAt: new Date(Date.now() + 900000).toISOString() },
     identity: { bid: 'QA-ONLY', tenantSlug: 'qa-brand', eventId, tagStatus: 'active' },
