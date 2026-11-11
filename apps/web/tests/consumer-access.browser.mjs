@@ -46,6 +46,7 @@ const observedStates=[];
 const check=(value,name)=>{report.checks.push({name,passed:Boolean(value)});assert.ok(value,name);};
 const checkPayload=(actual,expected,name)=>check(isDeepStrictEqual(actual,expected),name);
 const productNext='/me/products?fromTap=1&eventId=900001&bid=LOT-WINE-QA&tenant=consumer-qa&action=save';
+const unsavedProductNext='/me/products?fromTap=1&eventId=900099&bid=LOT-WINE-QA&tenant=consumer-qa&action=save';
 const starts=state=>state.calls.filter(call=>call.path.endsWith('/start'));
 const afterRender=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
 function requestDocumentPath(request){try{return new URL(request.frame().url()).pathname;}catch{return null;}}
@@ -196,19 +197,21 @@ async function lateCodeSuccessfulReturn(theme){
  check(new URL(p.url()).pathname==='/login',`${label} code acknowledgement cannot enter without a confirmed session`);
  state.session={ok:true,authenticated:true};await p.getByRole('button',{name:'Validar y continuar',exact:true}).click();
  await p.waitForURL(url=>url.pathname==='/me/products'&&url.searchParams.get('eventId')==='900001');await p.getByTestId('consumer-product-library').waitFor();
- await p.getByTestId('save-handoff-required').waitFor();
- check(await p.getByTestId('tap-association-confirm').count()===0,`${label} a fresh reading is requested before offering Save`);
+ const handoff=p.getByTestId('save-handoff-existing-product');await handoff.waitFor();
+ check(await handoff.getByRole('link',{name:'Abrir ficha guardada',exact:true}).getAttribute('href')==='/me/products?focus=900001',`${label} an already saved product can be opened without a new save`);
+ check(await p.getByTestId('save-handoff-required').count()===0&&await p.getByTestId('tap-association-confirm').count()===0,`${label} an already saved product requires neither another reading nor a repeated Save`);
  check(new URL(p.url()).pathname+new URL(p.url()).search===productNext,`${label} late-code entry restores the exact product selection after session confirmation`);
  check(starts(state).length===1,`${label} successful late-code entry never requests another code`);
  check(state.calls.filter(c=>c.path.endsWith('/verify')).length===2,`${label} both checks follow explicit user verification`);
  check(state.calls.filter(c=>!['GET','HEAD'].includes(c.method)).every(c=>['/api/consumer/auth/logout','/api/consumer/auth/start','/api/consumer/auth/verify'].includes(c.path)),`${label} restored destination does not save, associate or redeem automatically`);
  report.scenarios.push({name:'late-code-successful-return',theme,requests:state.calls});await s.context.close();
 }
-async function magicProductContinuation(width,theme){
- const s=await open(width,theme,productNext),p=s.page,state=s.state,label=`magic-product/${width}/${theme}`;
+async function magicProductContinuation(width,theme,alreadySaved=false){
+ const target=alreadySaved?productNext:unsavedProductNext,eventId=alreadySaved?'900001':'900099';
+ const s=await open(width,theme,target),p=s.page,state=s.state,label=`magic-product/${alreadySaved?'saved':'unsaved'}/${width}/${theme}`;
  state.identity.name='magic-email-product-continuation';
  await email(p);await p.getByRole('button',{name:'Recibir código',exact:true}).click();await p.getByRole('textbox',{name:'Código de acceso',exact:true}).waitFor();
- checkPayload(starts(state)[0].payload,{email:'persona@example.test',next:productNext},`${label} email start includes product context`);
+ checkPayload(starts(state)[0].payload,{email:'persona@example.test',next:target},`${label} email start includes product context`);
  check(await p.getByRole('button',{name:'Validar y continuar',exact:true}).count()===1,`${label} verification action explains the product return`);
  const continuation=starts(state)[0].payload.next;
  state.verify={ok:true};state.verifyHttp=200;state.session={ok:true,authenticated:true};
@@ -217,17 +220,18 @@ async function magicProductContinuation(width,theme){
  // has no cookie for the physical reading.
  const link='/login?'+new URLSearchParams({consumer:'1',t:'synthetic-continuation-only',next:continuation});
  await p.evaluate(link=>history.pushState(null,'',link),link);
- await p.waitForURL(url=>url.pathname==='/me/products'&&url.searchParams.get('eventId')==='900001');
+ await p.waitForURL(url=>url.pathname==='/me/products'&&url.searchParams.get('eventId')===eventId);
  const library=p.getByTestId('consumer-product-library');await library.waitFor();
  check((await library.innerText()).includes('Vino reserva QA'),`${label} actual private Next product page renders the synthetic collection`);
- const handoff=p.getByTestId('save-handoff-required');await handoff.waitFor();
- check(/acercá otra vez el teléfono a la etiqueta/i.test(await handoff.innerText()),`${label} next step explains how to make a new reading before offering Save`);
+ const handoff=p.getByTestId(alreadySaved?'save-handoff-existing-product':'save-handoff-required');await handoff.waitFor();
+ check(alreadySaved?(await handoff.innerText()).includes('Este producto ya está en tu cuenta'):/acercá otra vez el teléfono a la etiqueta/i.test(await handoff.innerText()),`${label} the next step reflects whether this account already saved the exact reading`);
+ check(await p.getByTestId(alreadySaved?'save-handoff-required':'save-handoff-existing-product').count()===0,`${label} the two recovery states remain distinct`);
  check(await p.getByTestId('tap-association').count()===0&&await p.getByTestId('tap-association-confirm').count()===0,`${label} no action or duplicate client session check is mounted for a missing handoff`);
- check(await handoff.getByRole('link',{name:'Revisar mis productos',exact:true}).getAttribute('href')==='/me/products',`${label} the collection remains reachable without TAP context`);
+ check(await handoff.getByRole('link',{name:alreadySaved?'Abrir ficha guardada':'Revisar mis productos',exact:true}).getAttribute('href')===(alreadySaved?'/me/products?focus=900001':'/me/products'),`${label} only a previously saved exact reading receives a focused product link`);
  const verifyCalls=state.calls.filter(call=>call.path.endsWith('/verify')),sessionCalls=state.calls.filter(call=>call.path.endsWith('/session'));
  check(state.navigationBoundaries.length===1,`${label} one product document navigation was requested`);
  const boundary=state.navigationBoundaries[0],before=boundary.requests;
- check(boundary.url===productNext&&!boundary.truncated,`${label} product navigation snapshot is exact and complete`);
+ check(boundary.url===target&&!boundary.truncated,`${label} product navigation snapshot is exact and complete`);
  const beforeVerify=before.filter(call=>call.path.endsWith('/verify')),beforeSession=before.filter(call=>call.path.endsWith('/session'));
  check(beforeVerify.length===1&&beforeSession.length===1,`${label} magic link verifies once and confirms the session before navigation`);
  check(beforeVerify[0].method==='POST'&&beforeVerify[0].receivedResponse?.httpStatus===200&&beforeVerify[0].fixtureResponse?.ok===true,`${label} successful token verification was received before navigation`);
@@ -238,12 +242,12 @@ async function magicProductContinuation(width,theme){
  check(sessionCalls.every(call=>call.documentPath!=='/me/products'),`${label} the authenticated destination needs no extra client session read for missing handoff`);
  check(state.calls.slice(boundary.requestCount).every(call=>['GET','HEAD'].includes(call.method)),`${label} destination requests after navigation remain read-only`);
  check(starts(state).length===1,`${label} continuation preserves one explicit OTP send`);
- checkpoint(state,'destination-missing-handoff-confirmed');
- check(new URL(p.url()).pathname+new URL(p.url()).search===productNext,`${label} successful session restores the exact product selection`);
+ checkpoint(state,alreadySaved?'destination-saved-product-confirmed':'destination-missing-handoff-confirmed');
+ check(new URL(p.url()).pathname+new URL(p.url()).search===target,`${label} successful session restores the exact product selection`);
  check(state.calls.filter(call=>!['GET','HEAD'].includes(call.method)).every(call=>['/api/consumer/auth/logout','/api/consumer/auth/start','/api/consumer/auth/verify'].includes(call.path)),`${label} product continuation performs no automatic save, claim or association`);
  check(await p.evaluate(()=>window.__geoCalls)===0,`${label} product continuation requests no location`);
- await assess(p,'[data-testid="consumer-product-library"]','email-product-return',width,theme);
- report.scenarios.push({name:'magic-email-product-continuation',width,theme,requests:state.calls,navigationBoundary:boundary,preNavigationAuthCounts:{verify:beforeVerify.length,session:beforeSession.length},wholePageSessionCount:sessionCalls.length,missingHandoff:true});await s.context.close();
+ await assess(p,'[data-testid="consumer-product-library"]',alreadySaved?'email-product-return-saved':'email-product-return-unsaved',width,theme);
+ report.scenarios.push({name:'magic-email-product-continuation',width,theme,requests:state.calls,navigationBoundary:boundary,preNavigationAuthCounts:{verify:beforeVerify.length,session:beforeSession.length},wholePageSessionCount:sessionCalls.length,missingHandoff:true,alreadySaved});await s.context.close();
 }
 try{
  for(const width of [320,390,768,1440])for(const theme of ['light','dark']){
@@ -280,6 +284,7 @@ try{
   await whatsappRecovery(unavailable,width,theme,true);await whatsappRecovery(uncertain,width,theme,true);
   coveredMeta.add(unavailable);coveredMeta.add(uncertain);await magicProductContinuation(width,theme);variant++;
  }
+ await magicProductContinuation(320,'light',true);await magicProductContinuation(390,'dark',true);
  for(const error of [...unavailableMeta,...uncertainMeta].filter(error=>!coveredMeta.has(error)))await whatsappRecovery(error);
  for(const error of ['twilio_delivery_failed','twilio_authentication_failed','twilio_consumer_otp_whatsapp_from_invalid','unexpected_provider_reply'])await whatsappRecovery(error);
  for(const httpStatus of [502,503])for(const theme of ['light','dark'])await nonJsonWhatsAppRecovery(httpStatus,theme);
