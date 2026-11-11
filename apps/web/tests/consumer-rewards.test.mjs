@@ -78,9 +78,22 @@ function loadPage(payload, options = {}) {
   return { page, calls, clientProps };
 }
 
+async function resolveServerBoundaries(element) {
+  if (Array.isArray(element)) return Promise.all(React.Children.toArray(element).map(resolveServerBoundaries));
+  if (!React.isValidElement(element)) return element;
+  if (element.type === React.Suspense) {
+    const child = element.props.children;
+    const resolved = await child.type(child.props);
+    return React.isValidElement(resolved) ? React.cloneElement(resolved, { key: element.key }) : resolved;
+  }
+  if (element.props.children === undefined) return element;
+  return React.cloneElement(element, undefined, await resolveServerBoundaries(element.props.children));
+}
+
 async function render(payload, options = {}) {
   const setup = loadPage(payload, options);
-  return { ...setup, html: renderToStaticMarkup(await setup.page({ searchParams: Promise.resolve(options.params || {}) })) };
+  const page = await setup.page({ searchParams: Promise.resolve(options.params || {}) });
+  return { ...setup, html: renderToStaticMarkup(await resolveServerBoundaries(page)) };
 }
 
 const renderClient = (items, props = {}) => renderToStaticMarkup(React.createElement(ConsumerRewardsClient, { items, initialTenant: "", selectedVoucher: null, ...props }));
@@ -238,6 +251,32 @@ test("SSR authorizes before starting precisely the rewards and wallet reads in p
   assert.deepEqual(denied.calls, [["session", "/me/rewards"]]);
 });
 
+test("reward results and the voucher link can render while the wallet response is pending", async () => {
+  let resolveWallet;
+  const deferredWallet = new Promise((resolve) => { resolveWallet = resolve; });
+  const setup = loadPage(list(), {
+    fetch: (path) => path === "rewards" ? list([claim()]) : deferredWallet,
+  });
+  let page;
+  const pending = setup.page({ searchParams: Promise.resolve({ tenant: "demobodega", voucher: "BALMEC-1234" }) })
+    .then((result) => { page = result; });
+  try {
+    await new Promise(setImmediate);
+    assert.ok(page, "the authorized shell can render before either read finishes");
+    const [, rewardsBoundary, points] = page.props.children.props.children;
+    assert.equal(rewardsBoundary.type, React.Suspense);
+    assert.match(renderToStaticMarkup(rewardsBoundary.props.fallback), /Cargando tus beneficios/);
+    assert.match(renderToStaticMarkup(points.props.children[1].props.fallback), /Cargando puntos por marca/);
+    const readyRewards = renderToStaticMarkup(await resolveServerBoundaries(rewardsBoundary));
+    assert.match(readyRewards, /href="#voucher-claim-claim-1">Ver mi voucher/);
+    assert.match(readyRewards, /id="voucher-claim-claim-1" tabindex="-1"/);
+    assert.deepEqual(setup.calls.map(([call]) => call), ["session", "fetch", "fetch"]);
+  } finally {
+    resolveWallet(null);
+    await pending;
+  }
+});
+
 test("SSR distinguishes unavailable rewards from empty results and keeps wallet availability independent", async () => {
   const failed = await render({ ok: false, items: [] });
   assert.match(failed.html, /No pudimos cargar tus beneficios/);
@@ -277,6 +316,7 @@ test("SSR voucher links cannot announce confirmation for unmatched, cross-tenant
   assert.match(valid.html, /Encontramos el voucher en tu cuenta/);
   assert.match(valid.html, /data-selected="true"/);
   assert.match(valid.html, /<details[^>]*open=""/);
+  assert.ok(valid.html.indexOf("Ver mi voucher") < valid.html.indexOf('aria-labelledby="benefits-points-title"'));
   assert.equal(valid.clientProps[0].selectedVoucher, "claim-claim-1");
 });
 
