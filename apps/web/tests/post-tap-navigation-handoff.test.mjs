@@ -77,6 +77,7 @@ test("secondary consumer links prepare the same event only on click and preserve
   assert.match(html, /href="\/certificado\/713\?share=read_only_fixture"/);
   assert.match(html, /href="\/contacto\?event=713"[^>]*data-sun-experience-event="PROBLEM_REPORTED"/);
   assert.match(html, /data-sun-experience-event="LOYALTY_OFFER_VIEWED" data-sun-experience-placement="post_tap_options" data-sun-experience-interaction="rewards_opened"/);
+  assert.match(html, /Inscribirme en el club de la marca/);
   assert.doesNotMatch(html, /private-fixture-capability/);
 });
 
@@ -103,6 +104,30 @@ test("services marketplace navigation uses the bridge while in-page and external
   assert.match(html, /href="#protected-actions"/);
   assert.match(html, /href="https:\/\/brand\.example\/warranty"/);
   assert.doesNotMatch(html, /private-fixture-capability/);
+});
+
+test("brand benefits are a localized private link with no tap handoff", () => {
+  for (const [language, label] of [
+    ["es-AR", "Mis beneficios de esta marca"],
+    ["en", "My benefits from this brand"],
+    ["pt-BR", "Meus benefícios desta marca"],
+  ]) {
+    const { html, seen } = services({ brandBenefitsTenant: "brand.qa" }, language);
+    const link = html.match(/<a[^>]+data-testid="sun-brand-benefits-link"[^>]*>[\s\S]*?<\/a>/)?.[0];
+    assert.ok(link);
+    assert.match(link, /href="\/me\/rewards\?tenant=brand\.qa"/);
+    assert.ok(link.includes(label));
+    assert.doesNotMatch(link, /fromTap|eventId|fresh|action=/);
+    assert.deepEqual(seen.map(({ href }) => href), [serviceBase.purchaseHref]);
+  }
+  for (const props of [
+    { freshnessState: "demo" },
+    { freshnessState: "snapshot" },
+    { freshnessState: "stale" },
+    { riskState: "blocked" },
+    { verifiedTenant: false },
+    { brandBenefitsTenant: "wrong/brand" },
+  ]) assert.doesNotMatch(services({ brandBenefitsTenant: "brand.qa", ...props }).html, /sun-brand-benefits-link/);
 });
 
 test("unavailable company options remain visible as a partial notice beside independent services", () => {

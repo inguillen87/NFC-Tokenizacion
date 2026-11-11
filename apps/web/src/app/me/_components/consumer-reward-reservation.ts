@@ -16,6 +16,22 @@ export type RewardReservationLookup =
   | { status: "authentication-required" }
   | { status: "denied" }
   | { status: "uncertain" };
+
+const receiptMessages: Partial<Record<ConsumerReward["state"], string>> = {
+  claimed: "Tu reserva figura en tu cuenta. Revisá el estado y vencimiento del voucher.",
+  redeemed: "Este voucher ya figura como canjeado. Podés consultar el registro.",
+  cancelled: "La reserva figura cancelada. Podés consultar el registro.",
+  expired: "Este voucher figura vencido. Podés consultar el registro.",
+};
+
+export function rewardReceiptFeedback(result: Extract<RewardReservationLookup, { status: "confirmed" }>) {
+  const state = result.items.find(item => item.key === result.claimKey)?.state;
+  return {
+    message: (state && receiptMessages[state]) || "Encontramos el registro en tu cuenta. Su estado está por confirmar.",
+    actionLabel: state === "claimed" ? "Ver mi voucher" : "Ver registro",
+  };
+}
+
 type Options = { fetchImpl?: typeof fetch; timeoutMs?: number; signal?: AbortSignal; now?: string };
 const uuid = (value: unknown): value is string => typeof value === "string" && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value);
 const sameUuid = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();

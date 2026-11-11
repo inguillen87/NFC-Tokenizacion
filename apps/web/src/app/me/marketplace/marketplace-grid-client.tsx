@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type MouseEvent } from "react";
 import { ArrowDown, Minus, PackageCheck, Plus, Search, ShoppingCart, X } from "lucide-react";
 import styles from "./marketplace.module.css";
 import { sendMarketplaceRequest } from "./marketplace-request";
+import { canRequestMarketplaceListing, storeMarketplaceSessionDraft, takeMarketplaceSessionDraft } from "./marketplace-session-draft";
 import { normalizeSafeReturnPath } from "@product/config/safe-return-path";
 import { normalizeConsumerAuthReturnPath } from "../../login/consumer-login-continuation";
 
@@ -128,16 +129,29 @@ export function marketplaceRequestErrorLabel(status: number, payload: unknown) {
   return uncertain;
 }
 
-export function MarketplaceGridClient({ items, postTapEventId }: { items: Listing[]; postTapEventId?: string }) {
+export function MarketplaceEmptyDraftNotice({ scope }: { scope: string }) {
+  const [hasExpiredSelection, setHasExpiredSelection] = useState(false);
+  useEffect(() => {
+    if (takeMarketplaceSessionDraft(scope, []) !== null) setHasExpiredSelection(true);
+  }, [scope]);
+  return hasExpiredSelection ? <p className={styles.note} role="status">Los productos de tu lista ya no están disponibles para solicitar contacto.</p> : null;
+}
+
+type AgeGateAction = "request" | "list" | "checkout";
+
+export function MarketplaceGridClient({ items, postTapEventId, draftScope }: { items: Listing[]; postTapEventId?: string; draftScope?: string }) {
   const validTapContext = typeof postTapEventId === "string" && /^[1-9]\d{0,15}$/.test(postTapEventId) && Number.isSafeInteger(Number(postTapEventId));
   const [tapContextDenied, setTapContextDenied] = useState(false);
   const tapContextDeniedRef = useRef(false);
+  const [loginHref, setLoginHref] = useState<string | null>(null);
+  const [draftStorageBlocked, setDraftStorageBlocked] = useState(false);
+  const sessionExpired = useRef(false);
   const contextUnavailable = postTapEventId !== undefined && (!validTapContext || tapContextDenied);
   const [busyById, setBusyById] = useState<Record<string, boolean>>({});
   const [feedbackById, setFeedbackById] = useState<Record<string, string>>({});
   const [ageGateById, setAgeGateById] = useState<Record<string, boolean>>({});
   const [acceptedAgeById, setAcceptedAgeById] = useState<Record<string, boolean>>({});
-  const [ageGateActionById, setAgeGateActionById] = useState<Record<string, "request" | "list">>({});
+  const [ageGateActionById, setAgeGateActionById] = useState<Record<string, AgeGateAction>>({});
   const [requestedById, setRequestedById] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState("all");
@@ -148,6 +162,7 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
   const searchRef = useRef<HTMLInputElement>(null);
   const listHeadingRef = useRef<HTMLHeadingElement>(null);
   const inFlight = useRef(new Set<string>());
+  const attempted = useRef(new Set<string>());
   const agePanelPrefix = useId();
   const ageHeadingRefs = useRef(new Map<string, HTMLHeadingElement>());
   const ageInitiators = useRef(new Map<string, HTMLButtonElement>());
@@ -155,6 +170,18 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
   const listActionRefs = useRef(new Map<string, HTMLButtonElement>());
   const pendingAgeFocus = useRef<string | null>(null);
   const pendingAgeReturn = useRef<{ id: string; from: HTMLElement } | null>(null);
+
+  useEffect(() => {
+    if (!draftScope || contextUnavailable) return;
+    const restored = takeMarketplaceSessionDraft(draftScope, items);
+    if (!restored) return;
+    if (Object.keys(restored).length) {
+      setCart(current => Object.keys(current).length ? current : restored);
+      setCartStatus("Recuperamos los productos pendientes que siguen disponibles. Revisá tu lista antes de enviarla.");
+    } else {
+      setCartStatus("Los productos de tu lista ya no están disponibles para solicitar contacto.");
+    }
+  }, [contextUnavailable, draftScope, items]);
 
   useEffect(() => {
     const openedId = pendingAgeFocus.current;
@@ -182,7 +209,7 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
     }
   }, [ageGateById]);
 
-  function openAgeConfirmation(item: Listing, action: "request" | "list", initiator?: HTMLButtonElement) {
+  function openAgeConfirmation(item: Listing, action: AgeGateAction, initiator?: HTMLButtonElement) {
     if (initiator) ageInitiators.current.set(item.id, initiator);
     pendingAgeFocus.current = item.id;
     setAgeGateById((prev) => ({ ...prev, [item.id]: true }));
@@ -262,7 +289,8 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
   }
 
   async function requestToBuy(item: Listing, options: { ageGateAccepted?: boolean; quantity?: number; message?: string } = {}, initiator?: HTMLButtonElement) {
-    if (contextUnavailable || tapContextDeniedRef.current || !item.id || inFlight.current.has(item.id) || requestedById[item.id]) return false;
+    if (contextUnavailable || tapContextDeniedRef.current || sessionExpired.current || !item.id || inFlight.current.has(item.id) || requestedById[item.id]) return false;
+    if (!canRequestMarketplaceListing(item)) return false;
     const needsAgeGate = item.age_gate_required === true;
     const ageGateAccepted = options.ageGateAccepted === true || acceptedAgeById[item.id] === true;
     if (needsAgeGate && !ageGateAccepted) {
@@ -272,6 +300,8 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
     }
 
     inFlight.current.add(item.id);
+    const previouslyAttempted = attempted.current.has(item.id);
+    attempted.current.add(item.id);
     setBusyById((prev) => ({ ...prev, [item.id]: true }));
     setFeedbackById((prev) => ({ ...prev, [item.id]: "" }));
 
@@ -286,11 +316,10 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
       }
       const { status, ok, payload } = result;
       if (status === 401) {
-        setFeedbackById((prev) => ({ ...prev, [item.id]: "Entrá al portal para enviar tu solicitud a la marca." }));
+        sessionExpired.current = true;
+        if (!previouslyAttempted && !ok && payload.ok === false && payload.error === "unauthorized") attempted.current.delete(item.id);
         const next = normalizeConsumerAuthReturnPath(normalizeSafeReturnPath(window.location.pathname + window.location.search, "/me/marketplace"));
-        window.setTimeout(() => {
-          window.location.assign(`/login?consumer=1&next=${encodeURIComponent(next)}`);
-        }, 650);
+        setLoginHref(`/login?consumer=1&next=${encodeURIComponent(next)}`);
         return false;
       }
       if (!ok || !payload.ok) {
@@ -326,11 +355,26 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
       setBusyById((prev) => ({ ...prev, [item.id]: false }));
     }
   }
+
+  function rememberDraft(event: MouseEvent<HTMLAnchorElement>) {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    if (cartBusy || inFlight.current.size) {
+      event.preventDefault();
+      setCartStatus("Esperá a que terminen las solicitudes en curso antes de volver a entrar.");
+      return;
+    }
+    if (!draftScope || !cartLines.length || draftStorageBlocked) return;
+    const available = Object.fromEntries(cartLines.filter(({ item }) => canRequestMarketplaceListing(item)).map(({ item, quantity }) => [item.id, quantity]));
+    if (storeMarketplaceSessionDraft(draftScope, available, attempted.current) === null) {
+      event.preventDefault();
+      setDraftStorageBlocked(true);
+    }
+  }
   async function checkoutCart(initiator: HTMLButtonElement) {
-    if (contextUnavailable || !cartLines.length || cartBusy) return;
+    if (contextUnavailable || sessionExpired.current || !cartLines.length || cartBusy) return;
     const unconfirmed = cartLines.find(({ item }) => item.age_gate_required === true && acceptedAgeById[item.id] !== true);
     if (unconfirmed) {
-      openAgeConfirmation(unconfirmed.item, "list", initiator);
+      openAgeConfirmation(unconfirmed.item, "checkout", initiator);
       setCartStatus("Confirmá mayoría de edad en el producto indicado antes de enviar la lista.");
       return;
     }
@@ -349,6 +393,7 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
         successfulIds.add(line.item.id);
         okCount += 1;
       }
+      if (sessionExpired.current) break;
     }
     if (okCount) {
       setCart((prev) => {
@@ -359,6 +404,8 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
         return remaining;
       });
       setCartStatus(`${okCount} solicitud${okCount === 1 ? " registrada" : "es registradas"}. La marca debe confirmar disponibilidad y condiciones.${okCount < cartLines.length ? " Los productos pendientes siguen en tu lista." : ""}`);
+    } else if (sessionExpired.current) {
+      setCartStatus("La lista sigue en esta pantalla.");
     } else {
       setCartStatus("No se pudieron enviar las solicitudes. Revisá los avisos de cada producto.");
     }
@@ -371,8 +418,10 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
     setAcceptedAgeById((prev) => ({ ...prev, [item.id]: true }));
     setAgeGateById((prev) => ({ ...prev, [item.id]: false }));
     setFeedbackById((prev) => ({ ...prev, [item.id]: "" }));
-    if (ageGateActionById[item.id] === "list") addToCart(item, true);
-    else void requestToBuy(item, { ageGateAccepted: true });
+    const action = ageGateActionById[item.id];
+    if (action === "list") addToCart(item, true);
+    if (action === "request") void requestToBuy(item, { ageGateAccepted: true, quantity: cart[item.id] || 1 });
+    if (action === "checkout") setCartStatus("Mayoría de edad confirmada. Revisá la lista antes de enviarla.");
   }
 
   return (
@@ -394,6 +443,11 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
         </button>
       </div>
       {contextUnavailable ? <div role="status" className={styles.intro}><p>Las consultas desde esta lectura ya no están disponibles. Tu lista se conserva en esta pantalla.</p><a href="/me/marketplace" className={styles.button}>Volver al catálogo</a></div> : null}
+      {loginHref ? <div className={styles.intro}>
+        <p role="status">{draftStorageBlocked ? "No pudimos conservar la lista. Podés revisarla antes de salir."
+          : <>Tu sesión venció. {cartLines.length ? "Podés revisar tu lista pendiente antes de volver a entrar." : "Volvé a entrar para enviar solicitudes."}</>}</p>
+        <a href={loginHref} onClick={rememberDraft} className={`${styles.button} ${styles.primary}`}>{draftStorageBlocked ? "Volver a entrar sin guardar la lista" : "Volver a entrar"}</a>
+      </div> : null}
       <div className={styles.layout}>
         <aside className={styles.filters} aria-label="Filtros del catálogo">
           <div className={styles.panel}>
@@ -419,7 +473,7 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
           <div className={styles.products}>
             {filteredItems.map((item, idx) => {
               const status = String(item.stock_status || item.status || "not_reported");
-              const requestDisabled = contextUnavailable || !["available", "active", "in_stock"].includes(status.toLowerCase()) || item.request_to_buy_enabled !== true;
+              const requestDisabled = contextUnavailable || !canRequestMarketplaceListing(item);
               const requestAlreadySent = requestedById[item.id] === true;
               const displayImg = item.imageUrl || item.image_url || item.photoUrl || item.photo_url;
               const photoFailed = Boolean(displayImg && failedPhotos[item.id] === displayImg);
@@ -443,13 +497,13 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
                       <div id={agePanelId} className={styles.confirmation} role="group" aria-labelledby={`${agePanelId}-title`}>
                         <h4 id={`${agePanelId}-title`} ref={node => { if (node) ageHeadingRefs.current.set(item.id, node); else ageHeadingRefs.current.delete(item.id); }} tabIndex={-1} className={styles.ageHeading}>{ageGateActionById[item.id] === "list" ? "Confirmá que sos mayor de edad para agregar este producto a tu lista." : "Confirmá que sos mayor de edad para enviar esta solicitud."}</h4>
                         <div className={styles.actions}>
-                          <button type="button" aria-describedby={`${agePanelId}-title`} disabled={cartBusy || busyById[item.id]} onClick={event => confirmAge(item, event.currentTarget)} className={`${styles.button} ${styles.primary}`}>Soy mayor de edad</button>
+                          <button type="button" aria-describedby={`${agePanelId}-title`} disabled={cartBusy || busyById[item.id] || (Boolean(loginHref) && ageGateActionById[item.id] === "request")} onClick={event => confirmAge(item, event.currentTarget)} className={`${styles.button} ${styles.primary}`}>Soy mayor de edad</button>
                           <button type="button" onClick={event => cancelAgeConfirmation(item, event.currentTarget)} className={styles.button}>Cancelar</button>
                         </div>
                       </div>
                     ) : null}
                     <div className={styles.actions}>
-                      <button type="button" disabled={requestDisabled || cartBusy || busyById[item.id] || requestAlreadySent} onClick={event => requestToBuy(item, { quantity: cart[item.id] || 1 }, event.currentTarget)} aria-expanded={item.age_gate_required === true ? Boolean(ageGateById[item.id]) : undefined} aria-controls={ageGateById[item.id] ? agePanelId : undefined} aria-busy={busyById[item.id] || false} className={`${styles.button} ${styles.primary}`}>
+                      <button type="button" disabled={requestDisabled || Boolean(loginHref) || cartBusy || busyById[item.id] || requestAlreadySent} onClick={event => requestToBuy(item, { quantity: cart[item.id] || 1 }, event.currentTarget)} aria-expanded={item.age_gate_required === true ? Boolean(ageGateById[item.id]) : undefined} aria-controls={ageGateById[item.id] ? agePanelId : undefined} aria-busy={busyById[item.id] || false} className={`${styles.button} ${styles.primary}`}>
                         {requestAlreadySent ? "Solicitud enviada" : busyById[item.id] ? "Enviando..." : "Solicitar contacto"}
                       </button>
                       {cart[item.id] ? <button type="button" ref={node => { if (node) listActionRefs.current.set(item.id, node); else listActionRefs.current.delete(item.id); }} onClick={revealList} className={styles.button}><ShoppingCart className={styles.icon} aria-hidden="true" /> Ver mi lista · {cart[item.id]} unidad{cart[item.id] === 1 ? "" : "es"}</button>
@@ -493,7 +547,14 @@ export function MarketplaceGridClient({ items, postTapEventId }: { items: Listin
                 <p className={styles.note}>La marca confirma el precio final y la disponibilidad. No se realiza ningún cobro desde esta lista.</p>
               </div>
             ) : null}
-            <button type="button" disabled={contextUnavailable || !cartLines.length || cartBusy} onClick={event => void checkoutCart(event.currentTarget)} aria-busy={cartBusy} className={`${styles.button} ${styles.primary} ${styles.sendList}`}><PackageCheck className={styles.icon} aria-hidden="true" />{cartBusy ? "Enviando..." : "Enviar solicitudes"}</button>
+            {loginHref && cartLines.length ? (
+              <a href={loginHref} onClick={rememberDraft} className={`${styles.button} ${styles.primary} ${styles.sendList}`}>{draftStorageBlocked ? "Volver a entrar sin guardar la lista" : "Volver a entrar"}</a>
+            ) : (
+              <button type="button" disabled={contextUnavailable || Boolean(loginHref) || !cartLines.length || cartBusy} onClick={event => void checkoutCart(event.currentTarget)} aria-busy={cartBusy} className={`${styles.button} ${styles.primary} ${styles.sendList}`}><PackageCheck className={styles.icon} aria-hidden="true" />{cartBusy ? "Enviando..." : "Enviar solicitudes"}</button>
+            )}
+            {loginHref && cartLines.length ? <p className={styles.note}>{draftStorageBlocked ? "No pudimos conservar la lista." : draftScope
+              ? "Después de entrar con la misma cuenta, podés recuperar los productos que todavía no se enviaron."
+              : "La lista queda en esta pantalla hasta que salgas."}</p> : null}
             {cartStatus ? <p className={styles.feedback} role="status">{cartStatus}</p> : null}
           </div>
         </aside>

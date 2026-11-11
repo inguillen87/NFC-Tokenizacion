@@ -44,6 +44,7 @@ test("quick post-tap CTAs independently honor allow and block policy", () => {
 
   assert.deepEqual(available, {
     primary: true,
+    save: false,
     warranty: false,
     trace: true,
     certificate: true,
@@ -58,6 +59,7 @@ test("quick post-tap CTAs independently honor allow and block policy", () => {
   });
   assert.deepEqual(provenanceOnly, {
     primary: false,
+    save: false,
     warranty: false,
     trace: true,
     certificate: true,
@@ -65,6 +67,16 @@ test("quick post-tap CTAs independently honor allow and block policy", () => {
     marketplace: false,
     wallet: false,
   });
+});
+
+test("the SUN save offer needs explicit save and join grants for the verified brand", () => {
+  const ready = { verifiedTenant: true, allowedActions: [" SAVE ", "join", "provenance"] };
+  assert.equal(resolvePostTapQuickActionAvailability(ready).save, true);
+  for (const restrictions of [
+    { allowedActions: [] }, { allowedActions: ["save"] }, { allowedActions: ["join"] },
+    { blockedActions: ["save"] }, { blockedActions: ["join"] },
+    { verifiedTenant: false }, { canEngage: false }, { isDemoPreview: true },
+  ]) assert.equal(resolvePostTapQuickActionAvailability({ ...ready, ...restrictions }).save, false);
 });
 
 test("post-tap journey adapts the next action without implying ownership from a tap", async () => {
@@ -87,8 +99,9 @@ test("post-tap journey adapts the next action without implying ownership from a 
   assert.match(component, /role="status"/);
   assert.match(component, /aria-current="step"/);
 
-  assert.match(page, /import \{ PostTapNextStep \} from "\.\/post-tap-next-step"/);
-  assert.match(page, /<PostTapNextStep[\s\S]*vertical=\{`\$\{verticalLabel\}[\s\S]*isFreshTap=\{isFreshCommercialTap\}/);
+  assert.match(page, /import \{ PostTapNextStep, resolveJourneyKind \} from "\.\/post-tap-next-step"/);
+  assert.match(page, /const postTapJourney = resolveJourneyKind\(postTapVertical, productDisplayName\)/);
+  assert.match(page, /<PostTapNextStep[\s\S]*vertical=\{postTapVertical\}[\s\S]*isFreshTap=\{isFreshCommercialTap\}/);
   assert.match(page, /allowedActions=\{allowedActions\}[\s\S]*blockedActions=\{blockedActions\}/);
   assert.match(page, /primaryActionHref=\{bid && \(uid \|\| eventId\) \? "#protected-actions" : registerHref\}/);
   assert.match(page, /id="protected-actions"/);

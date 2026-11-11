@@ -182,7 +182,7 @@ test("focused home keeps the commercial journey while the mega menu carries dept
   assert.match(page, /<MarketingMegaNav/);
   assert.doesNotMatch(page, /<CtaSection/);
   assert.doesNotMatch(page, /<SalesChatWidget/);
-  assert.match(page, /<main id="main-content" data-nav-inert>/);
+  assert.match(page, /<main id="main-content" tabIndex=\{-1\} data-nav-inert>/);
   assert.doesNotMatch(
     page,
     /OfflineFieldOperationsSection|BrandSynergySimulator|DemoRequestSection|offline-field-operations|brand-synergy|EnterpriseTrustLayersSection|Quick-Jump Hub|nexid-quick-hub-card|landing-mobile-action-dock|MobileNavSheet/,

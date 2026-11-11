@@ -131,7 +131,7 @@ async function runOwnershipConflictScenarios({page,base,width,theme,report,check
    await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
    check(current.requests===1,`${label}: repeated clicks cannot resend the denied claim`);
    const products=panel.getByRole('link',{name:scenario.products,exact:true}),history=panel.getByRole('link',{name:scenario.history,exact:true});
-   check(await products.isVisible()&&await history.isVisible()&&await products.getAttribute('href')==='/me/products?focus=900001'&&await history.getAttribute('href')==='/me/taps',`${label}: existing read-only product and history destinations remain available`);
+   check(await products.isVisible()&&await history.isVisible()&&await products.getAttribute('href')==='/me/products'&&await history.getAttribute('href')==='/me/taps',`${label}: collection and history remain available without focusing an unconfirmed product`);
    check(await page.evaluate(secret=>!location.href.includes(secret)&&![localStorage,sessionStorage].some(storage=>Array.from({length:storage.length},(_,index)=>storage.getItem(storage.key(index))).some(value=>value?.includes(secret)))&&!document.documentElement.outerHTML.includes(secret),current.secret),`${label}: code stays absent from URL, storage and rendered DOM`);
    await noOverflow(page,`${label}: existing-title feedback fits viewport`);
    await assessment(page,'[data-testid="tap-association"]',`ownership-conflict-${scenario.locale}`,width,theme);

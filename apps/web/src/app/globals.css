@@ -48870,6 +48870,10 @@ html[data-theme="light"] .nexid-quick-hub-card .nexid-quick-hub-card__cta:hover 
   transform: translateY(0);
 }
 
+#main-content {
+  scroll-margin-top: 4.75rem;
+}
+
 .landing-mega-header {
   background:
     linear-gradient(108deg, rgba(249, 254, 255, 0.94), rgba(229, 250, 248, 0.91) 52%, rgba(239, 247, 255, 0.94)) !important;

@@ -19,11 +19,93 @@ Object.assign(env,{NODE_ENV:'production',NEXT_TELEMETRY_DISABLED:'1',CONSUMER_DE
 const next=spawn(process.execPath,['--import',pathToFileURL(join(web,'tests/consumer-destination-recovery-local-fetch.mjs')).href,join(repo,'node_modules/next/dist/bin/next'),'start','-p',String(port),'-H','127.0.0.1'],{cwd:web,env,windowsHide:true,stdio:['ignore','pipe','pipe']});
 next.stdout.on('data',()=>{});next.stderr.on('data',()=>{});let serverFailed=false;next.on('error',()=>{serverFailed=true;});
 const origin=`http://127.0.0.1:${port}`;
-const report={localOnly:true,actualNextProductionBuild:true,syntheticSessionsAndData:true,realAuthenticationCertified:false,physicalTapMeasured:false,checks:[],views:[],cases:[],clientErrors:[],nativeWindowErrors:[],consoleErrors:[],blockedWrites:[],externalRequests:[],experienceMockPosts:[],expectedSyntheticHttpErrors:[],geolocationCalls:0};
+const report={localOnly:true,actualNextProductionBuild:true,syntheticSessionsAndData:true,realAuthenticationCertified:false,physicalTapMeasured:false,checks:[],views:[],cases:[],anonymousReturns:[],zoomObservations:[],clientErrors:[],nativeWindowErrors:[],consoleErrors:[],blockedWrites:[],externalRequests:[],experienceMockPosts:[],expectedSyntheticHttpErrors:[],geolocationCalls:0};
 const paths=['consumer-destination-recovery.browser.mjs','consumer-destination-recovery-local-fetch.mjs','browser/consumer-destination-recovery-api.fixture.mjs','consumer-portal-loading-evidence.mjs'];
 const hashes=async()=>Object.fromEntries(await Promise.all(paths.map(async path=>[path,createHash('sha256').update(await readFile(join(web,'tests',path))).digest('hex')])));
 report.helperHashesStart=await hashes();
 const check=(value,name)=>{report.checks.push({name,passed:Boolean(value)});assert.ok(value,name);};
+// Ignore query entry order only. A continuation must remain relative, with its
+// literal canonical path, origin, fragment and complete query multimap intact.
+function destinationIdentity(value) {
+ if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) {
+  return null;
+ }
+ try {
+  const parsedUrl = new URL(value, origin);
+  const queryBoundary = value.indexOf('?');
+  const fragmentBoundary = value.indexOf('#');
+  let pathBoundary = value.length;
+  if (queryBoundary !== -1) pathBoundary = queryBoundary;
+  if (fragmentBoundary !== -1 && fragmentBoundary < pathBoundary) {
+   pathBoundary = fragmentBoundary;
+  }
+  const rawPath = value.slice(0, pathBoundary);
+  if (rawPath !== parsedUrl.pathname) return null;
+
+  const queryEntries = [...parsedUrl.searchParams.entries()];
+  queryEntries.sort((leftEntry, rightEntry) => {
+   const [leftKey, leftValue] = leftEntry;
+   const [rightKey, rightValue] = rightEntry;
+   if (leftKey < rightKey) return -1;
+   if (leftKey > rightKey) return 1;
+   if (leftValue < rightValue) return -1;
+   if (leftValue > rightValue) return 1;
+   return 0;
+  });
+  return {
+   rawPath,
+   origin: parsedUrl.origin,
+   username: parsedUrl.username,
+   password: parsedUrl.password,
+   pathname: parsedUrl.pathname,
+   fragmentPresent: parsedUrl.href.includes('#'),
+   hash: parsedUrl.hash,
+   queryEntries,
+  };
+ } catch {
+  return null;
+ }
+}
+
+function sameDestination(actual, expected) {
+ const observedDestination = destinationIdentity(actual);
+ const requestedDestination = destinationIdentity(expected);
+ if (observedDestination === null || requestedDestination === null) return false;
+ return JSON.stringify(observedDestination) === JSON.stringify(requestedDestination);
+}
+
+function verifyDestinationComparison() {
+ const requested = '/me/taps?event=900001&from=2026-10-01&to=2026-10-06';
+ const reordered = '/me/taps?from=2026-10-01&to=2026-10-06&event=900001';
+ check(sameDestination(reordered, requested), 'destination comparison permits equivalent reordered query entries');
+
+ const rejectedDestinations = [
+  ['/me/taps?event=900001&to=2026-10-06', 'missing date'],
+  ['/me/taps?event=900001&from=2026-10-02&to=2026-10-06', 'changed date'],
+  [requested + '&from=2026-10-01', 'added duplicate'],
+  [requested + '&unexpected=1', 'added query key'],
+  [requested + '#reading', 'added fragment'],
+  [requested + '#', 'added empty fragment'],
+  [origin.replace('127.0.0.1', 'localhost') + requested, 'different origin'],
+  [origin.replace('http:', 'https:') + requested, 'different scheme'],
+  [origin.replace('://', '://synthetic:password@') + requested, 'credentials'],
+  [requested.replace('/me/taps', '/me/products'), 'different pathname'],
+  [origin + requested, 'absolute same-origin continuation'],
+  [origin.replace('http:', '') + requested, 'protocol-relative continuation'],
+  [requested.replace('/me/taps', '/me/../me/taps'), 'normalized dot-segment pathname'],
+  [null, 'missing next'],
+ ];
+ for (const [actualDestination, reason] of rejectedDestinations) {
+  check(!sameDestination(actualDestination, requested), 'destination comparison rejects ' + reason);
+ }
+
+ const repeated = '/me/taps?event=900001&tag=a&tag=a&tag=b#reading';
+ const repeatedReordered = '/me/taps?tag=b&tag=a&event=900001&tag=a#reading';
+ check(sameDestination(repeatedReordered, repeated), 'destination comparison retains repeated keys as a multimap');
+ check(!sameDestination('/me/taps?event=900001&tag=a&tag=b#reading', repeated), 'destination comparison rejects a missing duplicate occurrence');
+ check(!sameDestination(repeated.replace('#reading', '#other'), repeated), 'destination comparison rejects a changed fragment');
+ check(!sameDestination(repeated.replace('#reading', ''), repeated), 'destination comparison rejects a removed fragment');
+}
 const destinations=[
  ['/me/products?focus=900001','Tus productos guardados'],
  ['/me/rewards?fromTap=1&eventId=900001&tenant=loading-qa&action=rewards','Tus beneficios'],
@@ -88,9 +170,38 @@ async function recover(destination,width,theme,scenario,capture=true){
   await page.evaluate(()=>Promise.all(window.__destinationDeliveries));
  }finally{await context.close();}
 }
-async function anonymous(destination,scenario){
- const[path]=destination,{context,page}=await open(390,'light',scenario),start=fixture.requests.length;
- try{await page.goto(origin+path,{waitUntil:'domcontentloaded'});await page.waitForURL(url=>url.pathname==='/login');check(new URL(page.url()).searchParams.get('next')===path,scenario+': login preserves '+path);check(fixture.requests.slice(start).every(row=>row.path==='/consumer/session'),scenario+': no private reads on '+path);await page.evaluate(()=>Promise.all(window.__destinationDeliveries));}finally{await context.close();}
+async function anonymous(destination, scenario) {
+ const [path] = destination;
+ const { context, page } = await open(390, 'light', scenario);
+ const readStart = fixture.requests.length;
+ try {
+  await page.goto(origin + path, { waitUntil: 'domcontentloaded' });
+  await page.waitForURL(url => url.pathname === '/login');
+  const observedLoginUrl = page.url();
+  const loginUrl = new URL(observedLoginUrl);
+  const nextValues = loginUrl.searchParams.getAll('next');
+  let actualNext = null;
+  if (nextValues.length === 1) actualNext = nextValues[0];
+
+  report.anonymousReturns.push({
+   scenario,
+   requestedPath: path,
+   observedLoginUrl,
+   nextValues,
+   requestedDestination: destinationIdentity(path),
+   observedDestination: destinationIdentity(actualNext),
+  });
+  const canonicalLocalLogin = loginUrl.origin === origin
+   && loginUrl.pathname === '/login'
+   && loginUrl.username === ''
+   && loginUrl.password === ''
+   && !loginUrl.href.includes('#');
+  check(canonicalLocalLogin && nextValues.length === 1 && sameDestination(actualNext, path), scenario + ': login preserves ' + path);
+  check(fixture.requests.slice(readStart).every(row => row.path === '/consumer/session'), scenario + ': no private reads on ' + path);
+  await page.evaluate(() => Promise.all(window.__destinationDeliveries));
+ } finally {
+  await context.close();
+ }
 }
 async function availability(path,marker,scenario,width,theme,readyText,emptyText){
  const{context,page}=await open(width,theme,scenario),name=marker+'-'+scenario+'-'+width+'-'+theme;
@@ -115,22 +226,37 @@ async function ratingKeyboard(page,name){
  await page.keyboard.press('ArrowLeft');await page.waitForFunction(()=>document.querySelector('input[name="experience-rating"][value="4"]')?.checked,{},{timeout:12000});check(await four.isChecked()&&await four.evaluate(node=>node===document.activeElement),name+': Left arrow selects and focuses four stars');
  await page.keyboard.press('ArrowRight');await page.waitForFunction(()=>document.querySelector('input[name="experience-rating"][value="5"]')?.checked,{},{timeout:12000});check(await five.isChecked()&&await five.evaluate(node=>node===document.activeElement),name+': Right arrow restores and focuses five stars');
 }
-async function portalZoomReflow(page,name){
+async function portalZoomReflow(page,name,requireSingleLine=false){
  const geometry=await page.evaluate(()=>{
   const box=e=>e?.getBoundingClientRect(),visible=e=>{if(!e)return false;const s=getComputedStyle(e),r=box(e);return s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity)>0&&r.width>0&&r.height>0;};
   const logo=document.querySelector('header [class*="brandArea"] a'),controls=document.querySelector('[aria-label="Apariencia y sesión"]'),a=box(logo),b=box(controls);
   const items=[...(document.querySelector('nav.consumer-bottom-nav > div')?.children??[])],names=['Inicio','Productos','Historial','Beneficios','Más'];
-  const labels=items.map((item,index)=>{const label=item.querySelector(':scope > span:first-of-type'),r=box(item);if(!label||!visible(label)||label.textContent.trim()!==names[index])return{visible:false,within:false,touch:false};const range=document.createRange();range.selectNodeContents(label);const rects=[...range.getClientRects()].filter(x=>x.width>0&&x.height>0);range.detach();return{visible:true,within:rects.length>0&&rects.every(x=>x.left>=r.left-1&&x.right<=r.right+1&&x.top>=r.top-1&&x.bottom<=r.bottom+1),touch:r.width>=44&&r.height>=44};});
-  return{visible:visible(logo)&&visible(controls),separate:Boolean(a&&b&&(a.right<=b.left+1||b.right<=a.left+1||a.bottom<=b.top+1||b.bottom<=a.top+1)),labels:labels.length===5&&labels.every(x=>x.visible&&x.within),touch:labels.length===5&&labels.every(x=>x.touch)};
+  const labels=items.map((item,index)=>{
+   const label=item.querySelector(':scope > span:first-of-type'),r=box(item);
+   if(!label||!visible(label)||label.textContent.trim()!==names[index])return{within:false,touch:false,singleLine:false};
+   const range=document.createRange();range.selectNodeContents(label);
+   const rects=[...range.getClientRects()].filter(x=>x.width>0&&x.height>0);range.detach();
+   return{
+    within:rects.length>0&&rects.every(x=>x.left>=r.left-1&&x.right<=r.right+1&&x.top>=r.top-1&&x.bottom<=r.bottom+1),
+    touch:r.width>=44&&r.height>=44,
+    singleLine:new Set(rects.map(rect=>Math.round(rect.top))).size===1,
+   };
+  });
+  return{visible:visible(logo)&&visible(controls),separate:Boolean(a&&b&&(a.right<=b.left+1||b.right<=a.left+1||a.bottom<=b.top+1||b.bottom<=a.top+1)),labels:labels.length===5&&labels.every(x=>x.within),touch:labels.length===5&&labels.every(x=>x.touch),singleLine:labels.length===5&&labels.every(x=>x.singleLine)};
  });
  check(geometry.visible,name+': logo and account controls remain visible');
  check(geometry.separate,name+': logo and account controls do not overlap');
  check(geometry.labels,name+': five visible navigation labels stay within their own items');
  check(geometry.touch,name+': navigation touch targets remain at least 44 by 44');
+ if(requireSingleLine)check(geometry.singleLine,name+': each navigation label remains on one line within its control');
 }
 async function ratingZoomReflow(page,name,width,theme){
  try{
-  await page.evaluate(()=>{document.documentElement.style.zoom='2';});check(await page.evaluate(()=>getComputedStyle(document.documentElement).zoom)==='2',name+': declared 200 percent CSS zoom applied');
+  await page.evaluate(()=>{document.documentElement.style.zoom='2';});
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  const zoomObservation=await page.evaluate(()=>({inlineZoom:document.documentElement.style.zoom,computedZoom:getComputedStyle(document.documentElement).zoom,styleAttribute:document.documentElement.getAttribute('style'),url:location.href,readyState:document.readyState,viewport:{width:innerWidth,height:innerHeight}}));
+  report.zoomObservations.push({name,width,theme,...zoomObservation});
+  check(zoomObservation.computedZoom==='2',name+': declared 200 percent CSS zoom applied');
   const group=await ratingGeometry(page,name+'-zoom200',false),rows=await group.locator('label').evaluateAll(labels=>new Set(labels.map(label=>Math.round(label.getBoundingClientRect().top))).size);
   check(rows>=1&&rows<=5,name+': zoom reflow keeps every score reachable without forcing one row');await ratingKeyboard(page,name+'-zoom200');
   await portalZoomReflow(page,name+'-zoom200');
@@ -206,13 +332,18 @@ async function securityNavigation(width,theme){
   await page.evaluate(()=>document.fonts.ready.then(()=>undefined));
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   const measured=await page.evaluate(()=>{
-   const header=document.querySelector('.consumer-portal-root > header'),main=document.querySelector('#consumer-portal-content'),heading=main?.querySelector('h1'),root=header?.closest('.consumer-portal-root');
-   if(!header||!main||!heading||!root)throw Error('Owned portal heading/header unavailable');
+   const header=document.querySelector('.consumer-portal-root > header'),main=document.querySelector('#consumer-portal-content'),heading=main?.querySelector('h1'),root=header?.closest('.consumer-portal-root'),dock=root?.querySelector('nav.consumer-bottom-nav');
+   if(!header||!main||!heading||!root||!dock)throw Error('Owned portal heading or navigation unavailable');
    const box=element=>{const r=element.getBoundingClientRect();return{top:r.top,bottom:r.bottom,height:r.height,left:r.left,right:r.right};};
-   return{header:box(header),main:box(main),heading:box(heading),innerWidth,clientWidth:document.documentElement.clientWidth,innerHeight,scrollY,mainFocused:document.activeElement===main,headerOffset:root.style.getPropertyValue('--portal-header-block-size'),scrollMargin:getComputedStyle(main).scrollMarginBlockStart};
+   const headerPosition=getComputedStyle(header).position,dockPosition=getComputedStyle(dock).position;
+   return{header:box(header),dock:box(dock),headerPosition,dockPosition,desktop:matchMedia('(min-width: 64rem)').matches,main:box(main),heading:box(heading),innerWidth,clientWidth:document.documentElement.clientWidth,innerHeight,scrollY,mainFocused:document.activeElement===main,headerOffset:root.style.getPropertyValue('--portal-header-block-size'),scrollMargin:getComputedStyle(main).scrollMarginBlockStart};
   });
-  report.securityNavigation??=[];report.securityNavigation.push({width,theme,phase,...measured});
-  check(measured.heading.top>=measured.header.bottom-1&&measured.heading.bottom<=measured.innerHeight+1,name+'/'+phase+': complete account heading stays below sticky header and visible');
+  const visibleTop=Math.max(0,measured.header.bottom);
+  const visibleBottom=measured.dockPosition==='fixed'?Math.min(measured.innerHeight,measured.dock.top):measured.innerHeight;
+  report.securityNavigation??=[];report.securityNavigation.push({width,theme,phase,...measured,visibleTop,visibleBottom});
+  check(measured.headerPosition===(measured.desktop?'sticky':'static')&&measured.dockPosition===(measured.desktop?'static':'fixed'),name+'/'+phase+': persistent navigation matches the viewport layout');
+  check(measured.heading.top>=visibleTop-1&&measured.heading.bottom<=visibleBottom+1&&measured.heading.left>=-1&&measured.heading.right<=measured.clientWidth+1,name+'/'+phase+': complete account heading stays in the visible area between header and navigation');
+  if(phase!=='next-link')check(measured.mainFocused,name+'/'+phase+': skip link moves keyboard focus to main content');
  };
  try{
   await page.goto(origin+'/me/products',{waitUntil:'networkidle'});
@@ -233,6 +364,7 @@ async function securityNavigation(width,theme){
   await page.waitForFunction(()=>{const header=document.querySelector('.consumer-portal-root > header'),root=header?.closest('.consumer-portal-root');return header&&root&&Math.abs(parseFloat(root.style.getPropertyValue('--portal-header-block-size'))-Math.ceil(header.getBoundingClientRect().height))<=1;});
   await page.getByRole('link',{name:'Ir al contenido',exact:true}).focus();await page.keyboard.press('Enter');
   await geometry('large-text-main-anchor');
+  if(width===320)await portalZoomReflow(page,name+'-text200',true);
   await page.evaluate(font=>{if(font.value)document.documentElement.style.setProperty('font-size',font.value,font.priority);else document.documentElement.style.removeProperty('font-size');},originalFont);
   await assess(page,'#consumer-portal-content',name,width,theme);
   await page.evaluate(()=>Promise.all(window.__destinationDeliveries));
@@ -242,6 +374,7 @@ async function securityNavigation(width,theme){
  }
 }
 try{
+ verifyDestinationComparison();
  let ready=false;for(let i=0;i<120;i++){if(serverFailed||next.exitCode!==null)break;try{if((await fetch(origin+'/release.json',{signal:AbortSignal.timeout(1000)})).ok){ready=true;break;}}catch{}await new Promise(resolve=>setTimeout(resolve,250));}
  check(ready,'isolated production Next ready');browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH});
  for(const width of [320,1280])for(const theme of ['light','dark'])await securityNavigation(width,theme);

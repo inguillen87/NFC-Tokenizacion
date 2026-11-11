@@ -8,6 +8,7 @@ import styles from "./sun-product-image.module.css";
 const imageCopy = {
   "es-AR": {
     loading: "Cargando imagen del producto",
+    loadingShort: "Cargando foto",
     unavailable: "Imagen del producto no disponible",
     enlarge: "Ampliar imagen del producto",
     close: "Cerrar imagen",
@@ -16,6 +17,7 @@ const imageCopy = {
   },
   en: {
     loading: "Loading product image",
+    loadingShort: "Loading photo",
     unavailable: "Product image unavailable",
     enlarge: "Enlarge product image",
     close: "Close image",
@@ -24,6 +26,7 @@ const imageCopy = {
   },
   "pt-BR": {
     loading: "Carregando imagem do produto",
+    loadingShort: "Carregando foto",
     unavailable: "Imagem do produto indisponível",
     enlarge: "Ampliar imagem do produto",
     close: "Fechar imagem",
@@ -179,7 +182,7 @@ export function SunProductImage({ src, alt, className, priority = false, zoomabl
         onLoad={(event) => { void finishLoading(event.currentTarget, src); }}
         onError={(event) => changeState(event.currentTarget, src, "failed")}
       />
-      {hydrated && state === "loading" && <div className={styles.loading} role="status" aria-label={copy.loading} data-testid="sun-image-loading"><span aria-hidden="true" />{copy.loading}</div>}
+      {hydrated && state === "loading" && <div className={styles.loading} role="status" aria-label={copy.loading} data-testid="sun-image-loading">{copy.loadingShort}</div>}
       {zoomable && state === "ready" && <button ref={zoomRef} type="button" className={styles.zoomButton} aria-label={copy.enlarge} aria-haspopup="dialog" data-testid="sun-image-zoom" onClick={() => setZoomedSource(src)}><Maximize2 size={18} aria-hidden="true" /></button>}
       {zoomedSource === src && state === "ready" && imageRef.current && <ProductImageDialog image={imageRef.current} alt={alt} copy={copy} trigger={zoomRef.current} onDismiss={() => setZoomedSource(null)} />}
     </>

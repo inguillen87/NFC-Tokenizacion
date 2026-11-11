@@ -1,9 +1,7 @@
 import { redirect } from "next/navigation";
 
 type LegacyLandingPageProps = {
-  searchParams?:
-    | Promise<Record<string, string | string[] | undefined>>
-    | Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 function buildCanonicalLandingHref(params: Record<string, string | string[] | undefined> | undefined) {

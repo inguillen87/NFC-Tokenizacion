@@ -50,7 +50,7 @@ test("landing mega navigation stays compact, keyboard-safe and overflow-free", a
   ]);
 
   assert.match(page, /site-header landing-mega-header/);
-  assert.match(page, /<main id="main-content" data-nav-inert>/);
+  assert.match(page, /<main id="main-content" tabIndex=\{-1\} data-nav-inert>/);
   assert.match(navigation, /aria-expanded=\{expanded\}/);
   assert.match(navigation, /aria-controls=\{`mega-menu-\$\{group\.id\}`\}/);
   assert.match(navigation, /role="dialog" aria-modal="true"/);
