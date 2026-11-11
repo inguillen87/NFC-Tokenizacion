@@ -16,13 +16,37 @@ test('malformed or unsupported data cannot become an empty successful history',(
 test('unknown result remains neutral and QR information never becomes NFC authentication',()=>{let html=render(parse(payload([row(undefined,{verdict:'QR_VIEW'})])));assert.match(html,/sin autenticación NFC/);html=render(parse(payload([row(undefined,{verdict:'NEW_VENDOR_RESULT',risk_level:null})])));assert.match(html,/Resultado no confirmado/);assert.match(html,/Riesgo no informado/);assert.doesNotMatch(html,/Puntaje de riesgo: 0|data-tone="attention"/);});
 test('private reading link retains bigint reference, avoids prefetch and carries no proof tokens',()=>{links.length=0;const html=render(parse(payload()));assert.match(html,/9007199254740993/);assert.match(html,/Sello abierto reportado/);assert.match(html,/Riesgo alto/);const detail=links.find(x=>x.href==='/me/taps/9007199254740993');assert.equal(detail.prefetch,false);assert.doesNotMatch(html,/href="\/sun|picc_data|cmac|Producto seguro/);});
 test('unavailable differs from empty and neither invents reads or demo records',()=>{const error=render(null),empty=render(parse(payload([])));assert.match(error,/Reintentar consulta/);assert.doesNotMatch(error,/0 lecturas/);assert.match(empty,/Sin lecturas en esta selección/);assert.match(empty,/guardá su lectura/);assert.doesNotMatch(empty,/Balmec|Gran Reserva|Reintentar consulta/);});
+test('history return path keeps explicit filters and omits paging and unrelated inputs',()=>{
+ assert.equal(model.historyPath(filters),'/me/taps');
+ const path=model.historyPath({tenant:'wine-qa',from:'2026-10-13',to:'2026-10-14',event:'9007199254740993',cursor:'synthetic_cursor',accountKey:'fixture'});
+ const url=new URL(path,'https://fixture.invalid');
+ assert.equal(url.pathname,'/me/taps');
+ assert.deepEqual(Object.fromEntries(url.searchParams),{tenant:'wine-qa',from:'2026-10-13',to:'2026-10-14',event:'9007199254740993'});
+ assert.equal(model.historyPath({tenant:'https://fixture.invalid',from:'2026-10-13',to:'',event:'fixture-note'}),'/me/taps');
+ assert.equal(model.historyPath({tenant:'agro-qa',from:'text',to:'2026-10-14',event:'9223372036854775808'}),'/me/taps?tenant=agro-qa');
+});
 test('saved time is explicit instead of claiming that it was the exact NFC event time',()=>{const html=render(parse(payload()));assert.match(html,/Guardada/);assert.match(html,/puede ser posterior al TAP/);assert.match(html,/UTC/);assert.match(html,/Registro histórico/);});
 test('all row text is escaped and local searching cannot mutate the page or fetch data',()=>{const p=parse(payload([row(undefined,{product_name:'<script>bad()</script>'})]));const html=render(p);assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/<script>/);const original=JSON.stringify(p);assert.equal(model.historySearch(p.items,'bodega').length,1);assert.equal(model.historySearch(p.items,'.*').length,0);assert.equal(JSON.stringify(p),original);});
 test('UI rejects more than 25 or inconsistent continuation and discloses page rather than total',()=>{assert.throws(()=>parse(payload(Array.from({length:26},(_,i)=>row(String(30-i))))));const p=payload();p.navigation.hasNext=true;p.navigation.nextCursor='valid_cursor';assert.throws(()=>parse(p));assert.match(render(parse(payload())),/1 lectura guardada en esta página/);});
 test('new BFF explicitly forwards allowed search parameters while rejecting actor injection',()=>{const s=read('app/api/consumer/taps/history/route.ts');assert.match(s,/history\?'.*q/);assert.match(s,/getAll\(k\).length/);assert.match(s,/private, no-store/);assert.match(s,/AbortSignal.timeout/);assert.doesNotMatch(s,/authorization:|req.headers.get\('authorization'\)/);});
 test('client invalidates old data and stale requests without polling, GPS or browser history persistence',()=>{const s=read('app/me/taps/consumer-history.tsx');assert.match(s,/setPage\(null\)/);assert.match(s,/sequence.current/);assert.match(s,/response.status===401/);assert.doesNotMatch(s,/setInterval|localStorage|sessionStorage|navigator.geolocation|method:'POST'/);});
 test('SSR authenticates before data read and removes capability cookies while preserving the session',async()=>{const calls=[];const auth=compile(read('app/me/taps/page.tsx'),{'next/headers':{headers:async()=>new Headers({cookie:'consumer_session=keep; __Host-nexid_tap_715=opaque; nexid_tap_716=dev'})},'@product/config':{productUrls:{api:'http://127.0.0.1'}},'../_components/consumer-api':{readConsumerSession:async p=>{calls.push(['auth',p]);return {status:'ready'};},buildConsumerNextPath:(p)=>p},'../_components/consumer-portal-recovery':{ConsumerPortalUnavailable:()=>null},'../_components/portal-shell':{PortalShell:({children})=>children},'./consumer-history':ui,'./history-model':model},async(_url,options)=>{assert.equal(options.headers.cookie,'consumer_session=keep');calls.push(['read']);return new Response(JSON.stringify(payload()));}).default;renderToStaticMarkup(await auth({}));assert.deepEqual(calls,[['auth','/me/taps'],['read']]);});
-test('denied session prevents history data reads',async()=>{let fetched=false;const page=compile(read('app/me/taps/page.tsx'),{'next/headers':{headers:async()=>new Headers()},'@product/config':{productUrls:{api:'http://127.0.0.1'}},'../_components/consumer-api':{readConsumerSession:async()=>{throw Error('login');},buildConsumerNextPath:p=>p},'../_components/consumer-portal-recovery':{ConsumerPortalUnavailable:()=>null},'../_components/portal-shell':{PortalShell:()=>null},'./consumer-history':ui,'./history-model':model},async()=>{fetched=true;return new Response('{}');}).default;await assert.rejects(()=>page({}),/login/);assert.equal(fetched,false);});
+test('denied session preserves history filters and prevents data reads',async()=>{
+ let fetched=false;
+ const page=compile(read('app/me/taps/page.tsx'),{
+  'next/headers':{headers:async()=>new Headers()},
+  '@product/config':{productUrls:{api:'http://127.0.0.1'}},
+  '../_components/consumer-api':{readConsumerSession:async next=>{
+   assert.equal(next,'/me/taps?tenant=wine-qa&event=1000');
+   throw Error('login');
+  }},
+  '../_components/consumer-portal-recovery':{ConsumerPortalUnavailable:()=>null},
+  '../_components/portal-shell':{PortalShell:()=>null},
+  './consumer-history':ui,'./history-model':model,
+ },async()=>{fetched=true;return new Response('{}');}).default;
+ await assert.rejects(()=>page({searchParams:Promise.resolve({tenant:'wine-qa',event:'1000',cursor:'synthetic_cursor',next:'https://fixture.invalid'})}),/login/);
+ assert.equal(fetched,false);
+});
 
 test('initial nonempty morning and afternoon history preserves raw instants, cursor, account and UTC filters',()=>{
  for(const [observedAt,savedAt,label] of [

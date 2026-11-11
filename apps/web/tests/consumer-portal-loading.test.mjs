@@ -8,6 +8,7 @@ import ts from "typescript";
 import { CONSUMER_READ_TIMEOUT_MS, consumerSessionState, fetchConsumerJson } from "../src/app/me/_components/consumer-bounded-fetch.ts";
 import { consumerAccountContact, homeReadingHref, homeAccountStatusLabel } from "../src/app/me/_components/consumer-home-model.ts";
 import { rewardTenant } from "../src/app/me/_components/consumer-rewards-model.ts";
+import { EMPTY_HISTORY_FILTERS, historyPath } from "../src/app/me/taps/history-model.ts";
 
 test("consumer reads time out stalled headers, even when the transport ignores abort", async (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
@@ -190,7 +191,7 @@ const consumerDestinations = [
   { file: "cork-analyzer/page.tsx", next: "/me/cork-analyzer?tenant=balmec&eventId=732", query: { tenant: "balmec", eventId: "732" } },
   { file: "privacy/page.tsx", next: "/me/privacy?tenant=balmec&scope=brand_updates&scope=marketing", query: { tenant: "balmec", scope: ["brand_updates", "marketing"] } },
   { file: "security/page.tsx", next: "/me/security?fromTap=1&eventId=732", query: { fromTap: "1", eventId: "732" } },
-  { file: "taps/page.tsx", next: "/me/taps?tenant=balmec&from=2026-09-01&to=2026-10-06&event=VALID_CLOSED", query: { tenant: "balmec", from: "2026-09-01", to: "2026-10-06", event: "VALID_CLOSED" } },
+  { file: "taps/page.tsx", next: "/me/taps?tenant=balmec&from=2026-09-01&to=2026-10-06&event=732", query: { tenant: "balmec", from: "2026-09-01", to: "2026-10-06", event: "732", cursor: "discarded" } },
   { file: "taps/[eventId]/page.tsx", next: "/me/taps/9007199254740993?tenant=balmec&fromTap=1", query: { tenant: "balmec", fromTap: "1" }, params: { eventId: "9007199254740993" } },
   { file: "taps/[eventId]/page.tsx", next: "/me/taps?tenant=balmec", query: { tenant: "balmec" }, params: { eventId: "invalid-reference" } },
 ];
@@ -208,6 +209,8 @@ function loadSessionOnlyPage(destination, loaded) {
     return [fileName, new Proxy({}, { get: (_, name) => {
       if (fileName.endsWith("/consumer-home-model") && name === "homeReadingHref") return homeReadingHref;
       if (fileName.endsWith("/consumer-rewards-model") && name === "rewardTenant") return rewardTenant;
+      if (fileName === "./history-model" && name === "historyPath") return historyPath;
+      if (fileName === "./history-model" && name === "EMPTY_HISTORY_FILTERS") return EMPTY_HISTORY_FILTERS;
       if (name === "__esModule") return true;
       return forbidden(`${fileName}/${String(name)}`);
     } })];

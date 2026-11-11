@@ -37,7 +37,7 @@ function payload(label,query,account,hasNext=true,page=1){
   items:Array.from({length:count},(_,n)=>({row_id:String(1000-n),tap_event_id:String(1000-n),created_at:'2026-10-13T08:00:00.123456Z',verdict:'VALID_CLOSED',risk_level:'low',city:null,country:null,tenant_slug:tenant,tenant_name:tenant,product_name:label+' '+(n+1),brand_name:tenant})),
   brands:[{slug:tenant,name:tenant}],moreBrands:false,navigation:{page,pageSize:25,returned:count,hasNext,cursor:'cursor_'+account+'_'+page,nextCursor:hasNext?'next_'+account+'_'+page:null,cutoff:'2026-10-13T10:00:00.654321Z'}};
 }
-const report={kind:'synthetic-mounted-history-props-regression',status:'pending',realComponent:true,realParser:true,realCss:true,nextServer:false,authentication:false,postgres:false,physicalTap:false,sourceBefore:before,cases:[],layoutMatrix:[],screenshots:[],closure:{contexts:false,browser:false,server:false,esbuild:false}};
+const report={kind:'synthetic-mounted-history-props-regression',status:'pending',realComponent:true,realParser:true,realCss:true,nextServer:false,authentication:false,postgres:false,physicalTap:false,sourceBefore:before,cases:[],layoutMatrix:[],pendingFilterLayout:[],screenshots:[],closure:{contexts:false,browser:false,server:false,esbuild:false}};
 let browser,server;const contexts=new Set();
 try{
  if(qaOutput)await mkdir(qaOutput,{recursive:true});
@@ -102,10 +102,59 @@ try{
    await root.getByRole('button',{name:'Reintentar consulta',exact:true}).click();await p.waitForFunction(()=>window.__qa.calls.length===7);const afterConflict=new URL(await p.evaluate(()=>window.__qa.calls[6].url),origin);assert.equal(afterConflict.searchParams.get('tenant'),'agro-qa');assert.equal(afterConflict.searchParams.has('cursor'),false);
    await p.evaluate(()=>window.__qa.calls[6].resolve({error:'session-expired'},401));await root.getByRole('link',{name:'Entrar a mi cuenta',exact:true}).waitFor();await root.getByRole('status').filter({hasText:'Tu sesión terminó. Iniciá sesión para consultar sólo tus lecturas.'}).waitFor();
    assert.equal(await root.getByRole('button',{name:'Reintentar consulta',exact:true}).count(),0);assert.equal(await root.getByRole('listitem').count(),0);assert.equal(await root.getByText('La consulta tardó más de lo esperado. Reintentá; no hace falta repetir el TAP.',{exact:true}).count(),0);
-   assert.deepEqual(errors,[]);assert.deepEqual(await p.evaluate(()=>window.__qa.errors),[]);assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));report.cases.push({theme,width:390,passed:true,serverPropsAndAccountReset:true,oldAbortedResponsesIgnored:true,stale401CannotSetLogin:true,newBusyStateRetained:true,localTimeRetained:true,freshRetryWithoutOldCursor:true,ownedDeadlineShowsActionableSpanish:true,timeoutDoesNotAutoRetry:true,explicitRetryRetainsQuery:true,timeoutRetryFocusable:true,active409KeepsRecovery:true,active401KeepsLogin:true});
+   const loginLink=root.getByRole('link',{name:'Entrar a mi cuenta',exact:true});
+   const loginUrl=new URL(await loginLink.getAttribute('href'),origin);
+   assert.equal(loginUrl.pathname,'/login');
+   assert.equal(loginUrl.searchParams.get('consumer'),'1');
+   assert.equal(loginUrl.searchParams.get('next'),'/me/taps?tenant=agro-qa');
+   assert.equal(await root.getByRole('button',{name:'Consultar historial',exact:true}).isDisabled(),true);
+   const expiredReference=root.getByRole('textbox',{name:'Referencia de lectura',exact:true});
+   await expiredReference.fill('fixture-note');
+   assert.equal(new URL(await loginLink.getAttribute('href'),origin).searchParams.get('next'),'/me/taps?tenant=agro-qa');
+   await expiredReference.fill('1000');
+   assert.equal(new URL(await loginLink.getAttribute('href'),origin).searchParams.get('next'),'/me/taps?tenant=agro-qa&event=1000');
+   await expiredReference.press('Enter');
+   assert.equal(await p.evaluate(()=>window.__qa.calls.length),7);
+
+   // A different filter selection waits for an explicit GET. Local search
+   // belongs to the previous result and must not hide the new one.
+   await p.evaluate(({raw,q})=>window.__qa.replace(raw,q),{raw:payload('RESTORED_HISTORY',qC,'b',false),q:qC});
+   await root.getByText('RESTORED_HISTORY 1',{exact:true}).waitFor();
+   await root.getByRole('searchbox',{name:'Buscar en esta página',exact:true}).fill('Un producto de otra consulta');
+   await root.getByRole('heading',{name:'Sin coincidencias en esta página',exact:true}).waitFor();
+   await root.getByTestId('history-filter-panel').locator(':scope > summary').click();
+   const reference=root.getByRole('textbox',{name:'Referencia de lectura',exact:true});
+   await reference.fill('1000');
+   await root.getByRole('status').filter({hasText:'Elegí Consultar historial para aplicar los filtros.'}).waitFor();
+   assert.equal(await root.getByRole('button',{name:'Reintentar consulta',exact:true}).count(),0);
+   assert.equal(await root.getByRole('heading',{name:'El historial todavía no está confirmado',exact:true}).count(),0);
+   assert.equal(await reference.inputValue(),'1000');
+   assert.equal(await p.evaluate(()=>window.__qa.calls.length),7);
+   for(const width of [320,390]){
+    await p.setViewportSize({width,height:844});
+    const button=await root.getByRole('button',{name:'Consultar historial',exact:true}).boundingBox();
+    assert.ok(button&&button.height>=44);
+    assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+    report.pendingFilterLayout.push({theme,width,applyHeight:button.height,noHorizontalOverflow:true});
+    if(qaOutput){
+     const screenshot=`history-filters-pending-${theme}-${width}.png`;
+     await p.screenshot({path:join(qaOutput,screenshot),fullPage:true});
+     report.screenshots.push(screenshot);
+    }
+   }
+   await reference.press('Enter');
+   await p.waitForFunction(()=>window.__qa.calls.length===8);
+   const requested=new URL(await p.evaluate(()=>window.__qa.calls[7].url),origin);
+   assert.deepEqual(Object.fromEntries(requested.searchParams),{tenant:'agro-qa',event:'1000'});
+   await p.evaluate(raw=>window.__qa.calls[7].resolve(raw),payload('FILTERED_HISTORY',{...qC,event:'1000'},'b',false));
+   await root.getByText('FILTERED_HISTORY 1',{exact:true}).waitFor();
+   assert.equal(await root.getByRole('searchbox',{name:'Buscar en esta página',exact:true}).inputValue(),'');
+   assert.deepEqual(errors,[]);assert.deepEqual(await p.evaluate(()=>window.__qa.errors),[]);assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));report.cases.push({theme,width:390,passed:true,serverPropsAndAccountReset:true,oldAbortedResponsesIgnored:true,stale401CannotSetLogin:true,newBusyStateRetained:true,localTimeRetained:true,freshRetryWithoutOldCursor:true,ownedDeadlineShowsActionableSpanish:true,timeoutDoesNotAutoRetry:true,explicitRetryRetainsQuery:true,timeoutRetryFocusable:true,active409KeepsRecovery:true,active401KeepsLogin:true,loginRetainsFiltersWithoutCursor:true,editedFiltersDoNotShowFailure:true,onlyExplicitFilterQuery:true,localSearchResetForNewFilters:true});
   }finally{await context.close();contexts.delete(context);}
  }
- assert.equal(report.layoutMatrix.length,8);if(qaOutput)assert.equal(report.screenshots.length,8);
+ assert.equal(report.layoutMatrix.length,8);
+ assert.equal(report.pendingFilterLayout.length,4);
+ if(qaOutput)assert.equal(report.screenshots.length,report.layoutMatrix.length+report.pendingFilterLayout.length);
  report.sourceAfter=hash(await readFile(component));assert.equal(report.sourceAfter,before);report.status='passed';
 }catch(e){report.status='failed';report.error=String(e.message);throw e;}
 finally{report.closure.contexts=contexts.size===0;if(browser){await browser.close();report.closure.browser=true;}if(server){server.closeAllConnections();await new Promise(resolve=>server.close(resolve));report.closure.server=true;}await stop();report.closure.esbuild=true;if(qaOutput)await writeFile(join(qaOutput,'consumer-history-snapshot-report.json'),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));}
