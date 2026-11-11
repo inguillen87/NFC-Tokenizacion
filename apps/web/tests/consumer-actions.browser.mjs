@@ -156,7 +156,7 @@ try {
   assert.equal(actions(await state()).length, beforeEditorial);
   report.checks.push('Current publication version, date and documents stay separate from the old reading in three languages; missing, unpublished, legacy, inactive and invalid states never revive a removed current link');
   const before = actions(await state()).length;
-  await checkSupportReports({ page, base, state, mode, assess, report });
+  await checkSupportReports({ page, base, api, state, mode, assess, report });
   const issued = await fresh(page);
   assert.equal(actions(await state()).length, before, 'Entering the portal does not execute any action');
   const cookies = (await context.cookies()).filter(x => x.name.includes('nexid_tap_'));

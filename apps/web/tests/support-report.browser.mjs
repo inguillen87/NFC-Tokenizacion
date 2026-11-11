@@ -1,8 +1,83 @@
 import assert from 'node:assert/strict';
 
+export async function checkReportNavigation({ page, base, api, state, report }) {
+  const form = page.getByTestId('report-problem-form');
+  const summary = form.getByTestId('report-problem-summary');
+  const description = form.locator('#report-description');
+  const reportCalls = async () => (await state()).calls.filter(call => call.path === '/public/cta/report-problem').length;
+  const countBefore = await reportCalls();
+  const originalViewport = page.viewportSize();
+  const scenarios = [
+    { trace: 'report-opened', width: 320, theme: 'dark', entry: page.getByTestId('sun-summary-primary') },
+    { trace: 'agro', width: 390, theme: 'light', entry: page.getByRole('link', { name: 'Reportar un problema', exact: true }) },
+  ];
+  try {
+    for (const { trace, width, theme, entry } of scenarios) {
+      await page.setViewportSize({ width, height: 844 });
+      const issued = await (await fetch(api + '/qa-issue')).json();
+      const search = new URLSearchParams({ snapshot: issued.eventId, trace, access: 'qa-only', fresh: issued.token });
+      await page.goto(base + '/sun?' + search, { waitUntil: 'load', timeout: 90_000 });
+      await page.locator('[data-testid="report-problem-form"][data-report-ready="true"]').waitFor();
+      await page.waitForFunction(() => !new URLSearchParams(location.search).has('fresh'));
+      await page.evaluate(theme => {
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.classList.toggle('theme-light', theme === 'light');
+        document.documentElement.classList.toggle('theme-dark', theme === 'dark');
+      }, theme);
+      assert.equal(await entry.getAttribute('href'), '#report-problem');
+      assert.equal(await description.isVisible(), false, 'Report starts closed on an ordinary passport visit');
+      const originalUrl = page.url();
+      const historyLength = await page.evaluate(() => history.length);
+      const modifiedClickPreserved = await entry.evaluate(anchor => {
+        let handledNatively = false;
+        anchor.addEventListener('click', event => {
+          handledNatively = !event.defaultPrevented;
+          event.preventDefault();
+        }, { once: true });
+        anchor.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true }));
+        return handledNatively;
+      });
+      assert.ok(modifiedClickPreserved, 'The report leaves the modified anchor click to the browser');
+      assert.equal(await description.isVisible(), false);
+      assert.equal(page.url(), originalUrl);
+
+      await entry.focus();
+      await page.keyboard.press('Enter');
+      await page.waitForURL(originalUrl + '#report-problem');
+      await description.waitFor({ state: 'visible' });
+      assert.equal(await summary.evaluate(element => element === document.activeElement), true, 'First activation focuses the report summary');
+      assert.equal(await page.evaluate(() => history.length), historyLength + 1);
+
+      await page.keyboard.press('Enter');
+      await description.waitFor({ state: 'hidden' });
+      assert.equal(page.url(), originalUrl + '#report-problem');
+      await entry.click();
+      await description.waitFor({ state: 'visible' });
+      assert.equal(await summary.evaluate(element => element === document.activeElement), true, 'Repeat activation focuses the report summary');
+      assert.equal(page.url(), originalUrl + '#report-problem');
+      assert.equal(await page.evaluate(() => history.length), historyLength + 1, 'Reopening does not add a duplicate history entry');
+      if (trace === 'report-opened') {
+        await page.keyboard.press('Enter');
+        await description.waitFor({ state: 'hidden' });
+        const tools = page.locator('[data-sun-deferred-tool="protected-actions"]');
+        await tools.scrollIntoViewIfNeeded();
+        await tools.getByRole('button', { name: 'Describir el problema', exact: true }).click();
+        await description.waitFor({ state: 'visible' });
+        assert.equal(await summary.evaluate(element => element === document.activeElement), true, 'The post-sale report button reopens with focus');
+        assert.equal(page.url(), originalUrl + '#report-problem');
+        assert.equal(await page.evaluate(() => history.length), historyLength + 1);
+      }
+      assert.equal(await reportCalls(), countBefore, 'Report navigation never submits a report');
+      report.checks.push(`${trace}: keyboard and pointer reopen the report with focus, one fragment entry and no write`);
+    }
+  } finally {
+    if (originalViewport) await page.setViewportSize(originalViewport);
+  }
+}
+
 // Actual Next/BFF interaction; the upstream deliberately models synthetic
 // tickets. PostgreSQL atomicity is separately exercised by the API CI suite.
-export async function checkSupportReports({ page, base, state, mode, assess, report }) {
+export async function checkSupportReports({ page, base, api, state, mode, assess, report }) {
   const calls = async () => (await state()).calls.filter(x => x.path === '/public/cta/report-problem');
   const form = page.getByTestId('report-problem-form');
   const description = 'La etiqueta indica abierto y necesito que revisen este envase QA.';
@@ -19,6 +94,7 @@ export async function checkSupportReports({ page, base, state, mode, assess, rep
     await page.locator('[data-testid="report-problem-form"][data-report-step="review"]').waitFor();
   }
   await mode('normal');
+  await checkReportNavigation({ page, base, api, state, report });
   const initial = (await calls()).length;
   await visit();
   assert.equal((await calls()).length, initial, 'Opening a report never submits it');

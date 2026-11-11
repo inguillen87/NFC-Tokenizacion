@@ -15,6 +15,7 @@ function load(file, bindings = {}) {
   return module.exports;
 }
 const model = load("report-problem-model.ts"), copy = load("report-problem-copy.ts");
+const navigation = load("report-problem-navigation.ts");
 const { reportContextAvailable, validateReportDraft, reportProblemOutcome, createReportProblemRunner, readReportProblemResponse } = model;
 const context = { bid: "LOT-API", eventId: "9007199254740993", supportToken: "support.fixture.secret" };
 const draft = { category: "tap_review", description: "La lectura mostró un aviso.\nEl envase sigue cerrado.", contact: "" };
@@ -180,6 +181,7 @@ test("receipt JSON is bounded by bytes and rejects malformed responses", async (
 function markup(props = {}, locale = "es-AR") {
   const component = load("report-problem-form.tsx", {
     "./report-problem-model": model, "./report-problem-copy": copy,
+    "./report-problem-navigation": navigation,
     "./sun-locale-provider": { useSunLocale: () => ({ locale }) },
     "./report-problem-form.module.css": { __esModule: true, default: styles },
   }).ReportProblemForm;
@@ -221,10 +223,13 @@ test("expired access warns that text only remains on this screen and earlier rec
   for (const locale of ["es-AR", "en", "pt-BR"]) assert.ok(copy.reportProblemCopy[locale].earlierUncertain);
 });
 
-test("form only reveals on the hash and does not store data, request geolocation or submit in effects", () => {
+test("report navigation preserves the hash without storing data, requesting geolocation or submitting", () => {
   const source = readFileSync(new URL("../src/app/sun/report-problem-form.tsx", import.meta.url), "utf8");
-  assert.match(source, /window\.location\.hash !== "#report-problem"/);
+  assert.equal(navigation.REPORT_PROBLEM_FRAGMENT, "#report-problem");
+  assert.match(source, /window\.location\.hash === REPORT_PROBLEM_FRAGMENT/);
   assert.match(source, /reveal\(\);[\s\S]*addEventListener\("hashchange", reveal\)/);
+  assert.match(source, /addEventListener\("click", activateLink, true\)/);
+  assert.match(source, /removeEventListener\("click", activateLink, true\)/);
   assert.match(source, /const requestLock = useRef\(false\)/);
   assert.match(source, /requestLock\.current = true/);
   assert.doesNotMatch(source, /localStorage|sessionStorage|geolocation|URLSearchParams|sendBeacon|dangerouslySetInnerHTML/);

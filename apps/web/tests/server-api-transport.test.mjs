@@ -6,6 +6,7 @@ import test from "node:test";
 import ts from "typescript";
 import * as tapHandoff from "../src/app/api/_lib/consumer-tap-handoff.ts";
 import * as boundedFetch from "../src/app/me/_components/consumer-bounded-fetch.ts";
+import { EMPTY_HISTORY_FILTERS, historyParams, historyPath } from "../src/app/me/taps/history-model.ts";
 
 const API = "https://nexid-qa-exact-project.vercel.app";
 const WEB = "https://nexid-web-qa-exact-project.vercel.app";
@@ -284,10 +285,14 @@ test("Initial SSR history authenticates before its protected transport and prese
     "next/headers": { headers: async () => new Headers({ cookie: "consumer_session=synthetic; __Host-nexid_tap_715=one-use" }) },
     "@product/config": { productUrls: { api: API } }, "../../api/_lib/consumer-tap-handoff": tapHandoff,
     "../../api/_lib/server-api-transport": { fetchRuntimeApi },
-    "../_components/consumer-api": { readConsumerSession: async () => { order.push("auth"); return { status: "ready" }; }, buildConsumerNextPath: p => p },
+    "../_components/consumer-api": { readConsumerSession: async (next) => {
+      assert.equal(next, "/me/taps?tenant=qa");
+      order.push("auth");
+      return { status: "ready" };
+    } },
     "../_components/consumer-portal-recovery": { ConsumerPortalUnavailable: "Unavailable" },
     "../_components/portal-shell": { PortalShell: "Shell" }, "./consumer-history": { ConsumerHistory: "History" },
-    "./history-model": { EMPTY_HISTORY_FILTERS: { tenant: "", from: "", to: "", event: "" }, historyParams: () => "tenant=qa",
+    "./history-model": { EMPTY_HISTORY_FILTERS, historyParams, historyPath,
       boundedHistoryJson: r => { order.push("parse"); return r.json(); }, parseHistory: p => p },
   } });
   const result = await Page({ searchParams: Promise.resolve({ tenant: "qa" }) });
