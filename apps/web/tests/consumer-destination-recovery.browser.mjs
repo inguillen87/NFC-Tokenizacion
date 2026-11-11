@@ -19,7 +19,7 @@ Object.assign(env,{NODE_ENV:'production',NEXT_TELEMETRY_DISABLED:'1',CONSUMER_DE
 const next=spawn(process.execPath,['--import',pathToFileURL(join(web,'tests/consumer-destination-recovery-local-fetch.mjs')).href,join(repo,'node_modules/next/dist/bin/next'),'start','-p',String(port),'-H','127.0.0.1'],{cwd:web,env,windowsHide:true,stdio:['ignore','pipe','pipe']});
 next.stdout.on('data',()=>{});next.stderr.on('data',()=>{});let serverFailed=false;next.on('error',()=>{serverFailed=true;});
 const origin=`http://127.0.0.1:${port}`;
-const report={localOnly:true,actualNextProductionBuild:true,syntheticSessionsAndData:true,realAuthenticationCertified:false,physicalTapMeasured:false,checks:[],views:[],cases:[],anonymousReturns:[],clientErrors:[],nativeWindowErrors:[],consoleErrors:[],blockedWrites:[],externalRequests:[],experienceMockPosts:[],expectedSyntheticHttpErrors:[],geolocationCalls:0};
+const report={localOnly:true,actualNextProductionBuild:true,syntheticSessionsAndData:true,realAuthenticationCertified:false,physicalTapMeasured:false,checks:[],views:[],cases:[],anonymousReturns:[],zoomObservations:[],clientErrors:[],nativeWindowErrors:[],consoleErrors:[],blockedWrites:[],externalRequests:[],experienceMockPosts:[],expectedSyntheticHttpErrors:[],geolocationCalls:0};
 const paths=['consumer-destination-recovery.browser.mjs','consumer-destination-recovery-local-fetch.mjs','browser/consumer-destination-recovery-api.fixture.mjs','consumer-portal-loading-evidence.mjs'];
 const hashes=async()=>Object.fromEntries(await Promise.all(paths.map(async path=>[path,createHash('sha256').update(await readFile(join(web,'tests',path))).digest('hex')])));
 report.helperHashesStart=await hashes();
@@ -252,7 +252,11 @@ async function portalZoomReflow(page,name,requireSingleLine=false){
 }
 async function ratingZoomReflow(page,name,width,theme){
  try{
-  await page.evaluate(()=>{document.documentElement.style.zoom='2';});check(await page.evaluate(()=>getComputedStyle(document.documentElement).zoom)==='2',name+': declared 200 percent CSS zoom applied');
+  await page.evaluate(()=>{document.documentElement.style.zoom='2';});
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  const zoomObservation=await page.evaluate(()=>({inlineZoom:document.documentElement.style.zoom,computedZoom:getComputedStyle(document.documentElement).zoom,styleAttribute:document.documentElement.getAttribute('style'),url:location.href,readyState:document.readyState,viewport:{width:innerWidth,height:innerHeight}}));
+  report.zoomObservations.push({name,width,theme,...zoomObservation});
+  check(zoomObservation.computedZoom==='2',name+': declared 200 percent CSS zoom applied');
   const group=await ratingGeometry(page,name+'-zoom200',false),rows=await group.locator('label').evaluateAll(labels=>new Set(labels.map(label=>Math.round(label.getBoundingClientRect().top))).size);
   check(rows>=1&&rows<=5,name+': zoom reflow keeps every score reachable without forcing one row');await ratingKeyboard(page,name+'-zoom200');
   await portalZoomReflow(page,name+'-zoom200');
