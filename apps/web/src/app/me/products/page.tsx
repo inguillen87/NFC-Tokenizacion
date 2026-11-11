@@ -1,21 +1,49 @@
 import { ConsumerProductLibrary } from "./product-library";
+import { productFocus, publicProductScope } from "./product-library-model";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, ArrowUpRight, CircleAlert, History, MessageSquareText, Package, ScanLine, ShoppingBag } from "lucide-react";
-import { buildConsumerNextPath, fetchConsumerPath, readConsumerSession } from "../_components/consumer-api";
+import { buildConsumerNextPath, fetchConsumerPath, readConsumerSession, readConsumerTapHandoffPresence } from "../_components/consumer-api";
 import { ConsumerPortalUnavailable } from "../_components/consumer-portal-recovery";
 import { buildHomeProductsSource, homeOwnershipLabel, homeProductExperienceHref, homeVerdictLabel } from "../_components/consumer-home-model";
 import { ConsumerDataRetryButton, ConsumerProductImage } from "../_components/me-portal-interactive-client";
 import { PortalShell } from "../_components/portal-shell";
+import { tapAssociationContext } from "../_components/tap-association-model";
+import { associationCopy } from "../_components/tap-association-copy";
+import { getWebI18n } from "../../../lib/locale";
+import associationStyles from "../_components/tap-association-banner.module.css";
 import styles from "./products.module.css";
 
 export default async function ProductsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const params = (await searchParams) || {};
-  const session = await readConsumerSession(buildConsumerNextPath("/me/products", params));
+  const next = buildConsumerNextPath("/me/products", params);
+  const session = await readConsumerSession(next);
   if (session.status === "unavailable") return <ConsumerPortalUnavailable />;
-  const source = buildHomeProductsSource(await fetchConsumerPath("products"));
+  const context = tapAssociationContext(new URL(next, "https://nexid.invalid").searchParams);
+  const [products, handoffPresent] = await Promise.all([
+    fetchConsumerPath("products"),
+    context?.preferred === "save" ? readConsumerTapHandoffPresence(context.eventId) : null,
+  ]);
+  const source = buildHomeProductsSource(products);
+  const missingSaveEventId = handoffPresent === false ? context?.eventId : undefined;
+  const matchingIndex = missingSaveEventId && source.status === "ready" ? productFocus(source.data, missingSaveEventId) : null;
+  const matchingScope = matchingIndex !== null && source.status === "ready" ? publicProductScope(source.data[matchingIndex]) : null;
+  const savedProductHref = missingSaveEventId && matchingScope && context && context.tenant === matchingScope.tenant
+    && (!context.bid || context.bid === matchingScope.bid) ? `/me/products?focus=${missingSaveEventId}` : null;
+  const copy = missingSaveEventId ? associationCopy[(await getWebI18n()).locale] : null;
+  const tapSaveHandoffFallback = missingSaveEventId && copy ? {
+    eventId: missingSaveEventId,
+    content: <section className={associationStyles.panel} aria-labelledby="save-handoff-title" data-testid={savedProductHref ? "save-handoff-existing-product" : "save-handoff-required"}>
+      <header><span className={associationStyles.eyebrow}>{copy.actions.save.label}</span>
+        <h2 id="save-handoff-title">{savedProductHref ? copy.savedProductTitle : copy.titles.fresh_required}</h2>
+        <p>{savedProductHref ? copy.savedProductHelp : copy.saveHandoffMissing}</p></header>
+      <div className={associationStyles.confirmation}><Link className={associationStyles.primary} href={savedProductHref || "/me/products"} prefetch={false}>
+        {savedProductHref ? copy.savedProductAction : copy.products}
+      </Link></div>
+    </section>,
+  } : undefined;
 
   return (
-    <PortalShell title="Tus productos guardados" subtitle="Volvé a su información, consultá una lectura o compartí tu experiencia con la marca.">
+    <PortalShell title="Tus productos guardados" subtitle="Volvé a su información, consultá una lectura o compartí tu experiencia con la marca." tapSaveHandoffFallback={tapSaveHandoffFallback}>
       <div className={styles.gallery}>
         <nav className={styles.toolbar} aria-label="Navegación de productos">
           <Link href="/me"><ArrowLeft size={18} aria-hidden="true" />Volver al inicio</Link>

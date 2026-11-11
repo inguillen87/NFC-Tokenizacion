@@ -129,7 +129,7 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <main id="main-content" data-nav-inert>
+      <main id="main-content" tabIndex={-1} data-nav-inert>
         <HeroSection content={content} locale={locale} />
 
         <ConnectedProductIndustryProvider>

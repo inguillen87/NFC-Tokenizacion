@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { createHash } from "node:crypto";
 import { buildConsumerNextPath, fetchConsumerPath, fetchMarketplacePath, readConsumerSession } from "../_components/consumer-api";
 import { hasConsumerProductIdentity, hasMarketplaceListingIdentity, readConsumerListSource } from "../_components/consumer-list-availability";
 import { ConsumerPortalUnavailable } from "../_components/consumer-portal-recovery";
@@ -6,7 +7,7 @@ import { ConsumerDataRetryButton } from "../_components/me-portal-interactive-cl
 import recoveryStyles from "../_components/consumer-list-recovery.module.css";
 import { resolveMarketplaceTenant } from "../_components/consumer-portal-model";
 import { PortalShell } from "../_components/portal-shell";
-import { MarketplaceGridClient } from "./marketplace-grid-client";
+import { MarketplaceEmptyDraftNotice, MarketplaceGridClient } from "./marketplace-grid-client";
 import styles from "./marketplace.module.css";
 import { configurationEventId, readPublicTenantConfiguration } from "../../../lib/public-tenant-configuration";
 import { resolveTenantActionAvailability } from "../../sun/tenant-action-availability";
@@ -27,7 +28,7 @@ type ConsumerProduct = { tenant_slug?: string | null; ownership_status?: string 
 
 export default async function MarketplacePage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const params = (await searchParams) || {};
-  const session = await readConsumerSession(buildConsumerNextPath("/me/marketplace", params));
+  const session = await readConsumerSession(buildConsumerNextPath("/me/marketplace", params), { includeAccountId: true });
   if (session.status === "unavailable") return <ConsumerPortalUnavailable />;
   const hasTapContext = params.fromTap !== undefined || params.action !== undefined || params.eventId !== undefined;
   const postTapEventId = params.fromTap === "1" && params.action === "marketplace" && configurationEventId(params.eventId) ? params.eventId : undefined;
@@ -41,6 +42,10 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
   const contextualTenant = hasTapContext ? canonicalTenant : resolveMarketplaceTenant({ tenantFromQuery, products: consumerProducts });
   const payload = contextUnavailable ? null : await fetchMarketplacePath(`products${contextualTenant ? `?tenant=${encodeURIComponent(contextualTenant)}` : ""}`);
   const catalog = readConsumerListSource<Listing>(payload, hasMarketplaceListingIdentity);
+  const safeCatalog = !contextualTenant || /^[a-z0-9][a-z0-9._-]{0,119}$/.test(contextualTenant);
+  const draftScope = session.accountId && safeCatalog && !contextUnavailable
+    ? createHash("sha256").update(JSON.stringify(["nexid-marketplace-draft-v1", session.accountId, contextualTenant, postTapEventId || null])).digest("base64url")
+    : undefined;
 
   return (
     <PortalShell title="Catálogo de la marca" subtitle="Productos publicados y solicitudes de contacto. La marca confirma disponibilidad y condiciones.">
@@ -55,9 +60,10 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
         <h2>No pudimos cargar el catálogo</h2>
         <p>Reintentá la consulta para ver los productos publicados y sus condiciones.</p>
         <ConsumerDataRetryButton />
-      </section> : catalog.data.length ? <MarketplaceGridClient key={postTapEventId || "global"} items={catalog.data} {...(postTapEventId ? { postTapEventId } : {})} /> : (
+      </section> : catalog.data.length ? <MarketplaceGridClient key={draftScope || postTapEventId || contextualTenant || "global"} items={catalog.data} draftScope={draftScope} {...(postTapEventId ? { postTapEventId } : {})} /> : (
         <section className={`${styles.intro} ${styles.empty}`}>
           <p>Todavía no hay productos publicados para este contexto. Podés volver a consultar el catálogo más adelante.</p>
+          {draftScope ? <MarketplaceEmptyDraftNotice key={draftScope} scope={draftScope} /> : null}
           <div className={styles.actions}>
             <Link href="/me/products" prefetch={false} className={styles.button}>Ver mis productos</Link>
             <Link href="/me/brands" prefetch={false} className={styles.button}>Ver mis marcas</Link>

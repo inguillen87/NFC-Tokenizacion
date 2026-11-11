@@ -58,11 +58,59 @@ test("email continuation preserves product selection without transmitting TAP or
   assert.deepEqual(consumerAuthStartPayload({ phone: "+5491155551234" }, next), { phone: "+5491155551234" });
 });
 
+test("brand-scoped trivia benefits survive email access with the same tenant selector", () => {
+  const contact = { email: "persona@example.test" };
+  const next = "/me/rewards?tenant=marca.qa";
+  assert.equal(normalizeConsumerAuthReturnPath(next), next);
+  assert.deepEqual(consumerAuthStartPayload(contact, next), { ...contact, next });
+  assert.equal(normalizeConsumerAuthReturnPath(`${next}&freshToken=private&eventId=1`), "/me/rewards?eventId=1&tenant=marca.qa");
+  for (const invalid of ["tenant=marca.qa%2Fotra", "tenant=marca.qa&tenant=otra.qa", "tenant=.marca", "tenant=Marca.QA", "tenant=marca.qa%0A", "tenant=marca.qa%3Fnext%3Devil"]) {
+    assert.equal(normalizeConsumerAuthReturnPath(`/me/rewards?${invalid}`), "/me", invalid);
+  }
+});
+
+test("marketplace re-entry keeps the brand and reading without putting them in the WhatsApp request", () => {
+  const contextual = "/me/marketplace?fromTap=1&eventId=715&bid=LOT-QA&tenant=marca.qa&action=marketplace";
+  const catalog = "/me/marketplace?tenant=marca.qa";
+  const email = { email: "persona@example.test" };
+  const phone = { phone: "+5491155551234" };
+  for (const next of [contextual, catalog]) {
+    assert.equal(normalizeConsumerAuthReturnPath(`${next}&freshToken=fixture&lat=12`), next);
+    assert.deepEqual(consumerAuthStartPayload(email, next), { ...email, next });
+    assert.deepEqual(consumerAuthStartPayload(phone, next), phone);
+  }
+});
+
+test("email returns to the same product reading for a tenant slug with a dot", () => {
+  const contact = { email: "persona@example.test" };
+  const next = "/me/products?fromTap=1&eventId=715&tenant=bodega.qa&action=products";
+  assert.equal(normalizeConsumerAuthReturnPath(next), next);
+  assert.deepEqual(consumerAuthStartPayload(contact, next), { ...contact, next });
+  assert.equal(normalizeConsumerAuthReturnPath(`${next}&freshToken=fixture-private&uid=fixture-tag`), next);
+  for (const invalid of ["bodega.qa%2Fotra", "bodega.qa&tenant=otra.qa", ".bodega", "Bodega.QA", "bodega.qa%0A", "bodega.qa%3Fnext%3Devil"]) {
+    assert.equal(normalizeConsumerAuthReturnPath(next.replace("bodega.qa", invalid)), "/me", invalid);
+  }
+});
+
 test("normal consumer and legacy nonconsumer destinations do not change the OTP start contract", () => {
   for (const next of [undefined, null, "/me", "/docs", "/sun?uid=secret&mac=signature", "/login?t=private", "https://evil.example", "//evil.example", "/\\evil.example", "/%2e%2e//evil.example"]) {
     assert.equal(normalizeConsumerAuthReturnPath(next), "/me");
     assert.deepEqual(consumerAuthStartPayload({ email: "persona@example.test" }, next), { email: "persona@example.test" });
   }
+});
+
+test("a dotted brand selection survives email access to private benefits and its brand relationship", () => {
+  for (const route of ["/me/rewards", "/me/brands"]) {
+    const next = `${route}?tenant=brand.qa`;
+    assert.equal(normalizeConsumerAuthReturnPath(next), next);
+    assert.deepEqual(consumerAuthStartPayload({ email: "persona@example.test" }, next), { email: "persona@example.test", next });
+    assert.deepEqual(consumerAuthStartPayload({ phone: "+5491155551234" }, next), { phone: "+5491155551234" });
+    assert.equal(normalizeConsumerAuthReturnPath(next + "&voucher=fixture-code&freshToken=fixture#private"), next);
+    for (const rejected of [`${route}?tenant=.brand`, next + "&tenant=other", `${route}?tenant=brand%2Fqa`]) {
+      assert.equal(normalizeConsumerAuthReturnPath(rejected), "/me", rejected);
+    }
+  }
+  assert.equal(normalizeConsumerAuthReturnPath("/me/products?tenant=brand.qa"), "/me/products?tenant=brand.qa");
 });
 
 test("only existing consumer routes can be sent in the email link", () => {

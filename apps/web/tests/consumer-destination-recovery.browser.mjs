@@ -115,18 +115,29 @@ async function ratingKeyboard(page,name){
  await page.keyboard.press('ArrowLeft');await page.waitForFunction(()=>document.querySelector('input[name="experience-rating"][value="4"]')?.checked,{},{timeout:12000});check(await four.isChecked()&&await four.evaluate(node=>node===document.activeElement),name+': Left arrow selects and focuses four stars');
  await page.keyboard.press('ArrowRight');await page.waitForFunction(()=>document.querySelector('input[name="experience-rating"][value="5"]')?.checked,{},{timeout:12000});check(await five.isChecked()&&await five.evaluate(node=>node===document.activeElement),name+': Right arrow restores and focuses five stars');
 }
-async function portalZoomReflow(page,name){
+async function portalZoomReflow(page,name,requireSingleLine=false){
  const geometry=await page.evaluate(()=>{
   const box=e=>e?.getBoundingClientRect(),visible=e=>{if(!e)return false;const s=getComputedStyle(e),r=box(e);return s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity)>0&&r.width>0&&r.height>0;};
   const logo=document.querySelector('header [class*="brandArea"] a'),controls=document.querySelector('[aria-label="Apariencia y sesión"]'),a=box(logo),b=box(controls);
   const items=[...(document.querySelector('nav.consumer-bottom-nav > div')?.children??[])],names=['Inicio','Productos','Historial','Beneficios','Más'];
-  const labels=items.map((item,index)=>{const label=item.querySelector(':scope > span:first-of-type'),r=box(item);if(!label||!visible(label)||label.textContent.trim()!==names[index])return{visible:false,within:false,touch:false};const range=document.createRange();range.selectNodeContents(label);const rects=[...range.getClientRects()].filter(x=>x.width>0&&x.height>0);range.detach();return{visible:true,within:rects.length>0&&rects.every(x=>x.left>=r.left-1&&x.right<=r.right+1&&x.top>=r.top-1&&x.bottom<=r.bottom+1),touch:r.width>=44&&r.height>=44};});
-  return{visible:visible(logo)&&visible(controls),separate:Boolean(a&&b&&(a.right<=b.left+1||b.right<=a.left+1||a.bottom<=b.top+1||b.bottom<=a.top+1)),labels:labels.length===5&&labels.every(x=>x.visible&&x.within),touch:labels.length===5&&labels.every(x=>x.touch)};
+  const labels=items.map((item,index)=>{
+   const label=item.querySelector(':scope > span:first-of-type'),r=box(item);
+   if(!label||!visible(label)||label.textContent.trim()!==names[index])return{within:false,touch:false,singleLine:false};
+   const range=document.createRange();range.selectNodeContents(label);
+   const rects=[...range.getClientRects()].filter(x=>x.width>0&&x.height>0);range.detach();
+   return{
+    within:rects.length>0&&rects.every(x=>x.left>=r.left-1&&x.right<=r.right+1&&x.top>=r.top-1&&x.bottom<=r.bottom+1),
+    touch:r.width>=44&&r.height>=44,
+    singleLine:new Set(rects.map(rect=>Math.round(rect.top))).size===1,
+   };
+  });
+  return{visible:visible(logo)&&visible(controls),separate:Boolean(a&&b&&(a.right<=b.left+1||b.right<=a.left+1||a.bottom<=b.top+1||b.bottom<=a.top+1)),labels:labels.length===5&&labels.every(x=>x.within),touch:labels.length===5&&labels.every(x=>x.touch),singleLine:labels.length===5&&labels.every(x=>x.singleLine)};
  });
  check(geometry.visible,name+': logo and account controls remain visible');
  check(geometry.separate,name+': logo and account controls do not overlap');
  check(geometry.labels,name+': five visible navigation labels stay within their own items');
  check(geometry.touch,name+': navigation touch targets remain at least 44 by 44');
+ if(requireSingleLine)check(geometry.singleLine,name+': each navigation label remains on one line within its control');
 }
 async function ratingZoomReflow(page,name,width,theme){
  try{
@@ -206,13 +217,18 @@ async function securityNavigation(width,theme){
   await page.evaluate(()=>document.fonts.ready.then(()=>undefined));
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   const measured=await page.evaluate(()=>{
-   const header=document.querySelector('.consumer-portal-root > header'),main=document.querySelector('#consumer-portal-content'),heading=main?.querySelector('h1'),root=header?.closest('.consumer-portal-root');
-   if(!header||!main||!heading||!root)throw Error('Owned portal heading/header unavailable');
+   const header=document.querySelector('.consumer-portal-root > header'),main=document.querySelector('#consumer-portal-content'),heading=main?.querySelector('h1'),root=header?.closest('.consumer-portal-root'),dock=root?.querySelector('nav.consumer-bottom-nav');
+   if(!header||!main||!heading||!root||!dock)throw Error('Owned portal heading or navigation unavailable');
    const box=element=>{const r=element.getBoundingClientRect();return{top:r.top,bottom:r.bottom,height:r.height,left:r.left,right:r.right};};
-   return{header:box(header),main:box(main),heading:box(heading),innerWidth,clientWidth:document.documentElement.clientWidth,innerHeight,scrollY,mainFocused:document.activeElement===main,headerOffset:root.style.getPropertyValue('--portal-header-block-size'),scrollMargin:getComputedStyle(main).scrollMarginBlockStart};
+   const headerPosition=getComputedStyle(header).position,dockPosition=getComputedStyle(dock).position;
+   return{header:box(header),dock:box(dock),headerPosition,dockPosition,desktop:matchMedia('(min-width: 64rem)').matches,main:box(main),heading:box(heading),innerWidth,clientWidth:document.documentElement.clientWidth,innerHeight,scrollY,mainFocused:document.activeElement===main,headerOffset:root.style.getPropertyValue('--portal-header-block-size'),scrollMargin:getComputedStyle(main).scrollMarginBlockStart};
   });
-  report.securityNavigation??=[];report.securityNavigation.push({width,theme,phase,...measured});
-  check(measured.heading.top>=measured.header.bottom-1&&measured.heading.bottom<=measured.innerHeight+1,name+'/'+phase+': complete account heading stays below sticky header and visible');
+  const visibleTop=Math.max(0,measured.header.bottom);
+  const visibleBottom=measured.dockPosition==='fixed'?Math.min(measured.innerHeight,measured.dock.top):measured.innerHeight;
+  report.securityNavigation??=[];report.securityNavigation.push({width,theme,phase,...measured,visibleTop,visibleBottom});
+  check(measured.headerPosition===(measured.desktop?'sticky':'static')&&measured.dockPosition===(measured.desktop?'static':'fixed'),name+'/'+phase+': persistent navigation matches the viewport layout');
+  check(measured.heading.top>=visibleTop-1&&measured.heading.bottom<=visibleBottom+1&&measured.heading.left>=-1&&measured.heading.right<=measured.clientWidth+1,name+'/'+phase+': complete account heading stays in the visible area between header and navigation');
+  if(phase!=='next-link')check(measured.mainFocused,name+'/'+phase+': skip link moves keyboard focus to main content');
  };
  try{
   await page.goto(origin+'/me/products',{waitUntil:'networkidle'});
@@ -233,6 +249,7 @@ async function securityNavigation(width,theme){
   await page.waitForFunction(()=>{const header=document.querySelector('.consumer-portal-root > header'),root=header?.closest('.consumer-portal-root');return header&&root&&Math.abs(parseFloat(root.style.getPropertyValue('--portal-header-block-size'))-Math.ceil(header.getBoundingClientRect().height))<=1;});
   await page.getByRole('link',{name:'Ir al contenido',exact:true}).focus();await page.keyboard.press('Enter');
   await geometry('large-text-main-anchor');
+  if(width===320)await portalZoomReflow(page,name+'-text200',true);
   await page.evaluate(font=>{if(font.value)document.documentElement.style.setProperty('font-size',font.value,font.priority);else document.documentElement.style.removeProperty('font-size');},originalFont);
   await assess(page,'#consumer-portal-content',name,width,theme);
   await page.evaluate(()=>Promise.all(window.__destinationDeliveries));

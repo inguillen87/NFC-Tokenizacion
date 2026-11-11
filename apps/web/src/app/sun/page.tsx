@@ -4,6 +4,7 @@ import { ProductNoticeProvider } from "../../lib/product-notice-resource";
 import { PassportEssentialSignals } from "./passport-essential-signals";
 import { PassportEvidenceResources } from "./passport-evidence-resources";
 import { ConsumerPassportLink } from "./consumer-passport-link";
+import { inspectConsumerTapCapability } from "../api/_lib/consumer-tap-handoff";
 import { ProductNotices } from "./product-notices";
 import { SunLocationQuickAction } from "./sun-location-quick-action";
 import { SunProductImage } from "./sun-product-image";
@@ -20,7 +21,7 @@ import type { SunVisualKind } from "./sun-product-hero-stage";
 import { SunPassportHeader } from "./sun-passport-header";
 import { SunLocaleProvider } from "./sun-locale-provider";
 import { formatSunDateTime, translateSunUiText, type SunLocale } from "./sun-locale";
-import { PostTapNextStep } from "./post-tap-next-step";
+import { PostTapNextStep, resolveJourneyKind } from "./post-tap-next-step";
 import { SunSectionNav } from "./sun-section-nav";
 import { SunServicesHub, type SunPublishedPromotion } from "./sun-services-hub";
 import { SunLocationExperience } from "./sun-location-experience";
@@ -961,6 +962,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     isSunProfileMismatch,
     isSnapshotView,
   }, (value) => translateSunUiText(value, locale));
+  const showHistoricalReadingLabel = !isDemoPreview && isSnapshotView
+    && (consumerStatus.tone === "closed" || consumerStatus.tone === "opened" || consumerStatus.tone === "verified");
   const consumerServicesLabel = isRiskBlocked
     ? "Protegidos"
     : isDemoPreview
@@ -1139,6 +1142,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     nextParams.set("action", action);
     return `${pathname}?${nextParams.toString()}${hash ? `#${hash}` : ""}`;
   };
+  const saveToAccount = postTapQuickActions.save && isFreshCommercialTap && isFreshHandoff && !isQrScan
+    && inspectConsumerTapCapability(freshToken, eventId)
+    ? { href: withTapQuery("/me/products", "save"), eventId, freshToken }
+    : undefined;
   const registerHref = localizeHref(result.cta?.registerUrl) || withTapQuery("/me", "register");
   const walletHref = withTapQuery("/me/wallet", "wallet");
   const rewardsHref = localizeHref(result.cta?.rewardsUrl) || withTapQuery("/me/rewards", "rewards");
@@ -1385,6 +1392,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
   });
   const productVisualKind = (assetProfile.visualKind || resolveSunVisualKind(result)) as SunVisualKind;
   const productDisplayName = assetProfile.productName || productName;
+  const postTapVertical = `${verticalLabel} ${result.product?.vertical || ""} ${result.product?.category || ""}`;
+  const postTapJourney = resolveJourneyKind(postTapVertical, productDisplayName);
+  const configuredTenant = tenantActions.configuration?.tenantSlug;
+  const brandBenefitsTenant = isFreshCommercialTap && !isQrScan && engagementBaseEligible
+    && postTapQuickActions.rewards && tenantSlug && (!configuredTenant || configuredTenant === tenantSlug)
+    && (postTapJourney === "wine" || postTapJourney === "consumer")
+    ? tenantSlug
+    : null;
   const isWineProduct = [result.product?.vertical, result.tenant?.vertical, productDisplayName]
     .some((value) => /\b(wine|vino|malbec|reserva|bodega)\b/i.test(String(value || "")));
   const showEngagementSuite = (engagementBaseEligible || isDemoPreview) && isWineProduct;
@@ -1880,15 +1895,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                         : <ShieldAlert className="h-5 w-5" strokeWidth={2} />}
                 </span>
                 <div className="min-w-0">
-                  <span className={`sr-only ${
-                    consumerStatus.tone === "closed"
-                      ? "text-emerald-300"
-                      : consumerStatus.tone === "opened" || consumerStatus.tone === "review"
-                        ? "text-amber-200"
-                        : consumerStatus.tone === "verified" || consumerStatus.tone === "info"
-                          ? "text-cyan-200"
-                          : "text-rose-200"
-                  }`}>
+                  <span
+                    className={showHistoricalReadingLabel ? passportStyles.historicalReadingLabel : "sr-only"}
+                    data-testid={showHistoricalReadingLabel ? "sun-summary-history-label" : undefined}
+                  >
                     {consumerStatus.label}
                   </span>
                   <h2 className="sun-summary-status__headline mt-1 break-words text-[19px] font-black leading-tight text-white">
@@ -1990,7 +2000,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </div>
             </details>
 
-            {!isDemoPreview && <ConsumerPassportLink href={isFreshCommercialTap && freshToken ? withTapQuery("/me/products","products") : "/me/products"} eventId={eventId} freshToken={isFreshCommercialTap ? freshToken : ""} />}
+            {!isDemoPreview && <ConsumerPassportLink save={saveToAccount} />}
           </div>
         </section>
 
@@ -2408,6 +2418,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 eventId={eventId}
                 freshToken={isFreshCommercialTap && !isQrScan && !isSnapshotView && !isRiskBlocked ? freshToken : ""}
                 promotion={publishedPromotion}
+                brandBenefitsTenant={brandBenefitsTenant}
                 purchaseHref={tapMarketplaceHref}
                 subscribeHref={canSubscribeToBrand ? (showEngagementSuite ? "#qr-engagement" : "#sun-updates-opt-in") : null}
                 claimOrManageHref={bid && (uid || eventId) ? protectedServiceHref : registerHref}
@@ -2463,7 +2474,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                 <PostTapNextStep
                   eventId={eventId}
                   freshToken={isFreshCommercialTap && !isQrScan && !isSnapshotView && !isRiskBlocked ? freshToken : ""}
-                  vertical={`${verticalLabel} ${result.product?.vertical || ""} ${result.product?.category || ""}`}
+                  vertical={postTapVertical}
                   productName={productDisplayName}
                   isFreshTap={isFreshCommercialTap}
                   isSnapshotView={isSnapshotView || isQrScan}

@@ -5,6 +5,7 @@ import { isSecurePostTapActionAllowed, type SecurePostTapActionKey } from "./pos
 import { selectSunTruthCopy, SUN_DEMO_COPY } from "./sun-truth-copy";
 import { authStartErrorMessage, consumerDeliveryMessage } from "../login/consumer-login-delivery";
 import { requestConsumerJson } from "../../lib/consumer-request";
+import { REPORT_PROBLEM_FRAGMENT, revealReportProblem } from "./report-problem-navigation";
 
 type TapState = "valid" | "opened" | "manual_opened" | "blocked";
 type RightsPolicy = {
@@ -582,7 +583,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
 
   const trigger = async (path: string, method: "POST" | "GET", actionKey: ActionKey) => {
     if (actionKey === "report") {
-      window.location.hash = "report-problem";
+      if (!revealReportProblem(true)) window.location.hash = REPORT_PROBLEM_FRAGMENT;
       return;
     }
     if (actionStates[actionKey] === "loading") return;

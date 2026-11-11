@@ -5,13 +5,25 @@ export type HistoryRow=ConsumerTapItem&{rowId:string;savedAt:string};
 export type HistoryPage={accountKey:string;observedAt:string;query:HistoryFilters;items:HistoryRow[];brands:{slug:string;name:string}[];moreBrands:boolean;navigation:{page:number;pageSize:25;returned:number;hasNext:boolean;cursor:string;nextCursor:string|null;cutoff:string}};
 const assert=(v:unknown)=>{if(!v)throw Error('La fuente no confirmó una página válida de tu historial.');};
 const id=(x:unknown)=>typeof x==='string'&&/^[1-9][0-9]{0,18}$/.test(x)&&BigInt(x)<=9223372036854775807n;
+const tenantSlug = /^[a-z0-9][a-z0-9._-]{0,119}$/;
+const filterDate = /^\d{4}-\d{2}-\d{2}$/;
 const micro=(x:unknown):x is string=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/.test(x)&&Number.isFinite(Date.parse(x));
 const token=(x:unknown)=>typeof x==='string'&&/^[a-zA-Z0-9_-]{1,2048}$/.test(x);
 export function historyParams(q:HistoryFilters,cursor:string|null=null){const p=new URLSearchParams();for(const key of ['tenant','from','to','event'] as const)if(q[key])p.set(key,q[key]);if(cursor)p.set('cursor',cursor);return p;}
+export function historyPath(filters: HistoryFilters) {
+ const datePair = filterDate.test(filters.from) && filterDate.test(filters.to);
+ const query = historyParams({
+  tenant: tenantSlug.test(filters.tenant) ? filters.tenant : '',
+  event: id(filters.event) ? filters.event : '',
+  from: datePair ? filters.from : '',
+  to: datePair ? filters.to : '',
+ }).toString();
+ return query ? `/me/taps?${query}` : '/me/taps';
+}
 export function parseHistory(raw:unknown,expected?:{query:HistoryFilters;page:number;account?:string;cutoff?:string}):HistoryPage{
  const r=raw as any,n=r?.navigation,q=r?.query;assert(r?.ok===true&&r.protocol==='nexid.consumer-history.v1'&&r.source==='database'&&r.readOnly===true&&r.timeBasis==='saved_to_account');
  assert(typeof r.accountKey==='string'&&/^[a-f0-9]{64}$/.test(r.accountKey)&&Number.isFinite(Date.parse(r.observedAt)));
- assert(q&&['tenant','from','to','event'].every(k=>typeof q[k]==='string'));assert(!q.tenant||/^[a-z0-9][a-z0-9._-]{0,119}$/.test(q.tenant));assert(!q.event||id(q.event));
+ assert(q&&['tenant','from','to','event'].every(k=>typeof q[k]==='string'));assert(!q.tenant||tenantSlug.test(q.tenant));assert(!q.event||id(q.event));
  assert(Array.isArray(r.items)&&r.items.length<=25&&n?.pageSize===25&&n.returned===r.items.length&&Number.isSafeInteger(n.page)&&n.page>0&&n.page<=10000&&typeof n.hasNext==='boolean'&&token(n.cursor)&&micro(n.cutoff));
  assert(n.hasNext?n.returned===25&&token(n.nextCursor):n.nextCursor===null);
  if(expected){assert(Object.keys(expected.query).every(k=>q[k]===expected.query[k as keyof HistoryFilters])&&n.page===expected.page);assert(!expected.account||r.accountKey===expected.account);assert(!expected.cutoff||n.cutoff===expected.cutoff);}

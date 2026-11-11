@@ -276,9 +276,10 @@ try{
   await page.addScriptTag({content:axe});const accessibility=await page.evaluate(async()=> {const result=await axe.run('[data-testid="sun-passport-header"]',{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}});const rows=items=>items.map(item=>({id:item.id,impact:item.impact,nodes:item.nodes.map(node=>({target:node.target,html:node.html,failureSummary:node.failureSummary,any:node.any,all:node.all,none:node.none}))}));return{violations:rows(result.violations),incomplete:rows(result.incomplete)};});
   report.views.push({...entry,name,javaScriptEnabled:true,geometry,...accessibility});check(accessibility.violations.length===0,`${name}: zero scoped accessibility violations`);
   if(entry.mode==='snapshot'){
-   check(await page.getByTestId('consumer-passport-primary').count()===1,`${name}: contextual products action is preserved`);
+   const library=page.getByTestId('consumer-passport-library');
+   check(await library.getAttribute('href')==='/me/products'&&await library.getAttribute('referrerpolicy')==='no-referrer',`${name}: read-only library link keeps the literal private destination`);
    const primary=page.getByTestId('sun-summary-primary');check(await primary.count()===1&&await primary.evaluate(element=>{const b=element.getBoundingClientRect();return b.width>=44&&b.height>=44&&b.left>=0&&b.right<=innerWidth&&b.top>=0&&b.bottom<=innerHeight;}),`${name}: reading primary action remains visible in the first viewport`);
-  }else check(await page.getByTestId('consumer-passport-primary').count()===0,`${name}: demo does not invent a reading handoff`);
+  }else check(await page.getByTestId('consumer-passport-primary').count()===0&&await page.getByTestId('consumer-passport-library').count()===0,`${name}: demo does not invent a reading handoff`);
   if(entry.width===390&&entry.locale==='es-AR'){await account.evaluate(element=>element.blur());await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:join(output,`${name}.png`),fullPage:false});}
   // Anonymous account navigation is an ordinary /me GET. Next enforces the
   // existing consumer continuation; no OTP request, save or association here.

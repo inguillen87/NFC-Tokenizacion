@@ -37,16 +37,25 @@ function contract(u) {
   const trace = u.searchParams.get('trace') || '';
   const qr = u.searchParams.get('qr') === '1', agro = trace.startsWith('agro'), token = u.searchParams.get('fresh');
   const fresh = !qr && valid(token || '', eventId);
-  return { ok: true, verdict: qr ? 'identified' : 'valid', status: { code: qr ? 'IDENTIFIED' : 'VALID_CLOSED', productState: qr ? 'NOT_REGISTERED' : 'VALID_CLOSED', tone: 'good', tamperSupported: !qr, tamperStatus: qr ? 'UNKNOWN' : 'CLOSED', carrierProfileCode: qr ? 'qr_basic' : 'ntag424_dna_tt' },
+  const opened = !qr && ['save-opened', 'report-opened'].includes(trace);
+  const nfcStatus = opened ? 'VALID_OPENED' : 'VALID_CLOSED';
+  const sealBytes = opened ? '4f4f' : '4343';
+  return { ok: true, verdict: qr ? 'identified' : opened ? 'valid_opened' : 'valid', status: { code: qr ? 'IDENTIFIED' : nfcStatus, productState: qr ? 'NOT_REGISTERED' : nfcStatus, tone: opened ? 'warn' : 'good', tamperSupported: !qr, tamperStatus: qr ? 'UNKNOWN' : opened ? 'OPENED' : 'CLOSED', carrierProfileCode: qr ? 'qr_basic' : 'ntag424_dna_tt' },
+    ...(trace === 'benefits-ready' ? { engagement: { configuration: {
+      version: 'nexid.tenant-actions.v1', status: 'published', tenantSlug: 'qa-brand', allowedActions: [],
+      program: { id: 'qa-program', name: 'Club de ensayo', pointsName: 'Puntos', pointsPerValidTap: 0 },
+      trivia: null, catalogAvailable: false,
+    } } } : {}),
     ...(qr ? {} : { currentEditorial: editorial(trace) }),
     supportReport: trace === 'no-support' ? null : { token: supportCapability(eventId), eventId, expiresAt: new Date(Date.now() + 900000).toISOString() },
     identity: { bid: 'QA-ONLY', tenantSlug: 'qa-brand', eventId, tagStatus: 'active' },
     product: { name: agro ? 'Producto agro QA' : 'Vino de ensayo local', winery: 'Empresa QA', category: agro ? 'Agro' : 'Vino', vertical: agro ? 'agro' : 'vino', region: 'Origen declarado QA', ...(agro ? { agro: { productName: 'Producto agro QA', technicalSheetUrl: 'https://documents.example.invalid/technical.pdf', safetySheetUrl: 'https://documents.example.invalid/safety.pdf' } } : {}) },
-    tag_tamper: { available: !qr, status: qr ? 'not_available' : 'closed', raw: qr ? null : '4343' }, technical: { tt: { raw: '4343', source: 'enc_decrypted', length: 2 } },
+    tag_tamper: { available: !qr, status: qr ? 'not_available' : opened ? 'opened' : 'closed', raw: qr ? null : sealBytes }, technical: { tt: { raw: sealBytes, source: 'enc_decrypted', length: 2 } },
     snapshot: { mode: fresh ? 'fresh_handoff' : 'historical', requiresFreshTap: !fresh },
     tapSecurity: { actionability: fresh ? 'fresh_handoff' : 'read_only', freshTap: fresh, snapshot: !fresh },
     certificate: u.searchParams.get('trace') === 'no-certificate' ? {} : { shareToken: 'qa-only-public-share' },
-    allowedActions: fresh ? ['claim', 'save', 'join', 'rewards', 'provenance'] : ['provenance'], blockedActions: fresh ? [] : ['claim', 'warranty', 'tokenization', 'rewards'],
+    allowedActions: fresh && trace !== 'save-provenance-only' ? ['claim', 'save', 'join', 'rewards', 'provenance'] : ['provenance'],
+    blockedActions: fresh ? (trace === 'save-join-blocked' ? ['join'] : []) : ['claim', 'warranty', 'tokenization', 'rewards'],
     cta: { claimOwnership: fresh, registerWarranty: false, tokenize: false, provenance: true }, provenance: { origin: 'Declarado por empresa QA', timelineSummary: agro ? [{ at: "2026-09-21T22:42:23.856Z", result: "Evento QA histórico" }] : [] }, tapContext: { utcTime: '2026-09-21T22:42:23.856Z' } };
 }
 const server = http.createServer(async (req, res) => {

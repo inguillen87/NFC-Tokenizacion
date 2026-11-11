@@ -43,7 +43,7 @@ test("opened or manually declared states expose a report path and keep protected
   assert.match(actions, /Describir el problema/);
   assert.match(page, /const reportProblemHref = "#report-problem"/);
   assert.match(page, /<ReportProblemForm/);
-  assert.match(actions, /if \(actionKey === "report"\) \{\s+window.location.hash = "report-problem";\s+return;/);
+  assert.match(actions, /if \(actionKey === "report"\) \{\s+if \(!revealReportProblem\(true\)\) window.location.hash = REPORT_PROBLEM_FRAGMENT;\s+return;/);
 });
 
 test("phone location is explicit, low-precision and sends only the minimal browser context", () => {

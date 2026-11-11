@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { LogOut } from "lucide-react";
 import { requestConsumerJson } from "../../../lib/consumer-request";
+import { clearMarketplaceSessionDraft } from "../marketplace/marketplace-session-draft";
 
 export function ConsumerLogoutButton() {
   const [pending, setPending] = useState(false);
@@ -24,6 +25,7 @@ export function ConsumerLogoutButton() {
       inFlight.current = false;
       return;
     }
+    clearMarketplaceSessionDraft();
     window.location.assign("/login?next=/me");
   }
 

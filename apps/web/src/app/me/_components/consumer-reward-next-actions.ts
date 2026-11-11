@@ -1,6 +1,12 @@
 import { brandTenantSlug } from "../brands/brands-model";
 import { REWARD_UNAVAILABLE_REASONS, rewardTenant, type ConsumerReward } from "./consumer-rewards-model";
 
+export function rewardBrandRelationshipHref(value: unknown): string | null {
+  const tenant = brandTenantSlug(value);
+  if (!tenant || rewardTenant(tenant) !== value || /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(tenant)) return null;
+  return "/me/brands?" + new URLSearchParams({ tenant }).toString();
+}
+
 /** Consultation only. A next step never authorizes a reservation or prepares a TAP. */
 export function rewardNextActions(item: ConsumerReward, { busy, hasQuote }: { busy: boolean; hasQuote: boolean }) {
   if (busy || hasQuote || item.reservation || item.hasClaim || item.reservationNeedsRefresh
@@ -15,13 +21,11 @@ export function rewardNextActions(item: ConsumerReward, { busy, hasQuote }: { bu
   const needsParticipation = reasons.includes("program_participation_required");
   if (!needsConnection && !needsParticipation) return null;
 
-  const tenant = brandTenantSlug(item.tenant);
-  // Legacy identifiers are not an inferred slug. Keep the exact reported scope.
-  if (!tenant || rewardTenant(tenant) !== item.tenant
-    || /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(tenant)) return null;
+  const href = rewardBrandRelationshipHref(item.tenant);
+  if (!href) return null;
 
   return {
-    href: "/me/brands?" + new URLSearchParams({ tenant }).toString(),
+    href,
     label: `Ver mi relación con ${item.brand}`,
     guidance: [
       ...(needsConnection ? ["Revisá el estado de tu relación con la marca. Para solicitar un vínculo, volvé a acercar el teléfono a la etiqueta del producto y elegí «Vincularme con la empresa», sólo si la marca habilita esa opción. Un vínculo pausado o bloqueado puede necesitar revisión de la marca."] : []),

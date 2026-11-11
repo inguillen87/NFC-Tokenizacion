@@ -49,7 +49,7 @@ export async function runMarketplaceScenarios({page,base,width,theme,report,chec
   const status=mode==='configuration-changed'?409:mode==='unauthorized'?401:mode==='context-denied'?403:mode==='rate-limit'?429:mode==='partial'&&id==='market-olive-qa'?503:200;
   entry.status=status;
   if(mode==='invalid-json')return route.fulfill({status,contentType:'application/json',body:'not JSON'});
-  return route.fulfill({status,contentType:'application/json',body:JSON.stringify({ok:status===200,error:status===409?'marketplace_configuration_changed':status===403?'passport_context_required':status===429?'internal_rate_limit_qa':status!==200?'internal_provider_error_qa':undefined,deduplicated:false,request_mode:'request_only'})});
+  return route.fulfill({status,contentType:'application/json',body:JSON.stringify({ok:status===200,error:status===409?'marketplace_configuration_changed':status===401?'unauthorized':status===403?'passport_context_required':status===429?'internal_rate_limit_qa':status!==200?'internal_provider_error_qa':undefined,deduplicated:false,request_mode:'request_only'})});
  };
  await page.route(endpoint,handler);
  assert.ok(marketplaceBrokenPhotoFixture,'One exact synthetic broken-photo projection is required');
@@ -364,13 +364,30 @@ export async function runMarketplaceScenarios({page,base,width,theme,report,chec
    check(requests.length===partialStart+2&&await list.locator('[role="status"], [aria-live]').count()===1,`${label} partial list sends each selected product once and adds no line live region`);
    record.scenarios.push({name:'partial-success',requests:requests.slice(partialStart),draftPreserved:true,errorVisibleInFilteredLine:true,singleListLiveRegion:true});
 
-   await page.goto(route+'&signature=synthetic-do-not-carry&cap=synthetic-do-not-carry',{waitUntil:'networkidle'});await catalog.waitFor();mode='unauthorized';const unauthorizedStart=requests.length;
-   await olive().getByRole('button',{name:'Solicitar contacto',exact:true}).click();await page.waitForURL(url=>url.pathname==='/login');
-   const next=new URL(page.url()).searchParams.get('next'),target=new URL(next,base);
-   check(target.pathname==='/me/marketplace'&&target.searchParams.get('eventId')==='900001'&&target.searchParams.get('tenant')==='consumer-qa'&&target.searchParams.get('action')==='marketplace'&&!target.searchParams.has('signature')&&!target.searchParams.has('cap'),`${label} authentication preserves safe catalogue context without capabilities`);
-   check(requests.length===unauthorizedStart+1,`${label} authentication redirect does not retry the request`);
-   mode='success';await reload();check(requests.length===unauthorizedStart+1,`${label} returning to catalogue does not automatically submit`);
-   record.scenarios.push({name:'authentication-return',requests:requests.slice(unauthorizedStart),next});
+   const loginEntry=route+'&signature=synthetic-do-not-carry&cap=synthetic-do-not-carry';
+   await page.goto(loginEntry,{waitUntil:'networkidle'});await catalog.waitFor();
+   mode='unauthorized';const unauthorizedStart=requests.length;
+   const contact=olive().getByRole('button',{name:'Solicitar contacto',exact:true});
+   await contact.click();
+   await catalog.getByRole('status').filter({hasText:'Tu sesión venció.'}).waitFor();
+   const login=catalog.getByRole('link',{name:'Volver a entrar',exact:true});
+   await login.waitFor();
+   await settleLayout();
+   const [expiredRequest]=requests.slice(unauthorizedStart);
+   check(page.url()===loginEntry&&await contact.isDisabled(),`${label} session expiry keeps the catalogue open and disables another request`);
+   check(requests.length===unauthorizedStart+1&&expiredRequest?.method==='POST'&&expiredRequest.id==='market-olive-qa'&&expiredRequest.status===401,`${label} session expiry follows exactly one rejected contact request`);
+   const origin=new URL(base).origin;
+   await Promise.all([page.waitForURL(url=>url.origin===origin&&url.pathname==='/login'),login.click()]);
+   const loginUrl=new URL(page.url()),next=loginUrl.searchParams.get('next'),target=new URL(next,base);
+   check(loginUrl.searchParams.get('consumer')==='1'&&target.origin===origin&&target.pathname==='/me/marketplace'
+    &&target.searchParams.get('fromTap')==='1'&&target.searchParams.get('eventId')==='900001'
+    &&target.searchParams.get('bid')==='LOT-WINE-QA'&&target.searchParams.get('tenant')==='consumer-qa'
+    &&target.searchParams.get('action')==='marketplace'
+    &&[...target.searchParams.keys()].sort().join(',')==='action,bid,eventId,fromTap,tenant',`${label} explicit authentication preserves only safe catalogue context`);
+   check(requests.length===unauthorizedStart+1,`${label} choosing to sign in does not retry the request`);
+   mode='success';await page.goto(target.href,{waitUntil:'networkidle'});await catalog.waitFor();
+   check(requests.length===unauthorizedStart+1,`${label} returning to catalogue does not automatically submit`);
+   record.scenarios.push({name:'authentication-return',explicitLogin:true,requests:requests.slice(unauthorizedStart),next});
    await page.goto(base+'/me/marketplace?tenant=qa-empty',{waitUntil:'networkidle'});
    check(await catalog.count()===0&&await page.getByText(/Todavía no hay productos publicados para este contexto/).count()===1,`${label} empty published catalogue does not invent promotional products`);
   }

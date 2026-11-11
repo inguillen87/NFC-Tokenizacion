@@ -34,19 +34,34 @@ export function MePortalInteractiveClient({ model }: { model: ConsumerHomeModel 
   const account = model.account.status === "ready" ? model.account.data : null;
   const contact = account?.contact || consumerAccountContact(null, null);
   const hasUnavailable = Object.values(model).some((source) => source.status === "unavailable");
+  const productCount = account?.products;
+  const readingCount = account?.taps;
+  const productsDetail = productCount == null ? "Volvé a tus fichas guardadas"
+    : productCount === 0 ? "Aún no guardaste productos"
+    : productCount === 1 ? "1 producto en tu cuenta" : `${productCount} productos en tu cuenta`;
+  const readingsDetail = readingCount == null ? "Volvé a una lectura anterior"
+    : readingCount === 0 ? "Aún no hay lecturas vinculadas"
+    : readingCount === 1 ? "1 lectura registrada" : `${readingCount} lecturas registradas`;
   return (
     <div className={styles.home} data-testid="consumer-home">
       <section className={styles.welcome} aria-labelledby="home-welcome-title">
-        <div className={styles.welcomeCopy}>
-          <span className={styles.eyebrow}>Un espacio para lo que elegís</span>
-          <h2 id="home-welcome-title">{account?.name ? `Hola, ${account.name}.` : "Tu cuenta"}</h2>
-          <p>La información de tus productos y tus vínculos con las marcas, siempre a mano.</p>
-          <Link prefetch={false} className={styles.primaryAction} href="/me/products">Ver mis productos<ArrowRight size={18} aria-hidden="true" /></Link>
-        </div>
+        <h2 id="home-welcome-title">{account?.name ? `Hola, ${account.name}.` : "Tu cuenta"}</h2>
         <nav className={styles.quickLinks} aria-label="Accesos de tu cuenta">
-          <Link href="/me/products" prefetch={false}><span className={styles.quickIcon}><Package size={22} aria-hidden="true" /></span><span><strong>Productos guardados</strong><small>{account?.products != null ? `${account.products} en tu cuenta` : "Tu colección de productos"}</small></span><ArrowRight size={18} aria-hidden="true" /></Link>
-          <Link href="/me/taps" prefetch={false}><span className={styles.quickIcon}><History size={22} aria-hidden="true" /></span><span><strong>Historial de lecturas</strong><small>{account?.taps != null ? `${account.taps} registradas en tu cuenta` : "Volvé a una lectura anterior"}</small></span><ArrowRight size={18} aria-hidden="true" /></Link>
-          <Link href="/me/rewards" prefetch={false}><span className={styles.quickIcon}><Gift size={22} aria-hidden="true" /></span><span><strong>Mis beneficios</strong><small>Consultá condiciones y vigencia</small></span><ArrowRight size={18} aria-hidden="true" /></Link>
+          <Link className={styles.quickPrimary} href="/me/products" prefetch={false}>
+            <span className={styles.quickIcon}><Package size={20} aria-hidden="true" /></span>
+            <span className={styles.quickLabel}><strong>Productos guardados</strong><small>{productsDetail}</small></span>
+            <ArrowRight className={styles.quickArrow} size={17} aria-hidden="true" />
+          </Link>
+          <Link href="/me/taps" prefetch={false}>
+            <span className={styles.quickIcon}><History size={20} aria-hidden="true" /></span>
+            <span className={styles.quickLabel}><strong>Historial de lecturas</strong><small>{readingsDetail}</small></span>
+            <ArrowRight className={styles.quickArrow} size={17} aria-hidden="true" />
+          </Link>
+          <Link href="/me/rewards" prefetch={false}>
+            <span className={styles.quickIcon}><Gift size={20} aria-hidden="true" /></span>
+            <span className={styles.quickLabel}><strong>Mis beneficios</strong><small>Condiciones y vigencia</small></span>
+            <ArrowRight className={styles.quickArrow} size={17} aria-hidden="true" />
+          </Link>
         </nav>
       </section>
 
