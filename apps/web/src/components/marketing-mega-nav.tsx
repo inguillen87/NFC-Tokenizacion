@@ -1,12 +1,12 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowRight, ChevronDown, ExternalLink, Menu, X } from "lucide-react";
 import { LocaleSwitcher, ThemeToggle, type Theme } from "@product/ui";
 import type { AppLocale } from "@product/config";
-import { BrandHomeLink } from "./brand-home-link";
+import { MarketingHeaderBrand } from "./marketing-header-brand";
 import { focusInitialPassportFragment } from "./passport-fragment-restoration";
 import { SUN_DEMO_GALLERY_HREF } from "../lib/sun-demo-links";
 import styles from "./marketing-mega-nav.module.css";
@@ -55,8 +55,8 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
       passport: "Demos by industry",
       about: "About us",
       account: "My account",
-      login: "Business sign in",
-      demo: "Book a demo",
+      login: "Business",
+      demo: "Try the demo",
       menu: "Open navigation",
       close: "Close navigation",
       groups: [
@@ -107,8 +107,8 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
         {
           id: "resources",
           label: "Resources",
-          eyebrow: "Go deeper without crowding the home",
-          description: "Commercial, technical and institutional material now has a clear place of its own.",
+          eyebrow: "Guides and support",
+          description: "Explore product guides and technical documentation, or talk to the nexID team.",
           featured: { label: "Talk to a specialist", description: "Review your use case and define the next useful step.", href: meetingHref, external: true },
           items: [
             { label: "About us", description: "Meet nexID, the Inmovar Latam ecosystem and its founder.", href: "/about" },
@@ -129,8 +129,8 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
       passport: "Demos por setor",
       about: "Quem somos",
       account: "Minha conta",
-      login: "Acesso para empresas",
-      demo: "Agendar demo",
+      login: "Empresas",
+      demo: "Experimentar demo",
       menu: "Abrir navegação",
       close: "Fechar navegação",
       groups: [
@@ -181,8 +181,8 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
         {
           id: "resources",
           label: "Recursos",
-          eyebrow: "Aprofunde sem sobrecarregar a home",
-          description: "O material comercial, técnico e institucional agora tem um lugar claro.",
+          eyebrow: "Guias e suporte",
+          description: "Consulte guias de uso e documentação técnica, ou fale com a equipe nexID.",
           featured: { label: "Falar com um especialista", description: "Revise seu caso e defina o próximo passo útil.", href: meetingHref, external: true },
           items: [
             { label: "Quem somos", description: "Conheça a nexID, o ecossistema Inmovar Latam e seu fundador.", href: "/about" },
@@ -202,8 +202,8 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
     passport: "Demos por rubro",
     about: "Quiénes somos",
     account: "Mi cuenta",
-    login: "Ingresar empresas",
-    demo: "Agendar demo",
+    login: "Empresas",
+    demo: "Probar demo",
     menu: "Abrir navegación",
     close: "Cerrar navegación",
     groups: [
@@ -254,8 +254,8 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
       {
         id: "resources",
         label: "Recursos",
-        eyebrow: "Profundizá sin cargar la portada",
-        description: "El material comercial, técnico e institucional ahora tiene un lugar claro y ordenado.",
+        eyebrow: "Guías y ayuda",
+        description: "Consultá guías de uso y documentación técnica, o hablá con el equipo de nexID.",
         featured: { label: "Hablar con un especialista", description: "Revisá tu caso y definí el próximo paso útil.", href: meetingHref, external: true },
         items: [
           { label: "Quiénes somos", description: "Conocé nexID, el ecosistema Inmovar Latam y a su fundador.", href: "/about" },
@@ -274,7 +274,7 @@ const navigationGroupPathPrefixes: Record<string, readonly string[]> = {
   solutions: ["/pricing"],
   industries: [],
   platform: ["/demo", "/demo-lab", "/proof", "/sun", "/offline", "/login", "/sdk"],
-  resources: ["/docs", "/stack", "/glossary", "/audiences", "/resellers"],
+  resources: ["/about", "/docs", "/stack", "/glossary", "/audiences", "/resellers"],
 };
 
 function isNavigationGroupCurrent(groupId: string, pathname: string) {
@@ -314,6 +314,8 @@ function MenuLink({ item, currentPath, featured = false, onNavigate }: { item: N
 export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, meetingHref }: MarketingMegaNavProps) {
   const pathname = usePathname();
   const copy = getNavigationCopy(locale, meetingHref);
+  const industries = copy.groups.find((group) => group.id === "industries");
+  const groups = copy.groups.filter((group) => group.id !== "industries");
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigationRef = useRef<HTMLDivElement>(null);
@@ -393,6 +395,76 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
 
   useEffect(() => () => {
     if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 1280px)");
+    let previousDesktop = desktop.matches;
+    let displacedFocus: HTMLElement | null = null;
+    let focusFrame = 0;
+
+    function isVisible(element: HTMLElement) {
+      return element.isConnected && element.getClientRects().length > 0 && getComputedStyle(element).visibility !== "hidden";
+    }
+
+    function clearPendingFocus() {
+      displacedFocus = null;
+      window.cancelAnimationFrame(focusFrame);
+    }
+
+    function onFocusOut(event: FocusEvent) {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || !navigationRef.current?.contains(target)) return;
+      if (event.relatedTarget !== null || isVisible(target)) {
+        // Removing the drawer can blur its last control while React commits.
+        // Real changes of destination cancel restoration through the focusin listener.
+        displacedFocus = null;
+        return;
+      }
+      // CSS can remove focus before the media-query change event is delivered.
+      // Retain only a control hidden by this pending layout change, never old focus.
+      displacedFocus = desktop.matches !== previousDesktop ? target : null;
+    }
+
+    function onPointerDown(event: PointerEvent) {
+      if (!(event.target instanceof Node) || !navigationRef.current?.contains(event.target)) clearPendingFocus();
+    }
+
+    function onBreakpointChange() {
+      const activeElement = document.activeElement;
+      const focusedElement = activeElement instanceof HTMLElement && navigationRef.current?.contains(activeElement)
+        ? activeElement
+        : activeElement === document.body ? displacedFocus : null;
+      displacedFocus = null;
+      previousDesktop = desktop.matches;
+      closeMobileMenu("navigate");
+      closeDesktopMenu();
+      window.cancelAnimationFrame(focusFrame);
+      if (!focusedElement) return;
+
+      // The available controls change with the layout. Keep an existing visible focus target.
+      focusFrame = window.requestAnimationFrame(() => {
+        if (!document.hasFocus()) return;
+        if (document.activeElement !== focusedElement && document.activeElement !== document.body) return;
+        if (isVisible(focusedElement)) return;
+        const target = desktop.matches ? groupButtonRefs.current.solutions : mobileTriggerRef.current;
+        if (target && isVisible(target)) target.focus({ preventScroll: true });
+      });
+    }
+
+    document.addEventListener("focusout", onFocusOut, true);
+    document.addEventListener("focusin", clearPendingFocus);
+    document.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("blur", clearPendingFocus);
+    desktop.addEventListener("change", onBreakpointChange);
+    return () => {
+      document.removeEventListener("focusout", onFocusOut, true);
+      document.removeEventListener("focusin", clearPendingFocus);
+      document.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("blur", clearPendingFocus);
+      desktop.removeEventListener("change", onBreakpointChange);
+      window.cancelAnimationFrame(focusFrame);
+    };
   }, []);
 
   useEffect(() => {
@@ -484,6 +556,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
   function openAndFocus(groupId: string) {
     openDesktopMenu(groupId, "click");
     window.requestAnimationFrame(() => {
+      if (document.activeElement !== groupButtonRefs.current[groupId]) return;
       document.querySelector<HTMLElement>(`[data-mega-nav-group="${groupId}"] [data-menu-link]`)?.focus();
     });
   }
@@ -491,76 +564,67 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
   return (
     <div ref={navigationRef} className={styles.navigation}>
       <nav className={styles.desktopNav} aria-label={copy.ariaLabel}>
-        <a href={SUN_DEMO_GALLERY_HREF} className={styles.navDirectLink} onClick={handleDemoNavigation} data-demo-entry="gallery">
-          {copy.passport}
-        </a>
-        {copy.groups.map((group) => {
+        {groups.map((group) => {
           const expanded = openMenu === group.id;
           const groupCurrent = isNavigationGroupCurrent(group.id, pathname);
           return (
-            <Fragment key={group.id}>
-              {group.id === "resources" ? (
-                <Link
-                  href="/about"
-                  prefetch={false}
-                  className={styles.navDirectLink}
-                  aria-current={pathname === "/about" ? "page" : undefined}
-                  onClick={closeDesktopMenu}
-                >
-                  {copy.about}
-                </Link>
-              ) : null}
-              <div
-                className={styles.navGroup}
-                data-mega-nav-group={group.id}
-                onPointerEnter={(event) => handleDesktopMenuEnter(event, group.id)}
-                onPointerLeave={scheduleDesktopMenuClose}
-                onFocus={cancelScheduledClose}
-                onBlur={(event) => {
-                  if (!event.currentTarget.contains(event.relatedTarget)) closeDesktopMenu();
+            <div
+              key={group.id}
+              className={styles.navGroup}
+              data-mega-nav-group={group.id}
+              onPointerEnter={(event) => handleDesktopMenuEnter(event, group.id)}
+              onPointerLeave={scheduleDesktopMenuClose}
+              onFocus={cancelScheduledClose}
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) closeDesktopMenu();
+              }}
+            >
+              <button
+                ref={(element) => {
+                  groupButtonRefs.current[group.id] = element;
+                }}
+                type="button"
+                className={styles.navGroupButton}
+                aria-expanded={expanded}
+                aria-current={groupCurrent ? "page" : undefined}
+                aria-haspopup="true"
+                aria-controls={`mega-menu-${group.id}`}
+                onClick={() => {
+                  if (expanded && openMenuSourceRef.current === "click") closeDesktopMenu();
+                  else openDesktopMenu(group.id, "click");
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    openAndFocus(group.id);
+                  }
                 }}
               >
-                <button
-                  ref={(element) => {
-                    groupButtonRefs.current[group.id] = element;
-                  }}
-                  type="button"
-                  className={styles.navGroupButton}
-                  aria-expanded={expanded}
-                  aria-current={groupCurrent ? "page" : undefined}
-                  aria-haspopup="true"
-                  aria-controls={`mega-menu-${group.id}`}
-                  onClick={() => {
-                    if (expanded && openMenuSourceRef.current === "click") closeDesktopMenu();
-                    else openDesktopMenu(group.id, "click");
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "ArrowDown") {
-                      event.preventDefault();
-                      openAndFocus(group.id);
-                    }
-                  }}
-                >
-                  {group.label}
-                  <ChevronDown aria-hidden="true" />
-                </button>
+                {group.label}
+                <ChevronDown aria-hidden="true" />
+              </button>
 
-                {expanded ? (
-                  <div id={`mega-menu-${group.id}`} className={styles.megaMenu}>
-                    <div className={styles.megaMenuIntro}>
-                      <span>{group.eyebrow}</span>
-                      <p>{group.description}</p>
-                      <MenuLink item={group.featured} currentPath={pathname} featured onNavigate={closeDesktopMenu} />
-                    </div>
-                    <div className={styles.megaMenuGrid}>
-                      {group.items.filter((item) => item.href !== "/about").map((item) => (
-                        <MenuLink key={`${group.id}-${item.href}`} item={item} currentPath={pathname} onNavigate={closeDesktopMenu} />
-                      ))}
-                    </div>
+              {expanded ? (
+                <div id={`mega-menu-${group.id}`} className={styles.megaMenu}>
+                  <div className={styles.megaMenuIntro}>
+                    <span>{group.eyebrow}</span>
+                    <p>{group.description}</p>
+                    <MenuLink item={group.featured} currentPath={pathname} featured onNavigate={closeDesktopMenu} />
                   </div>
-                ) : null}
-              </div>
-            </Fragment>
+                  <div className={styles.megaMenuGrid}>
+                    {group.items.map((item) => (
+                      <MenuLink key={`${group.id}-${item.href}`} item={item} currentPath={pathname} onNavigate={closeDesktopMenu} />
+                    ))}
+                    {group.id === "solutions" && industries && (
+                      <section className={styles.industryLinks} aria-label={industries.label}>
+                        <a href={SUN_DEMO_GALLERY_HREF} data-demo-entry="gallery" onClick={handleDemoNavigation}>{copy.passport} <ArrowRight aria-hidden="true" /></a>
+                        {industries.items.map((item) => <Link key={item.href} href={item.href} prefetch={false} onClick={closeDesktopMenu}>{item.label}</Link>)}
+                      </section>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
           );
         })}
       </nav>
@@ -581,13 +645,13 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
       </nav>
 
       <div className={styles.headerUtilities}>
-        <div className={styles.desktopUtility}><LocaleSwitcher value={locale} options={[...locales]} /></div>
-        <div className={styles.desktopUtility}><ThemeToggle initialTheme={initialTheme} locale={locale} /></div>
+        <div className={styles.desktopUtility}><LocaleSwitcher appearanceClass={styles.locale} value={locale} options={[...locales]} /></div>
+        <div className={styles.desktopUtility}><ThemeToggle appearanceClass={styles.theme} initialTheme={initialTheme} locale={locale} /></div>
         <Link href="/me" prefetch={false} className={styles.accountLink} data-consumer-entry="header" onClick={closeDesktopMenu}>
           {copy.account}
         </Link>
         <a href={loginHref} className={styles.loginLink}>{copy.login}</a>
-        <Link href="/?contact=demo#contact-modal" prefetch={false} className={styles.headerCta}>{copy.demo}</Link>
+        <Link href="/demo-lab" prefetch={false} className={styles.headerCta}>{copy.demo}</Link>
         <button
           ref={mobileTriggerRef}
           type="button"
@@ -608,14 +672,13 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
           <button type="button" tabIndex={-1} aria-hidden="true" className={styles.mobileScrim} onClick={() => closeMobileMenu()} />
           <div ref={mobileDialogRef} className={styles.mobileDialog} role="dialog" aria-modal="true" aria-label={copy.menu}>
             <div className={styles.mobileDialogHead}>
-              <BrandHomeLink
-                locale={locale}
-                size={46}
-                brandClassName="mobile-menu-brand"
-                className={styles.mobileDialogBrand}
-                onNavigate={() => closeMobileMenu("navigate")}
-              />
+              <MarketingHeaderBrand locale={locale} onNavigate={() => closeMobileMenu("navigate")} />
               <button ref={mobileCloseRef} type="button" aria-label={copy.close} onClick={() => closeMobileMenu()}><X aria-hidden="true" /></button>
+            </div>
+
+            <div className={styles.mobileActions}>
+              <a href={loginHref}>{copy.login}</a>
+              <Link href="/demo-lab" prefetch={false} onClick={() => closeMobileMenu("navigate")}>{copy.demo}</Link>
             </div>
 
             <div className={styles.mobileGroups}>
@@ -637,7 +700,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
                 <span>{copy.about}</span>
                 <ArrowRight aria-hidden="true" />
               </Link>
-              {copy.groups.map((group, index) => (
+              {groups.map((group, index) => (
                 <details key={group.id} open={index === 0} className={styles.mobileGroup}>
                   <summary>
                     <span><strong>{group.label}</strong><small>{group.eyebrow}</small></span>
@@ -647,6 +710,12 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
                     {group.items.filter((item) => item.href !== "/about").map((item) => (
                       <MenuLink key={`${group.id}-mobile-${item.href}`} item={item} currentPath={pathname} onNavigate={() => closeMobileMenu("navigate")} />
                     ))}
+                    {group.id === "solutions" && industries && (
+                      <section className={styles.industryLinks} aria-label={industries.label}>
+                        <strong>{industries.label}</strong>
+                        {industries.items.map((item) => <Link key={item.href} href={item.href} prefetch={false} onClick={() => closeMobileMenu("navigate")}>{item.label}</Link>)}
+                      </section>
+                    )}
                     <MenuLink item={group.featured} currentPath={pathname} featured onNavigate={() => closeMobileMenu("navigate")} />
                   </div>
                 </details>
@@ -654,12 +723,8 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
             </div>
 
             <div className={styles.mobileUtilities}>
-              <LocaleSwitcher value={locale} options={[...locales]} />
-              <ThemeToggle initialTheme={initialTheme} locale={locale} />
-            </div>
-            <div className={styles.mobileActions}>
-              <a href={loginHref}>{copy.login}</a>
-              <Link href="/?contact=demo#contact-modal" prefetch={false} onClick={() => closeMobileMenu("navigate")}>{copy.demo}</Link>
+              <LocaleSwitcher appearanceClass={styles.locale} value={locale} options={[...locales]} />
+              <ThemeToggle appearanceClass={styles.theme} initialTheme={initialTheme} locale={locale} />
             </div>
           </div>
         </div>

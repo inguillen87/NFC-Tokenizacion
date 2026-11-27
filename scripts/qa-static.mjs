@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { checkWebCssBudget, WEB_CSS_SOURCE } from "./web-css-budget.mjs";
 
 const repoRoot = process.cwd();
 const targetRoots = [
@@ -110,6 +111,17 @@ function scanInteractiveLabels(filePath, content) {
   }
 }
 
+try {
+  const cssBudget = checkWebCssBudget(repoRoot);
+  console.log("Web CSS budget: " + JSON.stringify(cssBudget.metrics));
+  for (const issue of cssBudget.growth) {
+    addViolation(path.join(repoRoot, WEB_CSS_SOURCE), `css-budget:${issue.metric}`,
+      `${issue.actual} exceeds ${issue.limit} by ${issue.growth}; remove CSS growth or review a lower baseline`);
+  }
+} catch (error) {
+  addViolation(path.join(repoRoot, WEB_CSS_SOURCE), "css-budget:invalid", error.message);
+}
+
 for (const root of targetRoots) {
   if (!fs.existsSync(root)) continue;
   const files = collectFiles(root);
@@ -135,11 +147,11 @@ for (const root of targetRoots) {
 }
 
 if (violations.length) {
-  console.error("Static QA failed. Found dead/fake UI patterns:\n");
+  console.error("Static QA failed. Found violations:\n");
   for (const issue of violations) {
     console.error(`- ${issue.filePath} :: ${issue.rule} :: ${issue.details}`);
   }
   process.exit(1);
 }
 
-console.log("Static QA passed: no dead buttons, fake flows, or unsafe placeholders detected.");
+console.log("Static QA passed: Web CSS stays within budget; no dead buttons, fake flows, or unsafe placeholders detected.");

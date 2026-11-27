@@ -77,7 +77,7 @@ async function connect(url,{timeoutMs=10000}={}) {
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
 function state() {
-  const roots={logo:document.querySelector('header [data-brand-home-link][data-brand-motion]'),hero:document.querySelector('.hero-immersive-media')};
+  const roots={logo:document.querySelector('header a[data-brand-home-link]'),hero:document.querySelector('.hero-immersive-media')};
   const inspect=root=>{
     if(!root)return null;
     const rect=root.getBoundingClientRect(),styles=[root,...root.querySelectorAll('*')].map(element=>{const cs=getComputedStyle(element);let svgMatrix=null;if(element instanceof SVGGraphicsElement&&element.querySelector(':scope > animateTransform')){const matrix=element.getCTM();if(matrix)svgMatrix=['a','b','c','d','e','f'].map(key=>Number(matrix[key].toFixed(4)));}return{class:element.getAttribute('class'),transform:cs.transform,opacity:cs.opacity,boxShadow:cs.boxShadow,strokeDashoffset:cs.strokeDashoffset,svgMatrix};});
@@ -91,9 +91,19 @@ function state() {
 }
 
 function productReady() {
-  const image=document.querySelector('.hero-immersive-media img');
-  return Boolean(document.readyState==='complete'&&image?.complete&&image.naturalWidth>0
-    &&document.querySelector('header [data-brand-motion-active="true"]'));
+  const logo = document.querySelector('header a[data-brand-home-link]');
+  const hero = document.querySelector('.hero-immersive-media');
+  const image = hero?.querySelector('img');
+  const inView = element => {
+    const rect = element?.getBoundingClientRect();
+    return Boolean(rect && rect.width > 0 && rect.height > 0 && rect.right > 0
+      && rect.left < innerWidth && rect.bottom > 0 && rect.top < innerHeight
+      && getComputedStyle(element).visibility === 'visible');
+  };
+  return document.readyState === 'complete' && !document.hidden && document.fonts.status === 'loaded'
+    && inView(logo) && inView(hero) && inView(image) && image.complete && image.naturalWidth > 0
+    && Boolean(logo.querySelector('[data-identity-variant="static"]')) && !logo.closest('[data-entering]')
+    && Boolean(hero.querySelector('.hero-immersive-signal[data-motion-mode="ready"][data-motion-active="true"]'));
 }
 
 export function validateNativeExpressions() {
@@ -193,10 +203,10 @@ export async function verifyNativeBrandHeroHidden({chromiumExecutable,origin,out
         for(let attempt=0;attempt<100;attempt++){
           if(await evaluate(probeOnly?expressions.blankReady:expressions.productReady)){ready=true;break;}await delay(100);
         }
-        if(!ready)throw Error('native_product_render_timeout');await delay(600);
+        if(!ready)throw Error('native_product_render_timeout');
         const before=await sample();await delay(500);const moving=await sample();
         check(!before.hidden&&before.visibilityState==='visible','Native page initially visible '+theme,{state:before.visibilityState});
-        if(!probeOnly){check(before.logo?.visible&&before.logo.visualSignature!==moving.logo?.visualSignature,'Native logo moves before hiding '+theme);check(before.hero?.visible&&before.hero.visualSignature!==moving.hero?.visualSignature,'Native hero moves before hiding '+theme);}
+        if(!probeOnly){check(before.logo?.visible&&before.logo.visualSignature===moving.logo?.visualSignature&&moving.logo.loops.length===0,'Native settled logo stays still before hiding '+theme);check(before.hero?.visible&&before.hero.visualSignature!==moving.hero?.visualSignature,'Native hero moves before hiding '+theme);}
         // Native tab selection works in Xvfb without a window manager and does
         // not introduce a focus/visibility emulation override.
         const covering=await browser.send('Target.createTarget',{url:'about:blank',browserContextId:context.browserContextId,newWindow:false,background:false});
@@ -217,7 +227,7 @@ export async function verifyNativeBrandHeroHidden({chromiumExecutable,origin,out
         await browser.send('Target.activateTarget',{targetId:target.targetId});await browser.send('Target.closeTarget',{targetId:covering.targetId});await delay(400);
         const returned=await sample();await delay(500);const resumed=await sample();
         check(!returned.hidden&&returned.visibilityState==='visible'&&returned.events.includes('visible'),'Native restored window produces real visible event '+theme,{state:returned.visibilityState,events:returned.events});
-        if(!probeOnly){check(returned.logo?.visualSignature!==resumed.logo?.visualSignature,'Native logo resumes after return '+theme);check(returned.hero?.visualSignature!==resumed.hero?.visualSignature,'Native hero resumes after return '+theme);}
+        if(!probeOnly){check(returned.logo?.visible&&returned.logo.visualSignature===resumed.logo?.visualSignature&&resumed.logo.loops.length===0,'Native logo stays still after return '+theme);check(returned.hero?.visualSignature!==resumed.hero?.visualSignature,'Native hero resumes after return '+theme);}
         check(resumed.geoRequests===0,'Native probe does not request GPS '+theme);
         observations.push({theme,width:1440,hideMethod:'native tab activation in the same incognito window',before,moving,hidden,stillHidden,returned,resumed});
       }finally{page?.close();await browser.send('Target.disposeBrowserContext',{browserContextId:context.browserContextId});}

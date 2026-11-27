@@ -10,7 +10,7 @@ test("unified release preserves the approved clean home composition", async () =
   ]);
 
   assert.match(layout, /nexID \| Pasaporte digital de producto y trazabilidad/);
-  assert.match(home, /className=\{`site-header landing-mega-header/);
+  assert.match(home, /<header className=\{headerStyles\.header\}/);
   assert.match(home, /<HeroSection content=\{content\} locale=\{locale\} \/>/);
   assert.match(home, /<SimpleTrustFlowSection locale=\{locale\} \/>/);
   assert.match(home, /<CommercialValueSection locale=\{locale\} \/>/);

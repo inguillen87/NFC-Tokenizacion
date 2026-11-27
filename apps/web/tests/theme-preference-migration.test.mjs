@@ -74,7 +74,7 @@ test("white-first theme migration ignores legacy dark cookies exactly once", asy
     assert.doesNotMatch(config, /darkMode:\s*"media"/);
   }
 
-  assert.match(localeSwitcher, /className="locale-switcher__option"/);
+  assert.match(localeSwitcher, /className=\{appearanceClass \? undefined : "locale-switcher__option"\}/);
   assert.doesNotMatch(localeSwitcher, /style=\{\{\s*backgroundColor/);
   assert.doesNotMatch(localeSwitcher, /className="bg-slate-950/);
 });
