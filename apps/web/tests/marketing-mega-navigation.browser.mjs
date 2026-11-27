@@ -341,17 +341,18 @@ async function breakpointQueryParity(page) {
    return matches[0];
   }
   const queries={desktop:[desktopQuery],compact:displayQueries(desktopNavigation,'none'),compactRow:displayQueries(compactNavigation,'flex')};
-  const frame=document.createElement('iframe');
-  frame.title='Breakpoint media-query probe';
-  frame.tabIndex=-1;
-  frame.setAttribute('aria-hidden','true');
-  frame.style.cssText='position:fixed;left:-10000px;top:0;height:40px;border:0;visibility:hidden';
-  document.body.append(frame);
   const cases=[];
-  try {
-   for(const width of [767,767.5,768,1279,1279.5,1280,1280.5]) {
-    frame.style.width=`${width}px`;
-    await new Promise(resolve=>requestAnimationFrame(resolve));
+  for(const width of [767,767.5,768,1279,1279.5,1280,1280.5]) {
+   // Size each independent probe before attaching it. Reusing a live iframe
+   // can report the preceding width while Chromium updates its child viewport.
+   const frame=document.createElement('iframe');
+   frame.title='Breakpoint media-query probe';
+   frame.tabIndex=-1;
+   frame.setAttribute('aria-hidden','true');
+   frame.style.cssText=`position:fixed;left:-10000px;top:0;width:${width}px;height:40px;border:0;visibility:hidden;transition:none`;
+   document.body.append(frame);
+   try {
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     const actual=Object.fromEntries(Object.entries(queries).map(([name,conditions])=>[name,conditions.every(query=>frame.contentWindow.matchMedia(query).matches)]));
     const actualWidth=frame.getBoundingClientRect().width;
     const nativeViewportWidth=frame.contentWindow.innerWidth;
@@ -362,9 +363,9 @@ async function breakpointQueryParity(page) {
     cases.push({width,actualWidth,nativeViewportWidth,expected,actual,
      passed:Math.abs(actualWidth-width)<0.01&&actual.desktop!==actual.compact
       &&(!expected||Object.entries(expected).every(([key,value])=>actual[key]===value))});
-   }
-   return{queries,cases,passed:cases.every(entry=>entry.passed)};
-  } finally { frame.remove(); }
+   } finally { frame.remove(); }
+  }
+  return{queries,cases,passed:cases.every(entry=>entry.passed)};
  },desktopBreakpointQuery);
 }
 
