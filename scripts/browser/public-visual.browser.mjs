@@ -101,11 +101,19 @@ async function menu(page, name, allowSunDestination) {
     await page.evaluate(()=>scrollTo(0,0)); await stable(page);
     return true;
   } else {
-    for(const group of ['solutions','industries','platform','resources']) {
+    for(const group of ['solutions','platform','resources']) {
       const button=page.locator(`[data-mega-nav-group="${group}"] > button`); await button.focus(); await page.keyboard.press('ArrowDown'); await stable(page);
       const panel=page.locator('#mega-menu-'+group);
       check(await panel.isVisible()&&await button.getAttribute('aria-expanded')==='true','ArrowDown opens desktop '+group+' '+name);
       check(await panel.evaluate(e=>e.contains(document.activeElement)),'Desktop menu focuses its first link '+group+' '+name);
+      if (group === 'solutions') {
+        const industries = panel.getByRole('region', {name:'Industrias', exact:true});
+        check(await industries.isVisible() && await industries.locator('a[data-demo-entry="gallery"]').getAttribute('href') === '/sun',
+          'Solutions exposes the industry gallery '+name);
+        for (const href of ['/demo-lab?vertical=wine', '/demo-lab?vertical=seeds']) {
+          check(await industries.locator(`a[href="${href}"]`).isVisible(), 'Industry destination remains available '+href+' '+name);
+        }
+      }
       await audit(page,null,'open desktop '+group+' '+name);
       await page.keyboard.press('Escape'); await stable(page);
       check(await button.evaluate(e=>e===document.activeElement)&&await button.getAttribute('aria-expanded')==='false','Desktop Escape restores trigger '+group+' '+name);
