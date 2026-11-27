@@ -44,7 +44,8 @@ async function checkPortalDestinations(page,width,theme) {
     await nav.locator('a[href="'+href+'"][aria-current="page"]').waitFor();
     check(await nav.locator('[aria-current="page"]').count()===1 && await home.getAttribute('aria-current')===null,width+'/'+theme+' only '+name+' is current');
   }
-  await page.getByRole('heading',{level:1,name:'Catálogo de la marca',exact:true}).waitFor();
+  await page.getByRole('heading',{level:1,name:'Catálogo general',exact:true}).waitFor();
+  check(await page.getByTestId('consumer-catalog-partial').isVisible(),width+'/'+theme+' unscoped product fixture explains the general catalogue');
   const bounds=await nav.evaluate(el=>{
     const rect=el.getBoundingClientRect(), main=document.querySelector('#consumer-portal-content').getBoundingClientRect();
     return {mobile:rect.bottom<=innerHeight+1&&Math.abs(rect.bottom-innerHeight)<=1,
