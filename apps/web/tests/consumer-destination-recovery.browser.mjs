@@ -230,7 +230,7 @@ async function portalZoomReflow(page,name,requireSingleLine=false){
  const geometry=await page.evaluate(()=>{
   const box=e=>e?.getBoundingClientRect(),visible=e=>{if(!e)return false;const s=getComputedStyle(e),r=box(e);return s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity)>0&&r.width>0&&r.height>0;};
   const logo=document.querySelector('header [class*="brandArea"] a'),controls=document.querySelector('[aria-label="Apariencia y sesión"]'),a=box(logo),b=box(controls);
-  const items=[...(document.querySelector('nav.consumer-bottom-nav > div')?.children??[])],names=['Inicio','Productos','Historial','Beneficios','Más'];
+  const items=[...(document.querySelector('nav.consumer-bottom-nav > div')?.children??[])],names=['Productos','Historial','Beneficios','Catálogo','Más'];
   const labels=items.map((item,index)=>{
    const label=item.querySelector(':scope > span:first-of-type'),r=box(item);
    if(!label||!visible(label)||label.textContent.trim()!==names[index])return{within:false,touch:false,singleLine:false};
@@ -336,12 +336,12 @@ async function securityNavigation(width,theme){
    if(!header||!main||!heading||!root||!dock)throw Error('Owned portal heading or navigation unavailable');
    const box=element=>{const r=element.getBoundingClientRect();return{top:r.top,bottom:r.bottom,height:r.height,left:r.left,right:r.right};};
    const headerPosition=getComputedStyle(header).position,dockPosition=getComputedStyle(dock).position;
-   return{header:box(header),dock:box(dock),headerPosition,dockPosition,desktop:matchMedia('(min-width: 64rem)').matches,main:box(main),heading:box(heading),innerWidth,clientWidth:document.documentElement.clientWidth,innerHeight,scrollY,mainFocused:document.activeElement===main,headerOffset:root.style.getPropertyValue('--portal-header-block-size'),scrollMargin:getComputedStyle(main).scrollMarginBlockStart};
+   return{header:box(header),dock:box(dock),headerPosition,dockPosition,desktop:matchMedia('(min-width: 64rem)').matches,sideRail:matchMedia('(min-width: 80rem)').matches,main:box(main),heading:box(heading),innerWidth,clientWidth:document.documentElement.clientWidth,innerHeight,scrollY,mainFocused:document.activeElement===main,headerOffset:root.style.getPropertyValue('--portal-header-block-size'),scrollMargin:getComputedStyle(main).scrollMarginBlockStart};
   });
   const visibleTop=Math.max(0,measured.header.bottom);
   const visibleBottom=measured.dockPosition==='fixed'?Math.min(measured.innerHeight,measured.dock.top):measured.innerHeight;
   report.securityNavigation??=[];report.securityNavigation.push({width,theme,phase,...measured,visibleTop,visibleBottom});
-  check(measured.headerPosition===(measured.desktop?'sticky':'static')&&measured.dockPosition===(measured.desktop?'static':'fixed'),name+'/'+phase+': persistent navigation matches the viewport layout');
+  check(measured.headerPosition===(measured.desktop?'sticky':'static')&&measured.dockPosition===(measured.sideRail?'absolute':measured.desktop?'static':'fixed'),name+'/'+phase+': persistent navigation matches the viewport layout');
   check(measured.heading.top>=visibleTop-1&&measured.heading.bottom<=visibleBottom+1&&measured.heading.left>=-1&&measured.heading.right<=measured.clientWidth+1,name+'/'+phase+': complete account heading stays in the visible area between header and navigation');
   if(phase!=='next-link')check(measured.mainFocused,name+'/'+phase+': skip link moves keyboard focus to main content');
  };
