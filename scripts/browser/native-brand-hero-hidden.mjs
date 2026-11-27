@@ -78,7 +78,7 @@ const idle=item=>item&&item.loops.length===0&&item.smil.every(svg=>!svg.indefini
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
 function state() {
-  const roots={logo:document.querySelector('header [data-brand-home-link][data-brand-motion]'),hero:document.querySelector('section[aria-labelledby="home-title"] img')};
+  const roots={logo:document.querySelector('header a[data-brand-home-link]'),hero:document.querySelector('section[aria-labelledby="home-title"] img')};
   const inspect=root=>{
     if(!root)return null;
     const rect=root.getBoundingClientRect(),styles=[root,...root.querySelectorAll('*')].map(element=>{const cs=getComputedStyle(element);let svgMatrix=null;if(element instanceof SVGGraphicsElement&&element.querySelector(':scope > animateTransform')){const matrix=element.getCTM();if(matrix)svgMatrix=['a','b','c','d','e','f'].map(key=>Number(matrix[key].toFixed(4)));}return{class:element.getAttribute('class'),transform:cs.transform,opacity:cs.opacity,boxShadow:cs.boxShadow,strokeDashoffset:cs.strokeDashoffset,svgMatrix};});
@@ -94,7 +94,7 @@ function state() {
 function productReady() {
   const image=document.querySelector('section[aria-labelledby="home-title"] img');
   return Boolean(document.readyState==='complete'&&image?.complete&&image.naturalWidth>0
-    &&document.querySelector('header [data-brand-motion-active="true"]'));
+    &&document.querySelector('header a[data-brand-home-link] [data-identity-variant="static"]'));
 }
 
 export function validateNativeExpressions() {
@@ -197,7 +197,10 @@ export async function verifyNativeBrandHeroHidden({chromiumExecutable,origin,out
         if(!ready)throw Error('native_product_render_timeout');await delay(600);
         const before=await sample();await delay(500);const moving=await sample();
         check(!before.hidden&&before.visibilityState==='visible','Native page initially visible '+theme,{state:before.visibilityState});
-        if(!probeOnly){check(before.logo?.visible&&before.logo.visualSignature!==moving.logo?.visualSignature,'Native logo moves before hiding '+theme);check(before.hero?.visible&&idle(before.hero)&&before.hero.visualSignature===moving.hero?.visualSignature,'Native editorial image is visible and still before hiding '+theme);}
+        if(!probeOnly){
+          check(before.logo?.visible&&before.logo.visualSignature===moving.logo?.visualSignature&&moving.logo.loops.length===0,'Native settled logo stays still before hiding '+theme);
+          check(before.hero?.visible&&idle(before.hero)&&before.hero.visualSignature===moving.hero?.visualSignature,'Native editorial image is visible and still before hiding '+theme);
+        }
         // Native tab selection works in Xvfb without a window manager and does
         // not introduce a focus/visibility emulation override.
         const covering=await browser.send('Target.createTarget',{url:'about:blank',browserContextId:context.browserContextId,newWindow:false,background:false});
@@ -217,7 +220,10 @@ export async function verifyNativeBrandHeroHidden({chromiumExecutable,origin,out
         await browser.send('Target.activateTarget',{targetId:target.targetId});await browser.send('Target.closeTarget',{targetId:covering.targetId});await delay(400);
         const returned=await sample();await delay(500);const resumed=await sample();
         check(!returned.hidden&&returned.visibilityState==='visible'&&returned.events.includes('visible'),'Native restored window produces real visible event '+theme,{state:returned.visibilityState,events:returned.events});
-        if(!probeOnly){check(returned.logo?.visualSignature!==resumed.logo?.visualSignature,'Native logo resumes after return '+theme);check(returned.hero?.visible&&idle(returned.hero)&&returned.hero.visualSignature===resumed.hero?.visualSignature,'Native editorial image stays visible and still on return '+theme);}
+        if(!probeOnly){
+          check(returned.logo?.visible&&returned.logo.visualSignature===resumed.logo?.visualSignature&&resumed.logo.loops.length===0,'Native logo stays still after return '+theme);
+          check(returned.hero?.visible&&idle(returned.hero)&&returned.hero.visualSignature===resumed.hero?.visualSignature,'Native editorial image stays visible and still on return '+theme);
+        }
         check(resumed.geoRequests===0,'Native probe does not request GPS '+theme);
         observations.push({theme,width:1440,hideMethod:'native tab activation in the same incognito window',before,moving,hidden,stillHidden,returned,resumed});
       }finally{page?.close();await browser.send('Target.disposeBrowserContext',{browserContextId:context.browserContextId});}

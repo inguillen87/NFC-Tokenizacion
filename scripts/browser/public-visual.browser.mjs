@@ -101,11 +101,19 @@ async function menu(page, name, allowSunDestination) {
     await page.evaluate(()=>scrollTo(0,0)); await stable(page);
     return true;
   } else {
-    for(const group of ['solutions','industries','platform','resources']) {
+    for(const group of ['solutions','platform','resources']) {
       const button=page.locator(`[data-mega-nav-group="${group}"] > button`); await button.focus(); await page.keyboard.press('ArrowDown'); await stable(page);
       const panel=page.locator('#mega-menu-'+group);
       check(await panel.isVisible()&&await button.getAttribute('aria-expanded')==='true','ArrowDown opens desktop '+group+' '+name);
       check(await panel.evaluate(e=>e.contains(document.activeElement)),'Desktop menu focuses its first link '+group+' '+name);
+      if (group === 'solutions') {
+        const industries = panel.getByRole('region', {name:'Industrias', exact:true});
+        check(await industries.isVisible() && await industries.locator('a[data-demo-entry="gallery"]').getAttribute('href') === '/sun',
+          'Solutions exposes the industry gallery '+name);
+        for (const href of ['/demo-lab?vertical=wine', '/demo-lab?vertical=seeds']) {
+          check(await industries.locator(`a[href="${href}"]`).isVisible(), 'Industry destination remains available '+href+' '+name);
+        }
+      }
       await audit(page,null,'open desktop '+group+' '+name);
       await page.keyboard.press('Escape'); await stable(page);
       check(await button.evaluate(e=>e===document.activeElement)&&await button.getAttribute('aria-expanded')==='false','Desktop Escape restores trigger '+group+' '+name);
@@ -195,7 +203,9 @@ try {
         const focus=await page.evaluate(()=>{const cs=getComputedStyle(document.activeElement);return{tag:document.activeElement.tagName,outlineStyle:cs.outlineStyle,outlineWidth:parseFloat(cs.outlineWidth),boxShadow:cs.boxShadow};});
         check(focus.outlineStyle!=='none'&&focus.outlineWidth>=2||focus.boxShadow!=='none','Hero keyboard focus indicator is visible '+name,focus);
         await primary.focus();await page.keyboard.press('Enter');await page.waitForURL(origin+'/demo-lab');await stable(page);
-        check(await page.locator('main h1').isVisible(),'Keyboard primary CTA reaches Demo Lab '+name);
+        const hubHeading=page.getByRole('heading',{name:'Demo Lab',exact:true,level:1});
+        await hubHeading.waitFor();
+        check(await hubHeading.isVisible(),'Keyboard primary CTA reaches Demo Lab '+name);
         await page.goto(origin+'/',{waitUntil:'networkidle',timeout:45000});await stable(page);
         const valle=page.locator('#como-funciona a[data-demo-entry="valle-secreto"]');
         check(await valle.getAttribute('href')===VALLE_DEMO_HREF,'Wine journey offers the explicit closed Valle demo '+name);
