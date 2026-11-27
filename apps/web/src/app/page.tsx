@@ -6,7 +6,7 @@ import {
   SimpleTrustFlowSection,
   CommercialValueSection,
 } from "../components/home-sections";
-import { AudienceSection, ReadingOutcomesSection } from "../components/home-extra-sections";
+import { AudienceSection, ControlCenterSection, ReadingOutcomesSection } from "../components/home-extra-sections";
 import { LandingMotion, LandingScrollProgress } from "../components/landing-motion";
 import { BrandHomeLink } from "../components/brand-home-link";
 import { MarketingHeaderBrand } from "../components/marketing-header-brand";
@@ -135,6 +135,7 @@ export default async function HomePage() {
           <ReadingOutcomesSection locale={locale} />
           <AudienceSection locale={locale} loginHref={loginHref} />
           <CommercialValueSection locale={locale} />
+          <ControlCenterSection locale={locale} />
         </ConnectedProductIndustryProvider>
         <CommercialContactModal initialLocale={locale} />
       </main>

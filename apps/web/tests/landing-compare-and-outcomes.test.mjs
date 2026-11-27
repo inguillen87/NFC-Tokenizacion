@@ -41,3 +41,10 @@ test("the home explains the three reading outcomes with curated demo scenarios",
   assert.match(sections, /<Link href="\/compare" prefetch=\{false\}/);
   assert.match(home, /<ReadingOutcomesSection locale=\{locale\} \/>\s*<AudienceSection/);
 });
+
+test("the home brings back the interactive brand panel, labelled as sample data", () => {
+  assert.match(sections, /export function ControlCenterSection/);
+  assert.match(sections, /<BrandControlCenterPreview locale=\{locale\} \/>/);
+  assert.match(sections, /Todo en este panel son datos ilustrativos de muestra/);
+  assert.match(home, /<CommercialValueSection locale=\{locale\} \/>\s*<ControlCenterSection locale=\{locale\} \/>/);
+});

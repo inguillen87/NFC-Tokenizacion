@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, Building2, CircleHelp, LockOpen, UserRound } from "lucide-react";
 import { sunDemoScenarioHref } from "../lib/sun-demo-links";
+import { BrandControlCenterPreview } from "./brand-control-center-preview";
 import fx from "./home-enhancements.module.css";
 
 export function ReadingOutcomesSection({ locale }: { locale: string }) {
@@ -119,6 +120,29 @@ export function AudienceSection({ locale, loginHref }: { locale: string; loginHr
           <a href={loginHref} className={fx.audienceSecondary}>{copy.login}</a>
         </div>
       </article>
+    </section>
+  );
+}
+
+export function ControlCenterSection({ locale }: { locale: string }) {
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
+  const copy = isEn
+    ? { eyebrow: "For brands · try it here", title: "Set up a sample passport and watch it change.", body: "Link a product, choose what to show, enable services and review the activity. Everything in this panel is illustrative sample data." }
+    : isBr
+      ? { eyebrow: "Para marcas · teste aqui", title: "Configure um passaporte de amostra e veja como muda.", body: "Vincule um produto, escolha o que mostrar, habilite serviços e revise a atividade. Tudo neste painel são dados ilustrativos de amostra." }
+      : { eyebrow: "Para marcas · probalo acá", title: "Configurá un pasaporte de muestra y mirá cómo cambia.", body: "Vinculá un producto, elegí qué mostrar, habilitá servicios y revisá la actividad. Todo en este panel son datos ilustrativos de muestra." };
+
+  return (
+    <section className={`container-shell ${fx.outcomes} ${fx.controlCenter}`} aria-labelledby="home-control-center" data-home-control-center>
+      <header className={`${fx.outcomesIntro} ${fx.reveal}`} data-reveal>
+        <p className={fx.audienceLabel}>{copy.eyebrow}</p>
+        <h2 id="home-control-center">{copy.title}</h2>
+        <p>{copy.body}</p>
+      </header>
+      <div className={`${fx.controlCenterStage} ${fx.reveal}`} data-reveal>
+        <BrandControlCenterPreview locale={locale} />
+      </div>
     </section>
   );
 }

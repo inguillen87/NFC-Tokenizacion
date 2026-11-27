@@ -365,6 +365,10 @@
 :global(html[data-theme="dark"]) .outcomeCard[data-tone="warn"] { --tone: #f2b84b; --tone-soft: rgb(242 184 75 / 0.16); }
 :global(html[data-theme="dark"]) .outcomeCard[data-tone="risk"] { --tone: #ff8a80; --tone-soft: rgb(255 138 128 / 0.15); }
 
+/* ---------- Brand control centre ---------- */
+.controlCenter { padding-bottom: clamp(2.5rem, 6vw, 4.5rem); }
+.controlCenterStage { margin-top: clamp(1.5rem, 3.5vw, 2.5rem); }
+
 /* ---------- Small screens ---------- */
 @media (max-width: 760px) {
   .aurora span { width: 70vmax; filter: blur(54px); }
