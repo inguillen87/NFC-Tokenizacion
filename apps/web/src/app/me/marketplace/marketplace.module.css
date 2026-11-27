@@ -1,6 +1,8 @@
 .catalog {
   color: var(--portal-text, #132e40);
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  overflow-wrap: anywhere;
   gap: 1.5rem;
   min-width: 0;
 }

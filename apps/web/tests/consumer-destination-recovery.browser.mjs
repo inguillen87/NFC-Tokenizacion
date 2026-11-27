@@ -119,7 +119,7 @@ async function portalZoomReflow(page,name){
  const geometry=await page.evaluate(()=>{
   const box=e=>e?.getBoundingClientRect(),visible=e=>{if(!e)return false;const s=getComputedStyle(e),r=box(e);return s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity)>0&&r.width>0&&r.height>0;};
   const logo=document.querySelector('header [class*="brandArea"] a'),controls=document.querySelector('[aria-label="Apariencia y sesión"]'),a=box(logo),b=box(controls);
-  const items=[...(document.querySelector('nav.consumer-bottom-nav > div')?.children??[])],names=['Inicio','Productos','Historial','Beneficios','Más'];
+  const items=[...(document.querySelector('nav.consumer-bottom-nav > div')?.children??[])],names=['Productos','Historial','Beneficios','Catálogo','Más'];
   const labels=items.map((item,index)=>{const label=item.querySelector(':scope > span:first-of-type'),r=box(item);if(!label||!visible(label)||label.textContent.trim()!==names[index])return{visible:false,within:false,touch:false};const range=document.createRange();range.selectNodeContents(label);const rects=[...range.getClientRects()].filter(x=>x.width>0&&x.height>0);range.detach();return{visible:true,within:rects.length>0&&rects.every(x=>x.left>=r.left-1&&x.right<=r.right+1&&x.top>=r.top-1&&x.bottom<=r.bottom+1),touch:r.width>=44&&r.height>=44};});
   return{visible:visible(logo)&&visible(controls),separate:Boolean(a&&b&&(a.right<=b.left+1||b.right<=a.left+1||a.bottom<=b.top+1||b.bottom<=a.top+1)),labels:labels.length===5&&labels.every(x=>x.visible&&x.within),touch:labels.length===5&&labels.every(x=>x.touch)};
  });
@@ -199,6 +199,30 @@ async function experienceRejected(width,theme,status){
   await assess(page,'[data-testid="consumer-experiences"]',name,width,theme);await page.evaluate(()=>Promise.all(window.__destinationDeliveries));
  }finally{release();await context.close();}
 }
+async function catalogScope(theme) {
+ const cases = [
+  {query:'', scenario:'empty', title:'Catálogo general', apiQuery:''},
+  {query:'', scenario:'products-unavailable', title:'Catálogo general', apiQuery:'', partial:true},
+  {query:'?tenant=loading-qa', scenario:'ready', title:'Catálogo de la marca', apiQuery:'?tenant=loading-qa'},
+  {query:'?fromTap=1&action=marketplace&eventId=900001&tenant=other-brand', scenario:'ready', title:'Catálogo de la marca', apiQuery:'?tenant=loading-qa'},
+  {query:'?fromTap=1&action=marketplace', scenario:'ready', title:'Catálogo de la marca', apiQuery:null},
+ ];
+ for (const item of cases) {
+  const {context,page}=await open(390,theme,item.scenario);
+  const start=fixture.requests.length;
+  try {
+   await page.goto(origin+'/me/marketplace'+item.query,{waitUntil:'networkidle'});
+   const main=page.locator('#consumer-portal-content');
+   await main.getByRole('heading',{level:1,name:item.title,exact:true}).waitFor();
+   const reads=fixture.requests.slice(start).filter(row=>row.path==='/marketplace/products');
+   const label=theme+' '+item.scenario+' '+item.query;
+   check(item.apiQuery===null ? reads.length===0 : reads.length>0 && reads.every(row=>row.query===item.apiQuery),label+': heading matches actual catalog scope');
+   check(await main.getByTestId('consumer-catalog-partial').count()===Number(Boolean(item.partial)),label+': partial catalog message matches context');
+   if (item.apiQuery===null) check(await main.getByText('Las consultas desde esta lectura no están disponibles.',{exact:false}).isVisible(),label+': unavailable TAP offers recovery');
+   await page.evaluate(()=>Promise.all(window.__destinationDeliveries));
+  } finally {await context.close();}
+ }
+}
 async function securityNavigation(width,theme){
  const{context,page}=await open(width,theme,'ready'),name='security-navigation-'+width+'-'+theme;
  const originalFont={value:'',priority:''};
@@ -244,6 +268,7 @@ async function securityNavigation(width,theme){
 try{
  let ready=false;for(let i=0;i<120;i++){if(serverFailed||next.exitCode!==null)break;try{if((await fetch(origin+'/release.json',{signal:AbortSignal.timeout(1000)})).ok){ready=true;break;}}catch{}await new Promise(resolve=>setTimeout(resolve,250));}
  check(ready,'isolated production Next ready');browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH});
+ for(const theme of ['light','dark'])await catalogScope(theme);
  for(const width of [320,1280])for(const theme of ['light','dark'])await securityNavigation(width,theme);
  for(const destination of destinations)for(const theme of ['light','dark'])await recover(destination,390,theme,'session-500');
  for(const destination of destinations){await anonymous(destination,'session-401');await anonymous(destination,'session-false');}

@@ -43,7 +43,10 @@ export default async function MarketplacePage({ searchParams }: { searchParams?:
   const catalog = readConsumerListSource<Listing>(payload, hasMarketplaceListingIdentity);
 
   return (
-    <PortalShell title="Catálogo de la marca" subtitle="Productos publicados y solicitudes de contacto. La marca confirma disponibilidad y condiciones.">
+    <PortalShell
+      title={hasTapContext || contextualTenant ? "Catálogo de la marca" : "Catálogo general"}
+      subtitle="Explorá productos publicados por las marcas. Para ver lo que guardaste, entrá en Productos."
+    >
       {!hasTapContext && !tenantFromQuery && productsSource.status === "unavailable" && <section className={recoveryStyles.notice} role="status" data-testid="consumer-catalog-partial">
         <p>No pudimos cargar tus productos para elegir una marca. Estás consultando el catálogo general.</p>
         <ConsumerDataRetryButton />

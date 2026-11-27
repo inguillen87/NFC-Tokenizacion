@@ -65,12 +65,12 @@ const model = loadComponents("/me");
 const primary = model.PORTAL_PRIMARY_DESTINATIONS;
 const more = model.PORTAL_MORE_DESTINATIONS;
 const expectedPrimary = [
-  { label: "Inicio", href: "/me" },
   { label: "Productos", href: "/me/products" },
   { label: "Historial", href: "/me/taps" },
   { label: "Beneficios", href: "/me/rewards" },
+  { label: "Catálogo", href: "/me/marketplace" },
 ];
-const expectedMore = ["passport", "brands", "wallet", "marketplace", "experiences", "sommelier", "cork-analyzer", "privacy", "security"]
+const expectedMore = ["passport", "brands", "wallet", "experiences", "sommelier", "cork-analyzer", "privacy", "security"]
   .map((segment) => `/me/${segment}`);
 const anchors = (html) => [...html.matchAll(/<a\b([^>]*?)>([\s\S]*?)<\/a>/g)]
   .map((match) => ({ attributes: match[1], href: match[1].match(/\bhref="([^"]+)"/)?.[1], content: match[2] }));
@@ -149,6 +149,16 @@ test("current destination matching treats home as exact and nested destinations 
   ];
   for (const [pathname, href, expected] of cases) {
     assert.equal(model.isPortalDestinationActive(pathname, href), expected, `${pathname} -> ${href}`);
+  }
+});
+
+test("Inicio in the header goes to the account and is current only at its root", () => {
+  for (const pathname of ["/me", "/me/", "/me/products", "/me/marketplace"]) {
+    const { PortalHomeLink } = loadComponents(pathname);
+    const [link] = anchors(renderToStaticMarkup(React.createElement(PortalHomeLink)));
+    assert.equal(link.href, "/me");
+    assert.match(link.content, />Inicio</);
+    assert.equal(/aria-current="page"/.test(link.attributes), ["/me", "/me/"].includes(pathname));
   }
 });
 
