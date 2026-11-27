@@ -48,7 +48,7 @@ const base = {
   vertical: "wine", productName: "Vino", isFreshTap: true, isSnapshotView: false,
   protectedTitle: "Consulta", protectedCopy: "Nuevo tap requerido", primaryActionHref: "#protected-actions",
   rewardsHref: "/me/rewards?fromTap=1", marketplaceHref: "/me/marketplace?fromTap=1", walletHref: "/me/wallet?fromTap=1",
-  certificateHref: "/certificado/713?share=read_only_fixture", reportProblemHref: "/contacto?event=713",
+  certificateHref: "/certificado/713?share=read_only_fixture", reportNavigation: { canReport: true, href: "#report-problem", label: "Avisar a la marca" },
   eventId, freshToken,
 };
 const nextStep = (props = {}) => render("post-tap-next-step.tsx", "PostTapNextStep", { ...base, ...props });
@@ -75,7 +75,7 @@ test("secondary consumer links prepare the same event only on click and preserve
   assert.match(html, /href="#protected-actions"/);
   assert.match(html, /href="#geo-trace"/);
   assert.match(html, /href="\/certificado\/713\?share=read_only_fixture"/);
-  assert.match(html, /href="\/contacto\?event=713"[^>]*data-sun-experience-event="PROBLEM_REPORTED"/);
+  assert.match(html, /href="#report-problem"[^>]*data-sun-experience-event="PROBLEM_REPORTED"/);
   assert.match(html, /data-sun-experience-event="LOYALTY_OFFER_VIEWED" data-sun-experience-placement="post_tap_options" data-sun-experience-interaction="rewards_opened"/);
   assert.doesNotMatch(html, /private-fixture-capability/);
 });

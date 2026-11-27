@@ -14,6 +14,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AlertTriangle, ArrowDown, ArrowLeft, ChevronDown, ChevronRight, Info, MapPin, MessageCircle, Package, PackageCheck, PackageOpen, RotateCcw, ShieldAlert, ShieldCheck } from "lucide-react";
 import { DeferredCtaActions, DeferredQREngagementSuite } from "./sun-deferred-consumer-tools";
+import { getReportNavigation } from "./report-problem-model";
 import { ReportProblemForm } from "./report-problem-form";
 import { FreshHandoffUrlCleaner } from "./fresh-handoff-url-cleaner";
 import type { SunVisualKind } from "./sun-product-hero-stage";
@@ -1022,18 +1023,16 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           : trustScore != null
             ? "Score bajo reportado"
             : "Sin score reportado";
-  const reportProblemHref = "#report-problem";
-  const productSectionHref = isAgroDpp ? "#agro-dpp" : "#product-info";
+  const reportContext = {
+    bid, eventId, isDemoPreview,
+    supportToken: result.supportReport?.eventId === eventId ? result.supportReport.token || "" : "",
+  };
+  const reportNavigation = getReportNavigation(reportContext);
+  const hasProtectedTools = Boolean(!isDemoPreview && bid && (uid || eventId));
+  const needsFreshTap = hasSourceResult && (isSnapshotView || isQrScan || isRiskBlocked);
+  const showTapInstructions = needsFreshTap
+    || (reportNavigation.href === "#fresh-tap-required" && (hasSourceResult || hasProtectedTools));
   const consumerActionHref = isAgroDpp ? "#agro-dpp" : "#consumer-choice";
-  const recommendedAction = isFreshCommercialTap
-    ? { label: "Ver ficha y opciones", href: consumerActionHref, helper: rightsPolicy.recommendedNextStep || "No hace falta registrarse para leer la ficha. Contacto, club, garantia y propiedad son pasos opt-in separados." }
-    : isSnapshotView
-      ? { label: "Ver ficha", href: productSectionHref, helper: "Consulta segura: evidencia digital y registros declarados quedan visibles. Acciones sensibles requieren otro tap físico." }
-    : isSunProfileMismatch
-      ? { label: "Avisar a soporte", href: reportProblemHref, helper: "El producto y el lote quedan visibles. Garantia, club o tokenizacion esperan el perfil SUN correcto o el payload del proveedor." }
-    : !isRiskBlocked && isTechnicallyAuthentic
-      ? { label: "Ver detalles de trazabilidad", href: "#geo-trace", helper: "Revisá origen, fuente y consistencia antes de guardar." }
-      : { label: "Reportar y reintentar tap", href: reportProblemHref, helper: "Señal de riesgo alta. Escaneá físicamente de nuevo." };
   // Browser geolocation is posted through the same-origin BFF. Calling the API
   // origin directly would trigger a JSON CORS preflight and fail closed.
   const telemetryEndpoint = "/api/sun-context";
@@ -1581,11 +1580,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
     : isQrScan
     ? { label: "Conocer el producto", href: consumerActionHref, tone: "trace" }
     : isSunProfileMismatch
-    ? { label: "Avisar a soporte", href: reportProblemHref, tone: "trace" }
-    : isManualOpenedState
-      ? { label: "Avisar a la marca", href: reportProblemHref, tone: "risk" }
-    : isFreshCommercialTap && isVerifiedOpenedState
-      ? { label: "Avisar a la marca", href: reportProblemHref, tone: "risk" }
+    ? { ...reportNavigation, tone: "trace" }
+    : isManualOpenedState || (isFreshCommercialTap && isVerifiedOpenedState)
+      ? { ...reportNavigation, tone: "risk" }
       : isFreshCommercialTap
         ? { label: "Ver garantía y beneficios", href: consumerActionHref, tone: "trace" }
     : isSnapshotView
@@ -1770,6 +1767,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
         {isAgroDpp && agroProfile ? (
           <AgroDppExperience
             profile={agroProfile}
+            reportNavigation={reportNavigation}
             bid={bid}
             eventId={eventId}
             freshToken={freshToken}
@@ -2149,7 +2147,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
           <a className="sun-result-card__primary" href={isDemoPreview ? "#sun-services" : primaryPostTapAction.href}>
             {isDemoPreview ? "Ver opciones de muestra" : primaryPostTapAction.label}
-            {primaryPostTapAction.href === reportProblemHref
+            {primaryPostTapAction.href === "#report-problem"
               ? <MessageCircle aria-hidden="true" />
               : <ArrowDown aria-hidden="true" />}
           </a>
@@ -2399,12 +2397,9 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
         <section id="sun-services" className="scroll-mt-24 v3-space-y-3" aria-label="Servicios y beneficios del producto">
             {!valleDemo && !syngentaDemo ? <ReportProblemForm
-              bid={bid}
-              eventId={eventId}
-              supportToken={result.supportReport?.eventId === eventId ? result.supportReport.token || "" : ""}
+              {...reportContext}
               productName={productDisplayName}
               locale={locale}
-              isDemoPreview={isDemoPreview}
             /> : null}
             <div id="consumer-choice" className="scroll-mt-24">
               {valleDemo ? <ValleSecretoDemoServices locale={locale} /> : syngentaDemo ? <SyngentaDemoServices locale={locale} scenario={demoScenario} /> : hasSourceResult ? <SunServicesHub
@@ -2444,14 +2439,14 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
 
             {hasSourceResult && isRiskBlocked && !isDemoPreview ? (
               <a
-                href={reportProblemHref}
-                data-sun-experience-event="PROBLEM_REPORTED"
-                data-sun-experience-placement="risk_notice"
-                data-sun-experience-interaction="report_started"
+                href={reportNavigation.href}
+                data-sun-experience-event={reportNavigation.canReport ? "PROBLEM_REPORTED" : undefined}
+                data-sun-experience-placement={reportNavigation.canReport ? "risk_notice" : undefined}
+                data-sun-experience-interaction={reportNavigation.canReport ? "report_started" : undefined}
                 className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-rose-300/30 bg-rose-500/10 px-4 text-sm font-black text-rose-100 transition hover:bg-rose-500/15"
               >
                 <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-                Reportar esta lectura a la marca
+                {reportNavigation.label}
               </a>
             ) : null}
 
@@ -2477,7 +2472,7 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
                   marketplaceHref={tapMarketplaceHref}
                   certificateHref={certificateHref}
                   walletHref={walletHref}
-                  reportProblemHref={reportProblemHref}
+                  reportNavigation={reportNavigation}
                   allowedActions={allowedActions}
                   blockedActions={blockedActions}
                   configuration={result.engagement?.configuration}
@@ -2486,8 +2481,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </div>
             </details> : null}
 
-            {hasSourceResult && (isSnapshotView || isQrScan || isRiskBlocked) ? (
-              <section id="fresh-tap-required" className="scroll-mt-24 rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4" aria-labelledby="fresh-tap-required-title">
+            {showTapInstructions ? (
+              <section id="fresh-tap-required" className={`${needsFreshTap ? "" : "hidden target:block"} scroll-mt-24 rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4`} aria-labelledby="fresh-tap-required-title">
                 <h2 id="fresh-tap-required-title" className="text-sm font-black text-amber-100">{isQrScan ? "Toca el chip NFC para acciones protegidas" : "Hace un nuevo tap desde la etiqueta fisica"}</h2>
                 <p className="mt-1 text-xs leading-5 text-amber-50/80">
                   {isQrScan
@@ -2499,9 +2494,10 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
               </section>
             ) : null}
 
-            {!isDemoPreview && bid && (uid || eventId) ? (
+            {hasProtectedTools ? (
               <div id="protected-actions" className="scroll-mt-24 pt-1">
                 <DeferredCtaActions
+                  reportNavigation={reportNavigation}
                   bid={bid}
                   uid={uid}
                   eventId={eventId}

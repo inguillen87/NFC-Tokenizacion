@@ -70,10 +70,35 @@ export async function checkSupportReports({ page, base, state, mode, assess, rep
   await mode('normal');
   await visit('agro');
   const beforeAgro = (await calls()).length;
-  await page.getByRole('link', { name: 'Reportar un problema', exact: true }).click();
+  await page.locator('#agro-dpp').getByRole('link', { name: 'Avisar a la marca', exact: true }).click();
   assert.equal((await calls()).length, beforeAgro);
   assert.ok(!page.url().includes('contact=sales'));
   await form.locator('#report-description').waitFor();
+  for (const available of [true, false]) {
+    await visit(available ? 'report-manual' : 'report-manual-mismatch');
+    const href = available ? '#report-problem' : '#fresh-tap-required';
+    const label = available ? 'Avisar a la marca' : 'Cómo hacer un nuevo toque';
+    const primary = page.getByTestId('sun-summary-primary');
+    const risk = page.locator('#sun-services > a').filter({ hasText: label });
+    for (const link of [primary, risk]) {
+      assert.equal(await link.getAttribute('href'), href);
+      assert.equal((await link.innerText()).trim(), label);
+      await link.focus();
+      await link.press('Enter');
+      await page.waitForFunction(hash => location.hash === hash, href);
+      assert.ok(await page.locator(href).isVisible());
+      if (available) {
+        const summary = form.locator('summary');
+        await page.waitForFunction(() => document.activeElement?.matches('#report-problem summary'));
+        assert.ok(await form.locator('details').evaluate(details => details.open));
+        await summary.press('Enter');
+        assert.equal(await form.locator('details').evaluate(details => details.open), false);
+      }
+    }
+    assert.equal(await risk.getAttribute('data-sun-experience-event'), available ? 'PROBLEM_REPORTED' : null);
+    assert.equal(await form.locator('textarea').count(), available ? 1 : 0);
+    assert.equal((await calls()).length, beforeAgro);
+  }
   await visit('no-support');
   assert.equal(await form.locator('textarea').count(), 0);
   await page.goto(base + '/sun#report-problem', { waitUntil: 'load' });

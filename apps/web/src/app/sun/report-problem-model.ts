@@ -20,6 +20,14 @@ export function reportContextAvailable(context: ReportContext) {
     && !/[\u0000-\u0020\u007f]/.test(context.supportToken);
 }
 
+export function getReportNavigation(context: ReportContext) {
+  if (context.isDemoPreview) return { href: "#sun-services", label: "Ver opciones de muestra", canReport: false } as const;
+  if (reportContextAvailable(context)) return { href: "#report-problem", label: "Avisar a la marca", canReport: true } as const;
+  return { href: "#fresh-tap-required", label: "Cómo hacer un nuevo toque", canReport: false } as const;
+}
+
+export type ReportNavigation = ReturnType<typeof getReportNavigation>;
+
 export function validateReportDraft(draft: ReportDraft): { fields: ReportFields | null; errors: ReportFieldErrors } {
   const errors: ReportFieldErrors = {};
   const description = typeof draft.description === "string" ? draft.description.replace(/\r\n?/g, "\n").trim() : "";

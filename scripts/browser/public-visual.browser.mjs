@@ -173,7 +173,7 @@ try {
     await page.route('**/*',route=>{const req=route.request(),u=new URL(req.url()); if(req.method()!=='GET'){report.blockedWrites.push({name,method:req.method(),path:u.pathname});return route.abort();}
       const keys=[...u.searchParams.keys()],rscValid=!u.searchParams.has('_rsc')||u.searchParams.getAll('_rsc').length===1&&/^[A-Za-z0-9_-]{1,100}$/.test(u.searchParams.get('_rsc'));
       const galleryAllowed=allowedSunDestination==='gallery'&&keys.every(k=>k==='_rsc')&&rscValid;
-      const valleAllowed=allowedSunDestination==='valle-closed'&&keys.every(k=>['demo','profile','scenario','_rsc'].includes(k))&&['demo','profile','scenario'].every(k=>u.searchParams.getAll(k).length===1)&&u.searchParams.get('demo')==='1'&&u.searchParams.get('profile')==='valle-secreto'&&u.searchParams.get('scenario')==='closed'&&rscValid;
+      const valleAllowed=allowedSunDestination==='valle-closed'&&keys.every(k=>['demo','profile','scenario','lang','_rsc'].includes(k))&&['demo','profile','scenario','lang'].every(k=>u.searchParams.getAll(k).length===1)&&u.searchParams.get('demo')==='1'&&u.searchParams.get('profile')==='valle-secreto'&&u.searchParams.get('scenario')==='closed'&&u.searchParams.get('lang')==='es-AR'&&rscValid;
       const sunAssetAllowed=Boolean(allowedSunDestination)&&u.origin===origin&&!u.search&&['/sun/valle-secreto/logo-light.png','/sun/valle-secreto/logo-dark.webp','/sun/valle-secreto/profundo.webp','/sun/valle-secreto/world-reference.geojson'].includes(u.pathname);
       if((/^\/sun(?:\/|$)/.test(u.pathname)&&!(u.origin===origin&&u.pathname==='/sun'&&(galleryAllowed||valleAllowed))&&!sunAssetAllowed)||u.pathname.startsWith('/api/')||u.searchParams.has('snapshot')||u.searchParams.has('access')){report.blockedSensitiveReads.push({name,path:u.pathname});return route.abort();} if(u.origin!==origin)return route.abort();return route.continue();});
     await page.addInitScript(()=>{window.__geoRequests=0;Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){window.__geoRequests++;},watchPosition(){window.__geoRequests++;},clearWatch(){}}});});
@@ -212,11 +212,16 @@ try {
         await hubHeading.waitFor();
         check(await hubHeading.isVisible(),'Keyboard primary CTA reaches Demo Lab '+name);
         await page.goto(origin+'/',{waitUntil:'networkidle',timeout:45000});await stable(page);
-        const valle=page.locator('#como-funciona a[data-demo-entry="valle-secreto"]');
-        check(await valle.getAttribute('href')===VALLE_DEMO_HREF,'Wine journey offers the explicit closed Valle demo '+name);
+        const about=page.locator('#como-funciona').getByRole('link',{name:'Conocé NexID',exact:true});
+        check(await about.getAttribute('href')==='/about' && await page.getByRole('link',{name:/Valle Secreto/i}).count()===0,'The homepage introduces NexID in its own voice '+name);
+        await about.focus();await page.keyboard.press('Enter');await page.locator('#about-title').waitFor();
+        check(new URL(page.url()).pathname==='/about','Keyboard opens the NexID company page '+name);
+        allowedSunDestination='gallery';await page.goto(origin+'/sun',{waitUntil:'networkidle',timeout:45000});
+        const valle=page.locator('a[data-demo-profile="valle-secreto"]');
+        check(await valle.getAttribute('href')===VALLE_DEMO_HREF+'&lang=es-AR','The demo gallery offers the explicit closed Valle demo '+name);
         allowedSunDestination='valle-closed';await valle.focus();await page.keyboard.press('Enter');await page.getByTestId('sun-summary-status').waitFor();await stable(page);
         const passportUrl=new URL(page.url()),status=page.getByTestId('sun-summary-status');
-        check(passportUrl.pathname==='/sun'&&passportUrl.searchParams.get('demo')==='1'&&passportUrl.searchParams.get('profile')==='valle-secreto'&&passportUrl.searchParams.get('scenario')==='closed','Wine journey keyboard CTA reaches explicit Valle demo '+name);
+        check(passportUrl.pathname==='/sun'&&passportUrl.searchParams.get('demo')==='1'&&passportUrl.searchParams.get('profile')==='valle-secreto'&&passportUrl.searchParams.get('scenario')==='closed','Gallery keyboard link reaches the Valle Secreto demo '+name);
         check(await status.getAttribute('data-demo-product-state')==='VALID_CLOSED'&&await status.getAttribute('data-demo-tamper-state')==='CLOSED'&&(await page.locator('#sun-summary').innerText()).includes('Profundo 2019'),'Valle demo exposes the labelled closed sample '+name);
         check(await page.evaluate(()=>window.__geoRequests===0),'Gallery and Valle navigation request no geolocation '+name);
         report.interactions.push({name,galleryReached,valleProfile:'valle-secreto',scenario:'closed',physicalTapMeasured:false});

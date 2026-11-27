@@ -1,8 +1,8 @@
 export const reportProblemCopy = {
   "es-AR": {
-    title: "Reportar un problema", intro: "Contanos qué pasó con este producto o esta lectura. Antes de enviar, podrás revisar el reporte.",
+    title: "Reportar un problema", unavailableTitle: "Ayuda con esta lectura", intro: "Describí lo que pasó. Podés revisar tu aviso antes de enviarlo a la marca.",
     demo: "Esta ficha es de muestra. No permite enviar reportes de un producto real.",
-    unavailable: "No hay un acceso válido para reportar esta lectura. Volvé a abrir el pasaporte del producto para intentarlo.",
+    unavailable: "No hay un acceso válido para reportar esta lectura. Acercá el teléfono a la etiqueta NFC y abrí el nuevo enlace. Si el problema continúa, consultá el contacto de la marca en el envase.",
     category: "¿Qué querés reportar?", categories: { tap_review: "Problema con la lectura", seal_opened: "Sello abierto o dañado", product_problem: "Problema con el producto", other: "Otro motivo" },
     description: "Describí lo que pasó", descriptionHelp: "Incluí los detalles que ayuden a revisar el caso. Máximo 1500 caracteres.",
     contact: "Contacto (opcional)", contactHelp: "Podés dejar un correo o teléfono. Máximo 320 caracteres.",
@@ -26,9 +26,9 @@ export const reportProblemCopy = {
     },
   },
   en: {
-    title: "Report a problem", intro: "Tell us what happened with this product or reading. You can review the report before sending it.",
+    title: "Report a problem", unavailableTitle: "Help with this reading", intro: "Describe what happened. You can review your report before sending it to the brand.",
     demo: "This is a sample passport. It cannot submit reports about a real product.",
-    unavailable: "There is no valid access to report this reading. Reopen the product passport to try again.",
+    unavailable: "There is no valid access to report this reading. Hold your phone near the NFC tag and open the new link. If the problem continues, check the packaging for the brand’s contact details.",
     category: "What would you like to report?", categories: { tap_review: "Reading problem", seal_opened: "Open or damaged seal", product_problem: "Product problem", other: "Other reason" },
     description: "Describe what happened", descriptionHelp: "Include details that can help review the case. Maximum 1500 characters.",
     contact: "Contact (optional)", contactHelp: "You may leave an email address or phone number. Maximum 320 characters.",
@@ -52,9 +52,9 @@ export const reportProblemCopy = {
     },
   },
   "pt-BR": {
-    title: "Relatar um problema", intro: "Conte o que aconteceu com este produto ou esta leitura. Você poderá revisar o relato antes de enviá-lo.",
+    title: "Relatar um problema", unavailableTitle: "Ajuda com esta leitura", intro: "Conte o que aconteceu. Você pode revisar seu relato antes de enviá-lo à marca.",
     demo: "Esta ficha é uma demonstração. Não permite enviar relatos sobre um produto real.",
-    unavailable: "Não há acesso válido para relatar esta leitura. Abra novamente o passaporte do produto para tentar outra vez.",
+    unavailable: "Não há acesso válido para relatar esta leitura. Aproxime o telefone da etiqueta NFC e abra o novo link. Se o problema persistir, procure o contato da marca na embalagem.",
     category: "O que você quer relatar?", categories: { tap_review: "Problema com a leitura", seal_opened: "Lacre aberto ou danificado", product_problem: "Problema com o produto", other: "Outro motivo" },
     description: "Descreva o que aconteceu", descriptionHelp: "Inclua detalhes que ajudem a analisar o caso. Máximo de 1500 caracteres.",
     contact: "Contato (opcional)", contactHelp: "Você pode informar um e-mail ou telefone. Máximo de 320 caracteres.",

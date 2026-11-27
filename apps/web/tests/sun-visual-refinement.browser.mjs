@@ -168,8 +168,8 @@ globalThis.fetch = async function(input, init) {
         const phrases = entry.locale === 'en' ? [/\boperator\b/i, /not automatically detected/i, /do not use the product/i] : entry.locale === 'pt-BR' ? [/\boperador\b/i, /não foi detectada automaticamente/i, /não use o produto/i] : [/\boperador\b/i, /no fue detectada automáticamente/i, /no uses el producto/i];
         view.manualOpening = manualObservation;
         check(await manual.isVisible() && !manualObservation.insideClosedDetails && phrases.every(phrase => phrase.test(manualObservation.text)), `Manual opening warning is visible and localized ${name}`, manualObservation);
-        const brandLabel = entry.locale === 'en' ? /\b(?:notify|contact|inform|report to) (?:the )?brand\b/i : entry.locale === 'pt-BR' ? /\b(?:avisar|notificar|contatar) (?:a )?marca\b/i : /\bavisar a la marca\b/i;
-        check(await page.getByTestId('sun-summary-primary').isVisible() && observed.primary?.href === '#report-problem' && brandLabel.test(observed.primary.text), `Manual opening offers the existing brand report ${name}`, observed.primary);
+        const recoveryLabel = entry.locale === 'en' ? 'How to make a new tap' : entry.locale === 'pt-BR' ? 'Como fazer um novo toque' : 'Cómo hacer un nuevo toque';
+        check(await page.getByTestId('sun-summary-primary').isVisible() && observed.primary?.href === '#fresh-tap-required' && observed.primary.text === recoveryLabel, `Manual opening without report access offers a new read ${name}`, observed.primary);
       }
       // One native initial viewport, before image interaction changes focus.
       // Header/summary crops derive from that same bitmap, not another frame.

@@ -17,6 +17,8 @@ function isProtectedConsumerPortalHref(href: string) {
   return /^\/me(?:[/?#]|$)/.test(href);
 }
 
+import type { ReportNavigation } from "./report-problem-model";
+
 type JourneyKind = "wine" | "seeds" | "chemicals" | "logistics" | "pharma" | "consumer";
 
 type JourneyCopy = {
@@ -40,7 +42,7 @@ type PostTapNextStepProps = {
   marketplaceHref: string;
   certificateHref?: string | null;
   walletHref: string;
-  reportProblemHref: string;
+  reportNavigation: ReportNavigation;
   sealState?: "closed" | "opened" | "unknown";
   allowedActions?: string[];
   blockedActions?: string[];
@@ -123,7 +125,7 @@ export function PostTapNextStep({
   marketplaceHref,
   certificateHref,
   walletHref,
-  reportProblemHref,
+  reportNavigation,
   sealState = "unknown",
   allowedActions = [],
   blockedActions = [],
@@ -182,8 +184,8 @@ export function PostTapNextStep({
               <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </a>
           ) : (
-            <Link href={reportProblemHref} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-amber-300 px-4 text-center text-xs font-black text-slate-950 transition hover:bg-amber-200">
-              Reportar el problema
+            <Link href={reportNavigation.href} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-amber-300 px-4 text-center text-xs font-black text-slate-950 transition hover:bg-amber-200">
+              {reportNavigation.label}
               <AlertTriangle className="h-4 w-4" aria-hidden="true" />
             </Link>
           )}
@@ -199,12 +201,11 @@ export function PostTapNextStep({
   const secondaryActions = [
     ...(isOpenedSeal ? [{
       key: "report",
-      href: reportProblemHref,
-      label: "No lo abrí: avisar a la marca",
-      help: "Registrá un ticket de revisión con los datos de esta lectura.",
+      href: reportNavigation.href,
+      label: reportNavigation.label,
+      help: reportNavigation.canReport ? "Podés revisar tu aviso antes de enviarlo a la marca." : "Acercá el teléfono a la etiqueta y abrí el enlace nuevo.",
       icon: AlertTriangle,
-      experienceEvent: "PROBLEM_REPORTED",
-      experiencePlacement: "opened_seal_guidance",
+      ...(reportNavigation.canReport ? { experienceEvent: "PROBLEM_REPORTED", experiencePlacement: "opened_seal_guidance" } : {}),
     }] : []),
     ...(available.trace ? [{
       key: "trace",

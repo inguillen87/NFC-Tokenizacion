@@ -16,7 +16,9 @@ type RightsPolicy = {
   consumerCopy?: string | null;
   recommendedNextStep?: string | null;
 };
-type Props = { bid: string; uid?: string; eventId?: string; freshToken?: string; canExecute?: boolean; tapState?: TapState; rightsPolicy?: RightsPolicy; allowedActions?: string[]; blockedActions?: string[]; isDemoPreview?: boolean };
+import type { ReportNavigation } from "./report-problem-model";
+
+type Props = { reportNavigation: ReportNavigation; bid: string; uid?: string; eventId?: string; freshToken?: string; canExecute?: boolean; tapState?: TapState; rightsPolicy?: RightsPolicy; allowedActions?: string[]; blockedActions?: string[]; isDemoPreview?: boolean };
 type ActionState = "idle" | "loading" | "success" | "error";
 type ActionKey = SecurePostTapActionKey;
 type CallResponse = {
@@ -171,7 +173,7 @@ async function getClientMetadata(shareApproximateLocation: boolean) {
   };
 }
 
-export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canExecute = true, tapState = "valid", rightsPolicy, allowedActions = [], blockedActions = [], isDemoPreview = false }: Props) {
+export function CtaActions({ reportNavigation, bid, uid = "", eventId = "", freshToken = "", canExecute = true, tapState = "valid", rightsPolicy, allowedActions = [], blockedActions = [], isDemoPreview = false }: Props) {
   const [status, setStatus] = useState<string>("");
   const [pending, setPending] = useState(false);
   const [actionStates, setActionStates] = useState<Record<ActionKey, ActionState>>({
@@ -338,8 +340,8 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
       tone: "border-amber-300/40 bg-amber-500/10 text-amber-100 transition hover:bg-amber-500/20",
     },
     report: {
-      title: "Avisar sobre un problema",
-      subtitle: "Registrá un ticket de revisión con el producto, el lote y esta lectura.",
+      title: reportNavigation.label,
+      subtitle: reportNavigation.canReport ? "Podés revisar tu aviso antes de enviarlo a la marca." : "Acercá el teléfono a la etiqueta y abrí el enlace nuevo.",
       icon: "RPT",
       path: "/api/public-cta/report-problem",
       method: "POST",
@@ -582,7 +584,7 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
 
   const trigger = async (path: string, method: "POST" | "GET", actionKey: ActionKey) => {
     if (actionKey === "report") {
-      window.location.hash = "report-problem";
+      window.location.hash = reportNavigation.href;
       return;
     }
     if (actionStates[actionKey] === "loading") return;
@@ -847,20 +849,20 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
             {isOpenedConsumerFlow ? "¿No reconocés esta apertura?" : "¿Querés avisar sobre esta lectura?"}
           </h3>
           <p className="mt-2 text-xs leading-5 text-amber-50/85">
-            {isOpenedConsumerFlow
-              ? "No uses el producto si el envase está dañado. Podemos registrar un ticket con el producto, el lote y esta lectura para que el equipo lo revise."
-              : "Podemos registrar un ticket con el producto, el lote y esta lectura para que el equipo revise qué pasó."}
+            {isOpenedConsumerFlow ? "Si no reconocés la apertura o ves daños, no uses el producto." : null}{" "}
+            {actionMeta.report.subtitle}
           </p>
           <button
             suppressHydrationWarning
             type="button"
             onClick={() => void trigger("/api/public-cta/report-problem", "POST", "report")}
-            data-sun-experience-event="PROBLEM_REPORTED"
-            data-sun-experience-placement="protected_actions"
-            data-sun-experience-interaction="report_started"
+            data-sun-report-link={reportNavigation.href}
+            data-sun-experience-event={reportNavigation.canReport ? "PROBLEM_REPORTED" : undefined}
+            data-sun-experience-placement={reportNavigation.canReport ? "protected_actions" : undefined}
+            data-sun-experience-interaction={reportNavigation.canReport ? "report_started" : undefined}
             className="mt-3 min-h-12 w-full rounded-xl border border-amber-200/50 bg-amber-300 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Describir el problema
+            {reportNavigation.label}
           </button>
           {actionStates.report === "success" ? (
             <p className="mt-2 rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2 text-xs text-emerald-100" aria-live="polite">
@@ -1190,9 +1192,10 @@ export function CtaActions({ bid, uid = "", eventId = "", freshToken = "", canEx
               key={key}
               disabled={isActionDisabled(key)}
               onClick={() => void trigger(item.path, item.method, key)}
-              data-sun-experience-event={key === "report" ? "PROBLEM_REPORTED" : undefined}
-              data-sun-experience-placement={key === "report" ? "protected_actions" : undefined}
-              data-sun-experience-interaction={key === "report" ? "report_started" : undefined}
+              data-sun-report-link={key === "report" ? reportNavigation.href : undefined}
+              data-sun-experience-event={key === "report" && reportNavigation.canReport ? "PROBLEM_REPORTED" : undefined}
+              data-sun-experience-placement={key === "report" && reportNavigation.canReport ? "protected_actions" : undefined}
+              data-sun-experience-interaction={key === "report" && reportNavigation.canReport ? "report_started" : undefined}
               className={`sun-public-cta-card rounded-xl border px-3 py-3 text-left transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60 ${item.tone} ${cardStateClass(key)}`}
             >
               <div className="flex items-center justify-between gap-2">

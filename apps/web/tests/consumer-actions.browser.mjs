@@ -175,11 +175,22 @@ try {
   }
   for (const [width, theme] of [[1440, 'light'], [1440, 'dark'], [390, 'light'], [390, 'dark']]) await assess(page, '[data-testid="tap-association"]', 'explicit-actions', width, theme);
   report.checks.push('One explicit request per action; HttpOnly handoff reaches only the matching BFF action and completed results persist independently');
-  const secondary = await (await fetch(api + '/qa-issue')).json();
   const beforeSecondary = actions(await state()).length;
-  await page.goto(`${base}/sun?snapshot=${secondary.eventId}&trace=qa-only&access=qa-only&fresh=${encodeURIComponent(secondary.token)}`, { waitUntil: 'load' });
-  await page.locator('summary').filter({ hasText: 'Como se protege cada accion' }).click();
-  await page.getByTestId('post-tap-next-step').getByRole('button', { name: /Entrar al club de la marca/ }).click();
+  for (const trace of ['club-absent', 'club-published']) {
+    const issued = await (await fetch(api + '/qa-issue')).json();
+    await page.goto(`${base}/sun?snapshot=${issued.eventId}&trace=${trace}&access=qa-only&fresh=${encodeURIComponent(issued.token)}`, { waitUntil: 'load' });
+    await page.locator('summary').filter({ hasText: 'Como se protege cada accion' }).click();
+    const guidance = page.getByTestId('post-tap-next-step');
+    assert.ok(await guidance.isVisible());
+    const club = guidance.getByRole('button', { name: /Entrar al club de la marca/ });
+    if (trace === 'club-absent') {
+      assert.equal(await club.count(), 0);
+      assert.equal(await guidance.getByRole('link', { name: /Entrar al club de la marca/ }).count(), 0);
+      assert.equal(actions(await state()).length, beforeSecondary);
+    } else {
+      await club.click();
+    }
+  }
   await page.waitForURL(u => u.pathname === '/me/rewards', { timeout: 60000 });
   assert.equal(actions(await state()).length, beforeSecondary);
   await confirm(page, 'enrolled');

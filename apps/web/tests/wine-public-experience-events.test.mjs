@@ -104,7 +104,7 @@ test("real wine SUN page records truthful views and meaningful starts through th
   assert.match(page, /TECHNICAL_SHEET_VIEWED/);
   assert.match(services, /LOYALTY_OFFER_VIEWED/);
   assert.match(nextStep, /PROBLEM_REPORTED/);
-  assert.match(actions, /data-sun-experience-event="PROBLEM_REPORTED"/);
+  assert.match(actions, /data-sun-experience-event=\{reportNavigation\.canReport \? "PROBLEM_REPORTED" : undefined\}/);
   assert.match(engagement, /TRAINING_STARTED/);
   assert.match(tracker, /recordPublicExperienceEvent/);
   assert.match(agro, /recordPublicExperienceEvent/);

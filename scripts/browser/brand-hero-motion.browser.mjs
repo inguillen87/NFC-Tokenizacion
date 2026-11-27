@@ -5,6 +5,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import sharp from 'sharp';
+import { checkDelayedLandingFonts } from './landing-font-stability.mjs';
 import { verifyNativeBrandHeroHidden, validateAllowedClerkOrigins, readOnlyRequestDecision, blockedWriteCategory } from './native-brand-hero-hidden.mjs';
 
 // Remote callers must supply provider-verified metadata and acquire protection
@@ -205,6 +206,12 @@ async function keyboardNavigation(page, name) {
 }
 
 try {
+  if (local) {
+    report.delayedLandingFonts = [];
+    for (const locale of ['es-AR', 'en', 'pt-BR']) {
+      report.delayedLandingFonts.push(await checkDelayedLandingFonts(browser, origin, locale));
+    }
+  }
   if (expectedRelease) {
     const releaseContext = await browser.newContext({ serviceWorkers:'block' });
     try {
@@ -269,7 +276,7 @@ try {
       const actions=page.getByRole('group', { name:'Acciones principales' }), primary=actions.locator('a').first();
       check(await primary.getAttribute('href') === '/demo-lab' && await primary.innerText() === 'Probar demo', 'Main action opens Demo Lab ' + name);
       check(await actions.locator('a[href*="contact=demo"]').innerText() === 'Agendar demo para mi marca', 'Commercial action identifies its audience ' + name);
-      check(await page.locator('#como-funciona a[data-demo-entry="valle-secreto"]').getAttribute('href') === '/sun?demo=1&profile=valle-secreto&scenario=closed', 'Wine journey links to Valle Secreto ' + name);
+      check(await page.locator('#como-funciona').getByRole('link',{name:'Conocé NexID',exact:true}).getAttribute('href') === '/about', 'The journey introduces NexID ' + name);
       check(/publica la marca/.test(await page.locator('h1 + p').innerText()) && /QR/.test(await page.locator('h1 + p').innerText()), 'Introduction explains the action and data source ' + name);
       check(await media.getAttribute('alt') === 'Una persona toca la pantalla de un teléfono apoyado sobre la caja que recibe', 'Editorial photograph has an accessible description ' + name);
       const imageFraction = await media.evaluate(image => {

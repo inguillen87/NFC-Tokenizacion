@@ -1,4 +1,13 @@
+@font-face {
+  font-family: "NexID Fraunces";
+  src: url("/fonts/fraunces/fraunces-latin-500.c51a8809.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 500;
+  font-display: optional;
+}
+
 .landing {
+  --nexid-font-heading: "NexID Fraunces", Georgia, "Times New Roman", serif;
   --hero-ink: var(--nexid-ink);
   --hero-accent: var(--nexid-brand);
 }
@@ -13,20 +22,22 @@
 }
 .copy {
   align-self: center;
+  min-width: 0;
   padding: clamp(24px, 6vw, 64px) clamp(16px, 5vw, 72px);
 }
 .title {
   margin: 0;
-  max-width: 13ch;
+  max-width: 8.5em;
   font-family: var(--nexid-font-heading);
   font-size: clamp(2.5rem, 5.2vw, 4.5rem);
   font-weight: var(--nexid-weight-heading);
   line-height: 1.03;
   letter-spacing: -.035em;
   text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 .body {
-  max-width: 43ch;
+  max-width: 28.6em;
   margin: 1rem 0 0;
   color: var(--nexid-ink-2);
   font-size: clamp(1rem, 1.2vw, 1.15rem);
@@ -98,6 +109,10 @@
   outline: var(--nexid-focus-ring);
   outline-offset: var(--nexid-focus-offset);
   transition-property: none;
+}
+@media (max-width: 26.25rem) {
+  .actions { flex-direction: column; align-items: flex-start; }
+  .actions a { max-width: 100%; overflow-wrap: anywhere; }
 }
 @media (min-width: 768px) {
   .hero {

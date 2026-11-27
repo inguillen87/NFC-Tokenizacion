@@ -19,7 +19,8 @@ test("the home separates the editorial hero and audience actions from the partic
   assert.match(home, /<details className=\{styles\.participants\}/);
   assert.match(home, /href="\/me" prefetch=\{false\}/);
   assert.doesNotMatch(home, /HeroImmersiveSignal|data-hero-presentation="immersive"/);
-  assert.match(journey, /activeIndustry === "bottles" && \([\s\S]*?data-demo-entry="valle-secreto"/);
+  for (const label of ["Conocé NexID", "About NexID", "Conheça a NexID"]) assert.ok(journey.includes(label));
+  assert.doesNotMatch(journey, /valle.secreto/i);
 });
 
 test("product evidence stays attributed and the three-step section owns the explanation", () => {

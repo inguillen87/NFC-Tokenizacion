@@ -31,6 +31,14 @@ test("report context requires a real event, batch and support credential and exc
     { supportToken: "x".repeat(4097) }, { isDemoPreview: true }]) assert.equal(reportContextAvailable({ ...context, ...patch }), false);
 });
 
+test("report links expose only navigation and match the form's real availability", () => {
+  assert.deepEqual(model.getReportNavigation(context), { href: "#report-problem", label: "Avisar a la marca", canReport: true });
+  for (const missing of [{ supportToken: "" }, { bid: "" }, { eventId: "0" }, { supportToken: "bad token" }]) {
+    assert.deepEqual(model.getReportNavigation({ ...context, ...missing }), { href: "#fresh-tap-required", label: "Cómo hacer un nuevo toque", canReport: false });
+  }
+  assert.deepEqual(model.getReportNavigation({ ...context, isDemoPreview: true }), { href: "#sun-services", label: "Ver opciones de muestra", canReport: false });
+});
+
 test("draft validation preserves meaningful multiline details and bounds optional contact", () => {
   assert.deepEqual(validateReportDraft({ ...draft, description: "  detalle\r\nsegunda línea  ", contact: " mail@example.test " }), {
     fields: { category: "tap_review", description: "detalle\nsegunda línea", contact: "mail@example.test" }, errors: {},

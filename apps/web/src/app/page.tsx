@@ -108,6 +108,7 @@ export default async function HomePage() {
 
   return (
     <div className={`landing-root ${homeStyles.landing}`}>
+      <link rel="preload" as="font" type="font/woff2" crossOrigin="anonymous" href="/fonts/fraunces/fraunces-latin-500.c51a8809.woff2" />
       <a href="#main-content" className={headerStyles.skipLink}>{skipLabel}</a>
       <header className={headerStyles.header}>
         <div className={headerStyles.row}>
