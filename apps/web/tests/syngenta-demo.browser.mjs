@@ -132,6 +132,10 @@ async function runInternal({ origin, phase = 'local', source = git('rev-parse', 
         check(await status.getAttribute('data-demo-product-state') === ({ closed: 'VALID_CLOSED', opened: 'VALID_OPENED', invalid: 'INVALID' })[scenario], `${view}/${scenario}: state semantics`);
         if (scenario === 'invalid') check(await status.getAttribute('data-demo-protected-actions') === 'blocked', view + ': invalid protected actions blocked');
         const controls = page.getByTestId('sun-demo-scenario-selector');
+        check(await controls.evaluate(selector => {
+          const summary = document.getElementById('sun-summary');
+          return Boolean(summary && (summary.compareDocumentPosition(selector) & Node.DOCUMENT_POSITION_FOLLOWING));
+        }), view + '/' + scenario + ': product and seal precede the demo controls in reading order');
         check(await controls.locator(`a[data-demo-scenario="${scenario}"]`).getAttribute('aria-current') === 'page', `${view}/${scenario}: state selection reflected`);
         check(await page.locator('html').getAttribute('data-theme') === theme, `${view}/${scenario}: exact theme`);
         check(await page.getByTestId('syngenta-demo-experience').getAttribute('lang') === ({ 'es-AR': 'es', en: 'en', 'pt-BR': 'pt' })[locale], `${view}/${scenario}: exact language`);

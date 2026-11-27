@@ -83,7 +83,7 @@ function readTheme(): Theme {
   return "light";
 }
 
-export function ThemeToggle({ initialTheme = "light", locale = "en", waitForClientReady = false }: { initialTheme?: Theme; locale?: string; waitForClientReady?: boolean }) {
+export function ThemeToggle({ initialTheme = "light", locale = "en", waitForClientReady = false, appearanceClass }: { initialTheme?: Theme; locale?: string; waitForClientReady?: boolean; appearanceClass?: string }) {
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [clientReady, setClientReady] = useState(false);
 
@@ -123,11 +123,11 @@ export function ThemeToggle({ initialTheme = "light", locale = "en", waitForClie
         setTheme(selectedTheme);
         applyTheme(selectedTheme);
       }}
-      className="theme-toggle inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-2 text-xs leading-4 font-semibold text-slate-200 transition hover:bg-white/10 focus-visible:outline-hidden focus-visible:ring-4 focus-visible:ring-cyan-500/25"
+      className={appearanceClass ?? "theme-toggle inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-2 text-xs leading-4 font-semibold text-slate-200 transition hover:bg-white/10 focus-visible:outline-hidden focus-visible:ring-4 focus-visible:ring-cyan-500/25"}
       aria-label={actionLabel}
       title={actionLabel}
     >
-      <span aria-hidden className={`theme-toggle__glyph theme-toggle__glyph--${theme}`} />
+      {appearanceClass ? <span aria-hidden>{theme === "dark" ? "☾" : "☀"}</span> : <span aria-hidden className={`theme-toggle__glyph theme-toggle__glyph--${theme}`} />}
       <span>{label}</span>
     </button>
   );

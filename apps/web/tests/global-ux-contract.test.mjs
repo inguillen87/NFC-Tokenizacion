@@ -33,7 +33,7 @@ test("brand marks use one accessible home-link contract on public surfaces", () 
   assert.match(brandHomeLink, /styles\.homeLink/);
   assert.match(brandHomeLink, /data-brand-home-link/);
   assert.match(home, /<BrandHomeLink/);
-  assert.match(publicHeader, /<BrandHomeLink/);
+  assert.match(publicHeader, /<MarketingHeaderBrand locale=\{locale\}/);
 });
 
 test("PWA defaults to a white, responsive standalone surface", () => {

@@ -2,69 +2,31 @@ import assert from "node:assert/strict";
 import { readFile, stat } from "node:fs/promises";
 import test from "node:test";
 
-const [home, content, signal, journey, visuals, css, ...packagingAssets] = await Promise.all([
+const [home, content, journey, visuals, ...packagingAssets] = await Promise.all([
   readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/lib/landing-content.ts", import.meta.url), "utf8"),
-  readFile(new URL("../src/components/hero-immersive-signal.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/components/simple-trust-industry-journey.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/components/simple-trust-step-visual.tsx", import.meta.url), "utf8"),
-  readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
   stat(new URL("../public/landing/connected-journey/packaging-journey-01.webp", import.meta.url)),
   stat(new URL("../public/landing/connected-journey/packaging-journey-02.webp", import.meta.url)),
   stat(new URL("../public/landing/connected-journey/packaging-journey-03.webp", import.meta.url)),
 ]);
 
-test("the home hero restores the immersive scene while keeping semantic copy and a labelled illustration", async () => {
-  const hero = home.slice(home.indexOf("export function HeroSection"), home.indexOf("export function SimpleTrustFlowSection"));
-  const enterpriseHero = await readFile(new URL("../src/components/home-sections.module.css", import.meta.url), "utf8");
-
-  assert.match(hero, /landing-hero-section \$\{styles\.hero\}/);
-  assert.match(hero, /data-hero-presentation="immersive"/);
-  assert.match(hero, /hero-immersive-media \$\{styles\.media\}/);
-  assert.match(hero, /hero-immersive-veil/);
-  assert.match(hero, /sizes="100vw"/);
-  assert.match(hero, /<HeroImmersiveSignal locale=\{locale\} \/>/);
-  assert.equal((hero.match(/src=\{nexIdDppHero\}/g) ?? []).length, 1);
-  assert.match(hero, /href=\{VALLE_SECRETO_DEMO_HREF\} prefetch=\{false\}/);
-  assert.match(hero, /href="\/\?contact=demo#contact-modal" prefetch=\{false\}/);
-  assert.doesNotMatch(hero, /bg-slate-950|border-white\/5|text-slate-400|text-white/);
-  assert.match(hero, /styles\.eyebrow/);
-  assert.match(hero, /styles\.primary/);
-  assert.match(hero, /styles\.secondary/);
-  assert.match(hero, /styles\.proof/);
-  assert.match(hero, /Experiencia NFC ilustrativa/);
-  assert.match(enterpriseHero, /--hero-paper: #f7faf9/);
-  assert.match(enterpriseHero, /html\[data-theme="dark"\][\s\S]*--hero-paper: #10282f/);
-  assert.match(enterpriseHero, /max-width: 760px/);
-  assert.match(enterpriseHero, /data-motion-mode="ready"[\s\S]{0,150}animation: sceneBreathe/);
-  assert.match(enterpriseHero, /data-motion-active="true"[\s\S]{0,100}animation-play-state: running/);
-  assert.doesNotMatch(enterpriseHero, /hero-immersive-(?:object-label|status|ring)[\s\S]{0,30}display: none/);
+test("the home separates the editorial hero and audience actions from the participant details", () => {
+  assert.match(home, /aria-labelledby="home-title"/);
+  assert.match(home, /id="home-consumers"/);
+  assert.match(home, /id="home-brands"/);
+  assert.match(home, /<details className=\{styles\.participants\}/);
+  assert.match(home, /href="\/me" prefetch=\{false\}/);
+  assert.doesNotMatch(home, /HeroImmersiveSignal|data-hero-presentation="immersive"/);
+  assert.match(journey, /activeIndustry === "bottles" && \([\s\S]*?data-demo-entry="valle-secreto"/);
 });
 
-test("the hero names both physical anchors and animates a bidirectional multicolor exchange", () => {
-  const enterpriseHero = css.slice(css.indexOf("/* Enterprise DPP hero:"));
-
-  assert.match(signal, /data-hero-object="device"/);
-  assert.match(signal, /data-hero-object="product"/);
-  assert.match(signal, /Celular · Pasaporte Digital/);
-  assert.match(signal, /Packaging · NFC/);
-  assert.match(signal, /id="hero-signal-spectrum"/);
-  assert.match(signal, /data-signal-role="request"/);
-  assert.match(signal, /data-signal-role="response"/);
-  assert.equal(signal.match(/data-signal-packet=/g)?.length, 4);
-  assert.match(enterpriseHero, /@keyframes hero-signal-spectrum-flow/);
-  assert.match(enterpriseHero, /data-motion-active="true"[\s\S]{0,180}hero-immersive-link-spectrum/);
-  assert.match(enterpriseHero, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.hero-immersive-link-spectrum[\s\S]*animation: none !important/);
-  assert.match(enterpriseHero, /@media \(min-width: 561px\) and \(max-width: 1200px\)[\s\S]{0,180}hero-immersive-object-label[\s\S]{0,160}display: inline-flex/);
-  assert.match(enterpriseHero, /@media \(max-width: 560px\)[\s\S]{0,1400}hero-immersive-object-label--device[\s\S]{0,260}hero-immersive-object-label--product/);
-});
-
-test("DPP copy stays concise while the three-step section owns the explanation", () => {
-  assert.match(content, /Pasaporte Digital de Producto · Trazabilidad conectada/);
-  assert.match(content, /identidad, historia y trazabilidad declaradas según cada rol/);
-  assert.match(home, /Del producto a su pasaporte, en tres momentos/);
-  assert.match(home, /seguí un único producto/);
-  assert.doesNotMatch(home, /venta|conversión|funnel|recompra/i);
+test("product evidence stays attributed and the three-step section owns the explanation", () => {
+  assert.match(content, /origen y los servicios que publica la marca/);
+  assert.match(home, /Cómo funciona/);
+  assert.match(home, /recorré los tres pasos de un producto/);
+  assert.doesNotMatch(home, /conversión|funnel|recompra/i);
 });
 
 test("packaging is the visible industry and uses the sober Aurora identity assets", () => {

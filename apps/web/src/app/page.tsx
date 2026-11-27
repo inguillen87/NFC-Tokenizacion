@@ -7,6 +7,7 @@ import {
   CommercialValueSection,
 } from "../components/home-sections";
 import { BrandHomeLink } from "../components/brand-home-link";
+import { MarketingHeaderBrand } from "../components/marketing-header-brand";
 import headerStyles from "../components/public-site-header.module.css";
 import homeStyles from "../components/home-sections.module.css";
 import { MarketingMegaNav } from "../components/marketing-mega-nav";
@@ -107,18 +108,10 @@ export default async function HomePage() {
 
   return (
     <div className={`landing-root ${homeStyles.landing}`}>
-      <a href="#main-content" className="landing-skip-link">{skipLabel}</a>
-      <header className={`site-header landing-mega-header sticky top-0 z-50 border-b ${headerStyles.header}`}>
-        <div className="container-shell header-main-row flex items-center justify-between gap-4">
-          <BrandHomeLink
-            ariaLabel={footerCopy.home}
-            locale={locale}
-            size={64}
-            variant="pulse"
-            theme={initialTheme}
-            brandClassName="site-brand-identity"
-            className="landing-brand-link"
-          />
+      <a href="#main-content" className={headerStyles.skipLink}>{skipLabel}</a>
+      <header className={headerStyles.header}>
+        <div className={headerStyles.row}>
+          <MarketingHeaderBrand locale={locale} />
           <MarketingMegaNav
             locale={locale}
             locales={locales}
@@ -129,7 +122,7 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <main id="main-content" data-nav-inert>
+      <main id="main-content" tabIndex={-1} data-nav-inert>
         <HeroSection content={content} locale={locale} />
 
         <ConnectedProductIndustryProvider>

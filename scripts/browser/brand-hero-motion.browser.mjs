@@ -166,26 +166,21 @@ async function logoLegibility(locator) {
       else supported=false;
       if(cs.opacity!=='1'||cs.mixBlendMode!=='normal')supported=false;
     }
-    const svg=link.querySelector('.brand-wordmark-svg'),samples=[],bounds=[];
-    for(const text of svg?.querySelectorAll('.brand-wordmark-text')||[]){
-      const fill=getComputedStyle(text).fill,match=/url\(["']?([^"')]+)["']?\)/.exec(fill),gradientId=match?.[1].split('#').at(-1);
-      const gradient=gradientId?[...svg.querySelectorAll('linearGradient')].find(element=>element.id===gradientId):null;
-      const paints=gradient?[...gradient.querySelectorAll('stop')].map(stop=>({color:rgb(getComputedStyle(stop).stopColor),opacity:parseFloat(getComputedStyle(stop).stopOpacity)})):[{color:rgb(fill),opacity:1}];
-      const valid=paints.filter(paint=>paint.color&&paint.color[3]===1&&paint.opacity===1);
-      for(const paint of paints){
-        if(!paint.color||paint.color[3]!==1||paint.opacity!==1){supported=false;continue;}
-        const ink=luminance(paint.color),back=luminance(background),ratio=(Math.max(ink,back)+.05)/(Math.min(ink,back)+.05);
-        samples.push({class:text.getAttribute('class'),color:paint.color.slice(0,3),ratio});
+    const word = link.querySelector('[data-identity-variant="static"] > svg + span');
+    const samples = [];
+    for (const text of word ? [word, ...word.querySelectorAll('span')] : []) {
+      const style = getComputedStyle(text), ink = rgb(style.color);
+      if (!ink || ink[3] !== 1 || style.opacity !== '1' || style.backgroundImage !== 'none') {
+        supported = false;
+        continue;
       }
-      if(valid.length){
-        const low=[0,1,2].map(channel=>Math.min(...valid.map(paint=>paint.color[channel]))),high=[0,1,2].map(channel=>Math.max(...valid.map(paint=>paint.color[channel])));
-        const a=luminance(low),b=luminance(high),back=luminance(background);
-        const ratio=value=>(Math.max(value,back)+.05)/(Math.min(value,back)+.05);
-        bounds.push({class:text.getAttribute('class'),low,high,minimumRatio:back>=a&&back<=b?1:Math.min(ratio(a),ratio(b))});
-      }
+      const a = luminance(ink), b = luminance(background);
+      samples.push({ text:text.textContent, color:ink.slice(0,3), ratio:(Math.max(a,b)+.05)/(Math.min(a,b)+.05) });
     }
-    return{supported:supported&&samples.length>0,background:background.slice(0,3),minimumRatio:Math.min(...bounds.map(bound=>bound.minimumRatio)),samples,bounds,
-      method:'Computed opaque header backdrop and conservative per-channel RGB bounds over SVG wordmark gradient endpoints. Unknown images, blends or translucent ink remain unsupported.'};
+    return { supported:supported && samples.length === 2, background:background.slice(0,3),
+      minimumRatio:Math.min(...samples.map(sample => sample.ratio)),samples,
+      method:'Computed opaque wordmark inks against their solid header backdrop.' };
+
   });
 }
 
@@ -242,49 +237,66 @@ try {
       return route.continue();
     });
     await page.addInitScript(() => {
+      window.__brandIntroEvents = [];
+      for (const type of ['animationstart', 'animationend', 'animationcancel']) {
+        document.addEventListener(type, event => {
+          if (event.pseudoElement !== '::after' || !event.target.closest('header')
+            || !event.target.querySelector(':scope > a[data-brand-home-link]')) return;
+          window.__brandIntroEvents.push({type, elapsed:event.elapsedTime});
+        }, true);
+      }
       window.__geoRequests=0;
       Object.defineProperty(navigator,'geolocation',{ value:{ getCurrentPosition(){window.__geoRequests++;}, watchPosition(){window.__geoRequests++;}, clearWatch(){} } });
     });
     try {
       const response=await page.goto(origin+'/', { waitUntil:'networkidle', timeout:45000 });
       await page.evaluate(() => document.fonts.ready);
-      await page.locator('.hero-immersive-media img').waitFor();
-      await page.waitForFunction(() => [...document.querySelectorAll('.hero-immersive-media img')].every(image => image.complete && image.naturalWidth > 0));
+      await page.locator('section[aria-labelledby="home-title"] img').waitFor();
+      await page.waitForFunction(() => [...document.querySelectorAll('section[aria-labelledby="home-title"] img')].every(image => image.complete && image.naturalWidth > 0));
       await page.waitForTimeout(500); await settle(page);
-      const logo=page.locator('header [data-brand-home-link][data-brand-motion]').first(), media=page.locator('.hero-immersive-media');
+      const logo=page.locator('header a[data-brand-home-link]').first(), media=page.locator('section[aria-labelledby="home-title"] img');
       check(response?.status() === 200, 'Landing HTTP200 ' + name);
       check(await page.locator('html').getAttribute('data-theme') === theme, 'Theme retained ' + name);
       check(await page.locator('h1').count() === 1 && await page.locator('h1').innerText() === 'La historia de tu producto, a un tap.', 'Published heading retained ' + name);
       check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth+1), 'No horizontal overflow ' + name);
       check(await logo.getAttribute('href') === '/' && /nexID/i.test(await logo.getAttribute('aria-label') || ''), 'Logo has named home destination ' + name);
-      check(await logo.locator('.brand-mark, .brand-wordmark-svg').count() === 2, 'Original public logo is visible ' + name);
-      const dimensions=await logo.evaluate(element => { const link=element.getBoundingClientRect(), mark=element.querySelector('.brand-mark')?.getBoundingClientRect(), word=element.querySelector('.brand-wordmark-svg')?.getBoundingClientRect(); return { link:{ width:link.width, height:link.height }, mark:mark?{ width:mark.width,height:mark.height }:null, word:word?{ width:word.width,height:word.height }:null }; });
-      check(dimensions.link.width >= 44 && dimensions.link.height >= 44 && dimensions.mark?.width > 0 && dimensions.word?.width > 0, 'Logo and home touch target fit ' + name, dimensions);
+      const identity=logo.locator('[data-identity-variant="static"]');
+      check(await identity.innerText() === 'nexID' && await identity.locator(':scope > svg').isVisible(), 'Complete stationary wordmark and mark are visible ' + name);
+      const dimensions=await logo.evaluate(element => { const link=element.getBoundingClientRect(), mark=element.querySelector('[data-identity-variant="static"] > svg')?.getBoundingClientRect(), word=element.querySelector('[data-identity-variant="static"] > svg + span')?.getBoundingClientRect(); return { link:{ width:link.width, height:link.height }, mark:mark?{ width:mark.width,height:mark.height }:null, word:word?{ width:word.width,height:word.height }:null }; });
+      check(dimensions.link.width >= 44 && dimensions.link.height >= 44 && dimensions.mark?.width === (width < 768 ? 40 : 48) && dimensions.word?.width > 0, 'Logo and home touch target fit ' + name, dimensions);
       const legibility=await logoLegibility(logo);
       check(legibility.supported && legibility.minimumRatio >= 4.5, 'Wordmark has readable theme colors ' + name, legibility);
       const actions=page.getByRole('group', { name:'Acciones principales' }), primary=actions.locator('a').first();
-      check(await primary.getAttribute('href') === '/sun?demo=1&profile=valle-secreto&scenario=closed' && await primary.getAttribute('data-demo-entry') === 'valle-secreto' && await primary.innerText() === 'Explorar Valle Secreto', 'Direct closed Valle sample CTA retained ' + name);
-      check(await actions.locator('a[href*="contact=demo"]').innerText() === 'Agendar una demo', 'Contact CTA retained ' + name);
-      check(/Tu marca publica/.test(await page.locator('h1 + p').innerText()) && /NFC o QR/.test(await page.locator('h1 + p').innerText()), 'Published information copy retained ' + name);
-      check(await media.getAttribute('aria-hidden') === 'true', 'Animated hero remains decorative ' + name);
-      check((await page.locator('main').innerText()).includes('Experiencia NFC ilustrativa'), 'Illustrative evidence boundary visible ' + name);
+      check(await primary.getAttribute('href') === '/demo-lab' && await primary.innerText() === 'Probar demo', 'Main action opens Demo Lab ' + name);
+      check(await actions.locator('a[href*="contact=demo"]').innerText() === 'Agendar demo para mi marca', 'Commercial action identifies its audience ' + name);
+      check(await page.locator('#como-funciona a[data-demo-entry="valle-secreto"]').getAttribute('href') === '/sun?demo=1&profile=valle-secreto&scenario=closed', 'Wine journey links to Valle Secreto ' + name);
+      check(/publica la marca/.test(await page.locator('h1 + p').innerText()) && /QR/.test(await page.locator('h1 + p').innerText()), 'Introduction explains the action and data source ' + name);
+      check(await media.getAttribute('alt') === 'Una persona toca la pantalla de un teléfono apoyado sobre la caja que recibe', 'Editorial photograph has an accessible description ' + name);
+      const imageFraction = await media.evaluate(image => {
+        const rect = image.getBoundingClientRect();
+        return Math.max(0, Math.min(innerHeight, rect.bottom) - Math.max(0, rect.top)) / rect.height;
+      });
+      check(imageFraction >= 1/3, 'At least a third of the photograph is visible on entry ' + name, {imageFraction});
       const targets=await page.locator('header button, header [data-brand-home-link], [role="group"][aria-label="Acciones principales"] a').evaluateAll(nodes => nodes.filter(element => element.getClientRects().length && getComputedStyle(element).visibility !== 'hidden').map(element => { const rect=element.getBoundingClientRect(); return { label:element.getAttribute('aria-label') || element.textContent.trim().slice(0,50),width:rect.width,height:rect.height }; }));
       check(targets.length >= 3 && targets.every(target => target.width >= 44 && target.height >= 44), 'Primary targets at least44 ' + name, targets);
+      if (reducedMotion === 'no-preference') {
+        await page.waitForFunction(() => window.__brandIntroEvents.some(event => event.type === 'animationend'), undefined, {timeout:3000});
+      }
+      const firstVisit = await page.evaluate(() => window.__brandIntroEvents);
+      check(reducedMotion === 'reduce' ? firstVisit.length === 0 :
+        firstVisit.length === 2 && firstVisit[0].type === 'animationstart' && firstVisit[1].type === 'animationend'
+        && Math.abs(firstVisit[1].elapsed - .6) < .01, 'First visit honours the single 600 ms introduction ' + name, firstVisit);
       const logoSamples=await phaseSamples(page,logo),initialHero=await snapshots(media);
+      check(!phaseChanged(logoSamples) && logoSamples.every(sample => sample.every(idle)), 'Brand stays still after entry ' + name);
       const initialLogos=await snapshots(page.locator('[data-brand-home-link][data-brand-motion]'));
       check(initialLogos.filter(item => !item.visible).every(idle), 'Initially offscreen logos have no active loops ' + name, initialLogos);
       if(initialHero[0]&&!initialHero[0].visible)check(idle(initialHero[0]),'Initially offscreen hero is idle '+name,initialHero[0]);
-      // Mobile copy may place the artwork below the first viewport. In that
-      // state it must pause; sample visible motion only after actual scrolling.
       await media.scrollIntoViewIfNeeded(); await page.waitForTimeout(350);
       const heroSamples=await phaseSamples(page,media);
       check(heroSamples.every(sample=>sample[0]?.visible),'Hero is actually visible while phase is sampled '+name);
-      if (reducedMotion === 'no-preference') {
-        check(phaseChanged(logoSamples), 'Logo changes rendered phase ' + name, logoSamples.map(sample => ({ loops:sample[0]?.loops,smil:sample[0]?.smil })));
-        check(phaseChanged(heroSamples), 'Hero changes rendered phase ' + name, heroSamples.map(sample => ({ loops:sample[0]?.loops })));
-      } else {
+      check(!phaseChanged(heroSamples) && heroSamples.every(sample => sample.every(idle)), 'Editorial photograph remains still ' + name, heroSamples);
+      if (reducedMotion === 'reduce') {
         check(!phaseChanged(logoSamples) && logoSamples.every(sample => sample.every(idle)), 'Reduced motion leaves logo still and idle ' + name, logoSamples);
-        check(!phaseChanged(heroSamples) && heroSamples.every(sample => sample.every(idle)), 'Reduced motion leaves hero still and idle ' + name, heroSamples);
         const loops=await page.evaluate(() => document.getAnimations().filter(animation => animation.playState === 'running' && animation.effect?.getTiming().iterations === Infinity).map(animation => ({ name:animation.animationName, target:animation.effect?.target?.getAttribute?.('class') })));
         check(loops.length === 0, 'Reduced page has no running infinite animations ' + name, loops);
       }
@@ -302,7 +314,7 @@ try {
       const axeResult=await audit(page,name);
       await page.evaluate(() => scrollTo(0,0)); await settle(page);
       const file='landing-'+name+'.png'; await page.screenshot({ path:join(output,file),fullPage:true });
-      const workflowHeading=page.locator('.simple-trust-flow-intro h2');
+      const workflowHeading=page.locator('#home-flow-title');
       let workflowViewportEdge=null,workflowEdgePlacement=null;
       if(width===768&&reducedMotion==='no-preference'){
         // Enter at the demonstrated viewport edge directly. Centering first
@@ -328,26 +340,34 @@ try {
           &&Math.abs(edge.bottomMargin-workflowEdgePlacement.expectedBottomMargin)<=1,
           'Workflow heading fully inside viewport at reachable8px edge '+name,{...edge,placement:workflowEdgePlacement});
       }
-      const workflowInk=await workflowHeading.evaluate(element=>[element,...element.querySelectorAll('.simple-trust-flow-title-line__inner')].map(node=>{
-        const cs=getComputedStyle(node),rect=node.getBoundingClientRect();return{text:node.textContent.trim(),visible:rect.width>0&&rect.height>0&&rect.bottom>0&&rect.top<innerHeight,
+      const workflowInk=await workflowHeading.evaluate(node=>{
+        const cs=getComputedStyle(node),rect=node.getBoundingClientRect();
+        return {text:node.textContent.trim(),visible:rect.width>0&&rect.height>0&&rect.bottom>0&&rect.top<innerHeight,
           color:cs.color,textFill:cs.webkitTextFillColor,backgroundImage:cs.backgroundImage,opacity:cs.opacity};
-      }));
-      check(workflowInk.length>1&&workflowInk.every(item=>item.visible&&item.text&&item.color!=='rgba(0, 0, 0, 0)'&&item.textFill!=='rgba(0, 0, 0, 0)'&&item.backgroundImage==='none'&&parseFloat(item.opacity)>0),
-        'Workflow heading and animated lines have visible solid ink '+name,workflowInk);
+      });
+      check(workflowInk.visible&&workflowInk.text&&workflowInk.color!=='rgba(0, 0, 0, 0)'&&workflowInk.textFill!=='rgba(0, 0, 0, 0)'&&workflowInk.backgroundImage==='none'&&parseFloat(workflowInk.opacity)>0,
+        'Workflow heading has visible solid ink '+name,workflowInk);
       const workflowContrast=await backdropContrast(page,workflowHeading,name+'-workflow-heading');
       check(workflowContrast.supported&&workflowContrast.minimumRatio>=workflowContrast.minimumRequired,'Rendered workflow heading contrast '+name,workflowContrast);
       await workflowHeading.screenshot({path:join(output,'workflow-heading-'+name+'.png')});
       await page.evaluate(() => scrollTo(0,document.documentElement.scrollHeight-innerHeight)); await page.waitForTimeout(500);
       const offscreenSamples=await phaseSamples(page,media);
-      check(offscreenSamples.every(sample => sample.every(item => !item.visible && idle(item))), 'Offscreen hero pauses its CSS loops ' + name, offscreenSamples);
+      check(offscreenSamples.every(sample => sample.every(item => !item.visible && idle(item))), 'Offscreen editorial photograph is idle ' + name, offscreenSamples);
       const offscreenLogos=await snapshots(page.locator('[data-brand-home-link][data-brand-motion]'));
       check(offscreenLogos.filter(item => !item.visible).every(idle), 'Offscreen logos pause CSS and SMIL ' + name, offscreenLogos);
       await page.evaluate(() => scrollTo(0,0)); await page.waitForTimeout(400);
       if (reducedMotion === 'no-preference') {
         await media.scrollIntoViewIfNeeded();await page.waitForTimeout(350);
         const returned=await phaseSamples(page,media);
-        check(phaseChanged(returned), 'Hero resumes after viewport return ' + name, returned.map(sample => ({ loops:sample[0]?.loops })));
+        check(!phaseChanged(returned) && returned.every(sample => sample[0]?.visible && idle(sample[0])), 'Editorial photograph stays visible and still on return ' + name, returned.map(sample => ({ loops:sample[0]?.loops })));
       }
+      check(await page.evaluate(() => window.__geoRequests === 0), 'Initial page does not request geolocation ' + name);
+      await page.reload({waitUntil:'networkidle'});
+      await page.locator('section[aria-labelledby="home-title"] img').waitFor();
+      await page.waitForFunction(() => document.fonts.status === 'loaded' && document.querySelector('#home-title'));
+      await settle(page);
+      check(await page.evaluate(() => window.__brandIntroEvents.length === 0
+        && !document.querySelector('header [data-entering]')), 'Same session does not replay the header introduction ' + name);
       check(await page.evaluate(() => window.__geoRequests === 0), 'No geolocation request ' + name);
       report.views.push({ width,height:viewport.height,theme,reducedMotion,file,heading,lede,workflowEdgePlacement,workflowViewportEdge,workflowInk,workflowContrast,axe:axeResult,dimensions });
     } catch (error) {
