@@ -30,6 +30,53 @@ async function assessment(page,selector,name,width,theme){
  await page.screenshot({path:join(output,`${name}-${width}-${theme}.png`),fullPage:name==='products'||name==='experience'||name==='marketplace'});
 }
 async function noOverflow(page,label){check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label);}
+async function checkPortalDestinations(page,width,theme) {
+  await page.goto(base+'/me',{waitUntil:'networkidle'});
+  const header=page.locator('.consumer-portal-root > header');
+  const home=header.getByRole('link',{name:'Inicio',exact:true});
+  const nav=page.getByRole('navigation',{name:'Navegación del portal',exact:true});
+  check(await home.getAttribute('href')==='/me' && await home.getAttribute('aria-current')==='page',width+'/'+theme+' account home is visible and current');
+  check(await header.locator('a[data-brand-home-link]').getAttribute('href')==='/',width+'/'+theme+' brand keeps its public destination');
+  for(const [name,href] of [['Productos','/me/products'],['Historial','/me/taps'],['Beneficios','/me/rewards'],['Catálogo','/me/marketplace']]) {
+    const link=nav.getByRole('link',{name,exact:true});
+    check(await link.getAttribute('href')===href,width+'/'+theme+' primary destination '+name+' has the correct path');
+    await link.focus();await page.keyboard.press('Enter');await page.waitForURL(base+href);
+    await nav.locator('a[href="'+href+'"][aria-current="page"]').waitFor();
+    check(await nav.locator('[aria-current="page"]').count()===1 && await home.getAttribute('aria-current')===null,width+'/'+theme+' only '+name+' is current');
+  }
+  await page.getByRole('heading',{level:1,name:'Catálogo general',exact:true}).waitFor();
+  check(await page.getByTestId('consumer-catalog-partial').isVisible(),width+'/'+theme+' unscoped product fixture explains the general catalogue');
+  const bounds=await nav.evaluate(el=>{
+    const rect=el.getBoundingClientRect(), main=document.querySelector('#consumer-portal-content').getBoundingClientRect();
+    return {mobile:rect.bottom<=innerHeight+1&&Math.abs(rect.bottom-innerHeight)<=1,
+      lateral:rect.right<=main.left+1&&main.width>=1024,
+      targets:[...el.querySelectorAll('a,button')].every(item=>{const r=item.getBoundingClientRect();return r.width>=44 && r.height>=44;})};
+  });
+  check(bounds.targets && (width>=1280?bounds.lateral:width<1024?bounds.mobile:true),width+'/'+theme+' navigation reserves its own space and touch targets');
+  if(width===320) {
+    const accountControls=header.locator('[aria-label="Apariencia y sesión"]');
+    for(const widerText of [false,true]) {
+      const textStyle=widerText?await page.addStyleTag({content:'.consumer-portal-root > header a, .consumer-portal-root > header button {font-family: Verdana, sans-serif;letter-spacing: .04em;}'}):null;
+      try {
+        const homeBox=await home.boundingBox(),appearanceBox=await accountControls.boundingBox();
+        check(homeBox && appearanceBox && Math.abs(homeBox.y-appearanceBox.y)<=1 && homeBox.x+homeBox.width<=appearanceBox.x && appearanceBox.x+appearanceBox.width<=width,width+'/'+theme+' Inicio and account controls share one line (wide text '+widerText+')');
+        const labels=await nav.locator('a,button').evaluateAll(items=>items.map(item=>{
+          const label=item.querySelector('span'), range=document.createRange();
+          range.selectNodeContents(label);
+          return {text:label.textContent,lines:[...range.getClientRects()].map(rect=>[rect.left,rect.right]),target:item.getBoundingClientRect().toJSON()};
+        }));
+        const clipped=labels.filter(({lines,target})=>lines.length!==1 || lines[0][0]<target.left || lines[0][1]>target.right || target.right>width);
+        check(!clipped.length,width+'/'+theme+' primary labels fit on one line inside their targets (wide text '+widerText+'): '+JSON.stringify(clipped));
+      } finally { if(textStyle)await textStyle.evaluate(el=>el.remove()); }
+    }
+    await page.evaluate(()=>{document.documentElement.style.zoom='2';});
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),width+'/'+theme+' catalog and header reflow at 200 percent zoom');
+    await page.evaluate(()=>{document.documentElement.style.zoom='';});
+  }
+  await home.focus();await page.keyboard.press('Enter');await page.waitForURL(base+'/me');
+  await header.locator('a[href="/me"][aria-current="page"]').waitFor();
+}
 async function accountContactScenarios(page,width,theme){
  for(const [path,selector] of [['/me','[aria-labelledby="home-account-title"]'],['/me/passport','#consumer-portal-content'],['/me/privacy','[aria-labelledby="privacy-account-title"]']]){
   await page.goto(base+path,{waitUntil:'networkidle'});const surface=page.locator(selector);await surface.waitFor();
@@ -120,6 +167,7 @@ try{
   await context.addInitScript(()=>{Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){void window.__qaLocationCall();throw Error('Unexpected automatic location request');},watchPosition(){void window.__qaLocationCall();throw Error('Unexpected automatic location watch');}}});});
   const page=await context.newPage();page.on('pageerror',error=>report.errors.push({width,theme,message:error.message}));
   await page.route('**/*',route=>{const request=route.request(),url=new URL(request.url());if(!['GET','HEAD'].includes(request.method())){report.blockedWrites.push({path:url.pathname,method:request.method()});return route.abort();}return ['localhost','127.0.0.1'].includes(url.hostname)||['data:','blob:'].includes(url.protocol)?route.continue():route.abort();});
+  await checkPortalDestinations(page,width,theme);
   await accountContactScenarios(page,width,theme);
   await productPhotoRecovery(page,context,width,theme);
   await page.goto(base+'/me/products',{waitUntil:'networkidle',timeout:90000});
@@ -133,7 +181,7 @@ try{
   const more=page.getByRole('button',{name:'Más',exact:true});await more.focus();await page.keyboard.press('Enter');
   const menu=page.getByRole('dialog',{name:'Más opciones'});await menu.waitFor();
   for(const label of ['Productos y marcas','Herramientas','Mi cuenta'])check(await menu.getByRole('heading',{name:label,exact:true}).count()===1,`${width}/${theme} More group ${label}`);
-  check(await menu.getByRole('link').count()===9,`${width}/${theme} all nine More destinations retained`);
+  check(await menu.getByRole('link').count()===8,`${width}/${theme} all eight secondary destinations retained`);
   await assessment(page,'dialog[open]','more',width,theme);
   await nativeCloseRegression(page,more,menu,width,theme);
   await page.keyboard.press('Escape');await menu.waitFor({state:'hidden'});check(await more.evaluate(element=>element===document.activeElement),`${width}/${theme} More returns keyboard focus`);
