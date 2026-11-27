@@ -17,14 +17,14 @@ test("home hero is large, friendly and truthful without becoming a technical das
     readFile(new URL("../src/components/home-sections.module.css", import.meta.url), "utf8"),
   ]);
   const hero = sliceBetween(sections, "export function HeroSection", "export function SimpleTrustFlowSection");
-  assert.match(hero, /<h1 className=\{styles\.title\}/);
+  assert.match(hero, /<h1 id="home-title" className=\{styles\.title\}/);
   const titleRule = css.match(/\.title\s*\{([^}]+)\}/)?.[1];
   assert.ok(titleRule, "hero H1 must keep an explicit responsive type scale");
   const remSizes = [...titleRule.matchAll(/(\d+(?:\.\d+)?)rem/g)].map((match) => Number(match[1]));
   assert.ok(remSizes.length > 0, "hero H1 must expose auditable rem-based responsive sizes");
   assert.ok(Math.max(...remSizes) >= 4, "desktop hero H1 must reach at least 4rem");
   assert.match(css, /\.title\s*\{[^}]*font-size:\s*clamp\(/);
-  assert.match(css, /\.body\s*\{[^}]*line-height:\s*1\.8/);
+  assert.match(css, /\.body\s*\{[^}]*line-height:\s*1\.5/);
   assert.match(sections, /import nexIdDppHero from "\.\.\/\.\.\/public\/landing\/nexid-dpp-hero-v3\.webp"/);
   assert.match(hero, /src=\{nexIdDppHero\}/);
   assert.doesNotMatch(hero, /InstitutionalVideoPanel/);
@@ -37,9 +37,9 @@ test("home hero is large, friendly and truthful without becoming a technical das
     assert.doesNotMatch(body, /SUN|tenant|replay|hash-only|TagTamper|custod|\bTT\b/i);
     assert.doesNotMatch(body, /physical product|producto físico|produto físico/i);
   }
-  assert.match(heroBodies[0], /identidad, historia y trazabilidad declaradas según cada rol/i);
-  assert.match(heroBodies[1], /identidade, história e rastreabilidade declaradas conforme cada papel/i);
-  assert.match(heroBodies[2], /identity, history and declared traceability according to each role/i);
+  assert.match(heroBodies[0], /servicios que publica la marca/i);
+  assert.match(heroBodies[1], /serviços que a marca disponibiliza/i);
+  assert.match(heroBodies[2], /services shared by the brand/i);
   for (const body of heroBodies) assert.doesNotMatch(body, /cumple|compliant|certified|certificado/i);
   for (const body of heroBodies) assert.doesNotMatch(body, /piloto|pilot/i);
 });
@@ -59,9 +59,9 @@ test("SimpleTrustFlow keeps one progressive industry journey and one clear actio
   assert.match(journey, /\["discover", "signal", "aftercare"\]/);
   assert.match(journey, /<SimpleTrustFlowMotion/);
   assert.match(journey, /<HorizontalRailControls/);
-  assert.match(flow, /Del producto a su pasaporte, en tres momentos/);
-  assert.match(flow, /Do produto ao seu passaporte, em três momentos/);
-  assert.match(flow, /From the product to its passport, in three moments/);
+  assert.match(flow, /Cómo funciona/);
+  assert.match(flow, /Como funciona/);
+  assert.match(flow, /How it works/);
   assert.doesNotMatch(flow, /Botella, paquete o bolsa|Garrafa, pacote ou bolsa|Bottle, parcel or pouch/);
   assert.doesNotMatch(flow, /simple-trust-flow-continuity|continuityStages/);
 

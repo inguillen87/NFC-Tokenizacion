@@ -74,15 +74,16 @@ async function connect(url,{timeoutMs=10000}={}) {
     send(method,params={}){const next=++id;return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{pending.delete(next);reject(Error('native_cdp_timeout_'+method));},10000);pending.set(next,{resolve,reject,timer});socket.send(JSON.stringify({id:next,method,params}));});},
     close(){for(const item of pending.values()){clearTimeout(item.timer);item.reject(Error('native_cdp_closed'));}pending.clear();socket.close();}};
 }
+const idle=item=>item&&item.loops.length===0&&item.smil.every(svg=>!svg.indefinite||svg.paused);
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
 function state() {
-  const roots={logo:document.querySelector('header [data-brand-home-link][data-brand-motion]'),hero:document.querySelector('.hero-immersive-media')};
+  const roots={logo:document.querySelector('header [data-brand-home-link][data-brand-motion]'),hero:document.querySelector('section[aria-labelledby="home-title"] img')};
   const inspect=root=>{
     if(!root)return null;
     const rect=root.getBoundingClientRect(),styles=[root,...root.querySelectorAll('*')].map(element=>{const cs=getComputedStyle(element);let svgMatrix=null;if(element instanceof SVGGraphicsElement&&element.querySelector(':scope > animateTransform')){const matrix=element.getCTM();if(matrix)svgMatrix=['a','b','c','d','e','f'].map(key=>Number(matrix[key].toFixed(4)));}return{class:element.getAttribute('class'),transform:cs.transform,opacity:cs.opacity,boxShadow:cs.boxShadow,strokeDashoffset:cs.strokeDashoffset,svgMatrix};});
     return{visible:rect.bottom>0&&rect.top<innerHeight&&rect.width>0&&rect.height>0,
-      active:root.getAttribute('data-brand-motion-active'),signalActive:root.querySelector('.hero-immersive-signal')?.getAttribute('data-motion-active'),
+      active:root.getAttribute('data-brand-motion-active'),
       visualSignature:JSON.stringify(styles),loops:root.getAnimations({subtree:true}).filter(animation=>animation.playState==='running'&&animation.effect?.getTiming().iterations===Infinity).map(animation=>({name:animation.animationName||'web-animation'})),
       smil:[...root.querySelectorAll('svg')].map(svg=>({paused:svg.animationsPaused(),indefinite:svg.querySelectorAll('animate[repeatCount="indefinite"],animateTransform[repeatCount="indefinite"],animateMotion[repeatCount="indefinite"]').length}))};
   };
@@ -91,7 +92,7 @@ function state() {
 }
 
 function productReady() {
-  const image=document.querySelector('.hero-immersive-media img');
+  const image=document.querySelector('section[aria-labelledby="home-title"] img');
   return Boolean(document.readyState==='complete'&&image?.complete&&image.naturalWidth>0
     &&document.querySelector('header [data-brand-motion-active="true"]'));
 }
@@ -196,7 +197,7 @@ export async function verifyNativeBrandHeroHidden({chromiumExecutable,origin,out
         if(!ready)throw Error('native_product_render_timeout');await delay(600);
         const before=await sample();await delay(500);const moving=await sample();
         check(!before.hidden&&before.visibilityState==='visible','Native page initially visible '+theme,{state:before.visibilityState});
-        if(!probeOnly){check(before.logo?.visible&&before.logo.visualSignature!==moving.logo?.visualSignature,'Native logo moves before hiding '+theme);check(before.hero?.visible&&before.hero.visualSignature!==moving.hero?.visualSignature,'Native hero moves before hiding '+theme);}
+        if(!probeOnly){check(before.logo?.visible&&before.logo.visualSignature!==moving.logo?.visualSignature,'Native logo moves before hiding '+theme);check(before.hero?.visible&&idle(before.hero)&&before.hero.visualSignature===moving.hero?.visualSignature,'Native editorial image is visible and still before hiding '+theme);}
         // Native tab selection works in Xvfb without a window manager and does
         // not introduce a focus/visibility emulation override.
         const covering=await browser.send('Target.createTarget',{url:'about:blank',browserContextId:context.browserContextId,newWindow:false,background:false});
@@ -208,7 +209,6 @@ export async function verifyNativeBrandHeroHidden({chromiumExecutable,origin,out
         await delay(400);hidden=await sample();
         check(hidden.hidden&&hidden.visibilityState==='hidden'&&hidden.events.includes('hidden'),'Native tab selection produces real hidden event '+theme,hidden);
         if(!probeOnly){
-          const idle=item=>item&&item.loops.length===0&&item.smil.every(svg=>!svg.indefinite||svg.paused);
           check(idle(hidden.logo),'Native hidden page pauses logo CSS and SMIL '+theme,hidden.logo);
           check(idle(hidden.hero),'Native hidden page pauses hero CSS loops '+theme,hidden.hero);
         }
@@ -217,7 +217,7 @@ export async function verifyNativeBrandHeroHidden({chromiumExecutable,origin,out
         await browser.send('Target.activateTarget',{targetId:target.targetId});await browser.send('Target.closeTarget',{targetId:covering.targetId});await delay(400);
         const returned=await sample();await delay(500);const resumed=await sample();
         check(!returned.hidden&&returned.visibilityState==='visible'&&returned.events.includes('visible'),'Native restored window produces real visible event '+theme,{state:returned.visibilityState,events:returned.events});
-        if(!probeOnly){check(returned.logo?.visualSignature!==resumed.logo?.visualSignature,'Native logo resumes after return '+theme);check(returned.hero?.visualSignature!==resumed.hero?.visualSignature,'Native hero resumes after return '+theme);}
+        if(!probeOnly){check(returned.logo?.visualSignature!==resumed.logo?.visualSignature,'Native logo resumes after return '+theme);check(returned.hero?.visible&&idle(returned.hero)&&returned.hero.visualSignature===resumed.hero?.visualSignature,'Native editorial image stays visible and still on return '+theme);}
         check(resumed.geoRequests===0,'Native probe does not request GPS '+theme);
         observations.push({theme,width:1440,hideMethod:'native tab activation in the same incognito window',before,moving,hidden,stillHidden,returned,resumed});
       }finally{page?.close();await browser.send('Target.disposeBrowserContext',{browserContextId:context.browserContextId});}

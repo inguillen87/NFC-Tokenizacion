@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { VALLE_SECRETO_DEMO_HREF } from "../lib/sun-demo-links";
+import styles from "./home-sections.module.css";
 import { ArrowRight } from "lucide-react";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { HorizontalRailControls } from "./horizontal-rail-controls";
@@ -308,6 +310,11 @@ export function SimpleTrustIndustryJourney({ locale, ctaLabel }: { locale: strin
           {ctaLabel}
           <ArrowRight aria-hidden="true" />
         </Link>
+        {activeIndustry === "bottles" && (
+          <Link href={VALLE_SECRETO_DEMO_HREF} prefetch={false} className={styles.secondary} data-demo-entry="valle-secreto">
+            {normalizedLocale === "en" ? "Explore Valle Secreto" : "Explorar Valle Secreto"}
+          </Link>
+        )}
       </div>
     </div>
   );
