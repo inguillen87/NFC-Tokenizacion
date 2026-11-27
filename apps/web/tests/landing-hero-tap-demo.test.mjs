@@ -6,7 +6,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf
 const tap = read("src/components/hero-tap-demo.tsx");
 const motion = read("src/components/landing-motion.tsx");
 const css = read("src/components/home-enhancements.module.css");
-const sections = read("src/components/home-sections.tsx");
+const sections = read("src/components/home-extra-sections.tsx");
 const home = read("src/app/page.tsx");
 
 test("the simulated hero tap is labelled as sample data and never calls an API", () => {
@@ -40,5 +40,5 @@ test("the home offers the account and the business entrances after the journey",
   assert.match(sections, /export function AudienceSection/);
   assert.match(sections, /<Link href="\/me" prefetch=\{false\} className=\{fx\.audiencePrimary\}/);
   assert.match(sections, /<a href=\{loginHref\} className=\{fx\.audienceSecondary\}/);
-  assert.match(home, /<SimpleTrustFlowSection locale=\{locale\} \/>\s*<AudienceSection locale=\{locale\} loginHref=\{loginHref\} \/>/);
+  assert.match(home, /<SimpleTrustFlowSection locale=\{locale\} \/>\s*<ReadingOutcomesSection locale=\{locale\} \/>\s*<AudienceSection locale=\{locale\} loginHref=\{loginHref\} \/>/);
 });

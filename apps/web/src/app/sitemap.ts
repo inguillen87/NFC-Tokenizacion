@@ -15,6 +15,7 @@ const publicRoutes = [
   { path: "/stack", changeFrequency: "monthly", priority: 0.7 },
   { path: "/resellers", changeFrequency: "monthly", priority: 0.7 },
   { path: "/glossary", changeFrequency: "monthly", priority: 0.65 },
+  { path: "/compare", changeFrequency: "monthly", priority: 0.7 },
   { path: "/investor-one-pager", changeFrequency: "monthly", priority: 0.55 },
 ] as const;
 

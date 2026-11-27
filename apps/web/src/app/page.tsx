@@ -5,8 +5,8 @@ import {
   HeroSection,
   SimpleTrustFlowSection,
   CommercialValueSection,
-  AudienceSection,
 } from "../components/home-sections";
+import { AudienceSection, ReadingOutcomesSection } from "../components/home-extra-sections";
 import { LandingMotion, LandingScrollProgress } from "../components/landing-motion";
 import { BrandHomeLink } from "../components/brand-home-link";
 import { MarketingHeaderBrand } from "../components/marketing-header-brand";
@@ -132,6 +132,7 @@ export default async function HomePage() {
 
         <ConnectedProductIndustryProvider>
           <SimpleTrustFlowSection locale={locale} />
+          <ReadingOutcomesSection locale={locale} />
           <AudienceSection locale={locale} loginHref={loginHref} />
           <CommercialValueSection locale={locale} />
         </ConnectedProductIndustryProvider>

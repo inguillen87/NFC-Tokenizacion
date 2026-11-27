@@ -111,52 +111,6 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
   );
 }
 
-export function AudienceSection({ locale, loginHref }: { locale: string; loginHref: string }) {
-  const isEn = locale === "en";
-  const isBr = locale === "pt-BR";
-  const copy = isEn
-    ? {
-        label: "Where to continue",
-        consumer: "For consumers", products: "Your products, in one place", consumerBody: "Open your saved passports and find the services each brand has made available.", account: "Go to my account",
-        business: "For brands", customers: "Stay close to your customers", businessBody: "Publish product information and choose which benefits your customers can access from the label.", contact: "Book a demo for my brand", login: "Business sign-in",
-      }
-    : isBr
-      ? {
-          label: "Por onde continuar",
-          consumer: "Para consumidores", products: "Seus produtos em um só lugar", consumerBody: "Abra seus passaportes salvos e encontre os serviços que cada marca disponibilizou.", account: "Ir para minha conta",
-          business: "Para marcas", customers: "Fique perto dos seus clientes", businessBody: "Publique informações do produto e escolha quais benefícios seus clientes podem acessar pela etiqueta.", contact: "Agendar demo para minha marca", login: "Acesso empresas",
-        }
-      : {
-          label: "Por dónde seguir",
-          consumer: "Para consumidores", products: "Tus productos, en un solo lugar", consumerBody: "Abrí tus pasaportes guardados y encontrá los servicios que habilitó cada marca.", account: "Ir a mi cuenta",
-          business: "Para marcas", customers: "Seguí cerca de tus clientes", businessBody: "Publicá la información del producto y elegí qué beneficios podrán consultar tus clientes desde la etiqueta.", contact: "Agendar demo para mi marca", login: "Acceso empresas",
-        };
-
-  return (
-    <section className={`container-shell ${fx.audiences}`} aria-label={copy.label}>
-      <article className={`${fx.audienceCard} ${fx.reveal}`} data-audience="consumers" data-reveal data-spotlight aria-labelledby="home-consumers">
-        <span className={fx.audienceIcon} aria-hidden="true"><UserRound size={22} /></span>
-        <p className={fx.audienceLabel}>{copy.consumer}</p>
-        <h2 id="home-consumers">{copy.products}</h2>
-        <p className={fx.audienceBody}>{copy.consumerBody}</p>
-        <div className={fx.audienceActions}>
-          <Link href="/me" prefetch={false} className={fx.audiencePrimary}>{copy.account}<ArrowRight size={16} aria-hidden="true" /></Link>
-        </div>
-      </article>
-      <article className={`${fx.audienceCard} ${fx.reveal}`} data-audience="brands" data-reveal data-spotlight style={{ "--reveal-i": 1 } as CSSProperties} aria-labelledby="home-brands">
-        <span className={fx.audienceIcon} aria-hidden="true"><Building2 size={22} /></span>
-        <p className={fx.audienceLabel}>{copy.business}</p>
-        <h2 id="home-brands">{copy.customers}</h2>
-        <p className={fx.audienceBody}>{copy.businessBody}</p>
-        <div className={fx.audienceActions}>
-          <Link href="/?contact=demo#contact-modal" prefetch={false} className={fx.audiencePrimary}>{copy.contact}<ArrowRight size={16} aria-hidden="true" /></Link>
-          <a href={loginHref} className={fx.audienceSecondary}>{copy.login}</a>
-        </div>
-      </article>
-    </section>
-  );
-}
-
 export function CommercialValueSection({ locale }: { locale: string }) {
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";

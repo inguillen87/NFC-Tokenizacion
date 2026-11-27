@@ -318,6 +318,53 @@
 :global(html[data-theme="dark"]) .audiencePrimary:focus-visible,
 :global(html[data-theme="dark"]) .audienceSecondary:focus-visible { outline-color: #64d9c7; }
 
+/* ---------- Reading outcomes ---------- */
+.outcomes { padding-block: clamp(2.5rem, 6vw, 4.5rem) 0; color: #172f39; }
+.outcomesIntro { max-width: 46rem; }
+.outcomesIntro h2 { margin: .5rem 0 0; font-size: clamp(1.8rem, 3.6vw, 2.9rem); font-weight: 780; line-height: 1.08; letter-spacing: -.04em; text-wrap: balance; }
+.outcomesIntro > p:last-child { margin: 1rem 0 0; max-width: 52ch; font-size: 1.02rem; line-height: 1.7; color: #526772; }
+.outcomesList { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.1rem; margin: clamp(1.5rem, 3.5vw, 2.5rem) 0 0; padding: 0; list-style: none; }
+.outcomeCard {
+  --tone: #1b7f4b;
+  --tone-soft: rgb(27 127 75 / 0.16);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  overflow: hidden;
+  padding: clamp(1.3rem, 2.6vw, 1.9rem);
+  border: 1px solid #dae7e7;
+  border-radius: 1.4rem;
+  background: #ffffff;
+  box-shadow: 0 16px 40px rgb(23 47 57 / 0.07);
+  transition: transform 260ms cubic-bezier(0.2, 0, 0, 1), box-shadow 260ms ease, border-color 260ms ease;
+}
+.outcomeCard[data-tone="warn"] { --tone: #8a5a00; --tone-soft: rgb(242 184 75 / 0.26); }
+.outcomeCard[data-tone="risk"] { --tone: #b3261e; --tone-soft: rgb(179 38 30 / 0.14); }
+.outcomeCard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(20rem circle at var(--spot-x, 50%) var(--spot-y, -30%), var(--tone-soft), transparent 62%);
+  pointer-events: none;
+}
+.outcomeCard::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--tone); }
+.outcomeCard:hover { transform: translateY(-4px); border-color: var(--tone); box-shadow: 0 26px 56px rgb(23 47 57 / 0.14); }
+.outcomeCard > * { position: relative; }
+.outcomeIcon { display: grid; place-items: center; width: 2.9rem; height: 2.9rem; border-radius: .9rem; color: var(--tone); background: var(--tone-soft); }
+.outcomeCard h3 { margin: .3rem 0 0; font-size: 1.25rem; font-weight: 760; letter-spacing: -.025em; }
+.outcomeCard p { margin: 0; flex: 1; font-size: .94rem; line-height: 1.65; color: #526772; }
+.outcomeLink { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; margin-top: .3rem; font-size: .86rem; font-weight: 700; color: var(--tone); text-decoration: none; transition: gap 180ms ease; }
+.outcomeLink:hover { gap: .8rem; text-decoration: underline; text-underline-offset: .3rem; }
+.outcomeLink:focus-visible { outline: 3px solid var(--tone); outline-offset: 3px; }
+.outcomesFooter { margin: 1.4rem 0 0; }
+:global(html[data-theme="dark"]) .outcomes { color: #edf5f4; }
+:global(html[data-theme="dark"]) .outcomesIntro > p:last-child,
+:global(html[data-theme="dark"]) .outcomeCard p { color: #b4c6ca; }
+:global(html[data-theme="dark"]) .outcomeCard { --tone: #5bd08c; --tone-soft: rgb(91 208 140 / 0.16); border-color: #294249; background: #12303a; box-shadow: 0 16px 40px rgb(0 0 0 / 0.35); }
+:global(html[data-theme="dark"]) .outcomeCard[data-tone="warn"] { --tone: #f2b84b; --tone-soft: rgb(242 184 75 / 0.16); }
+:global(html[data-theme="dark"]) .outcomeCard[data-tone="risk"] { --tone: #ff8a80; --tone-soft: rgb(255 138 128 / 0.15); }
+
 /* ---------- Small screens ---------- */
 @media (max-width: 760px) {
   .aurora span { width: 70vmax; filter: blur(54px); }
@@ -330,6 +377,7 @@
   }
   .tapCard { transform-origin: 50% 100%; }
   .audiences { grid-template-columns: minmax(0, 1fr); }
+  .outcomesList { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ---------- Preferences ---------- */
@@ -337,8 +385,8 @@
   .progress { display: none; }
   .aurora span, .tapTrigger, .tapTriggerIcon { animation: none !important; }
   .depth { translate: none; transition: none; }
-  .tapTrigger, .tapLink, .audienceCard, .audienceCard::before, .audiencePrimary, .audienceSecondary { transition: none; }
-  .tapTrigger:hover, .tapTrigger:active, .audienceCard:hover { transform: none; }
+  .tapTrigger, .tapLink, .audienceCard, .audienceCard::before, .audiencePrimary, .audienceSecondary, .outcomeCard, .outcomeLink { transition: none; }
+  .tapTrigger:hover, .tapTrigger:active, .audienceCard:hover, .outcomeCard:hover { transform: none; }
 }
 @media (forced-colors: active) {
   .aurora, .progress { display: none; }
