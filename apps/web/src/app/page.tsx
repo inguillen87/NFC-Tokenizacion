@@ -5,7 +5,9 @@ import {
   HeroSection,
   SimpleTrustFlowSection,
   CommercialValueSection,
+  AudienceSection,
 } from "../components/home-sections";
+import { LandingMotion, LandingScrollProgress } from "../components/landing-motion";
 import { BrandHomeLink } from "../components/brand-home-link";
 import { MarketingHeaderBrand } from "../components/marketing-header-brand";
 import headerStyles from "../components/public-site-header.module.css";
@@ -108,6 +110,8 @@ export default async function HomePage() {
 
   return (
     <div className={`landing-root ${homeStyles.landing}`}>
+      <LandingScrollProgress />
+      <LandingMotion />
       <link rel="preload" as="font" type="font/woff2" crossOrigin="anonymous" href="/fonts/fraunces/fraunces-latin-500.c51a8809.woff2" />
       <a href="#main-content" className={headerStyles.skipLink}>{skipLabel}</a>
       <header className={headerStyles.header}>
@@ -128,6 +132,7 @@ export default async function HomePage() {
 
         <ConnectedProductIndustryProvider>
           <SimpleTrustFlowSection locale={locale} />
+          <AudienceSection locale={locale} loginHref={loginHref} />
           <CommercialValueSection locale={locale} />
         </ConnectedProductIndustryProvider>
         <CommercialContactModal initialLocale={locale} />
