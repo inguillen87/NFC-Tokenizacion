@@ -1,0 +1,25 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { StaticBrandHomeLink } from "./brand-home-link-static";
+import styles from "./public-site-header.module.css";
+
+export function MarketingHeaderBrand({ locale, onNavigate }: { locale: string; onNavigate?: () => void }) {
+  const [entering, setEntering] = useState(false);
+  useEffect(() => {
+    if (onNavigate || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    try {
+      if (sessionStorage.getItem("nexid-brand-intro")) return;
+      sessionStorage.setItem("nexid-brand-intro", "1");
+      setEntering(true);
+    } catch {
+      // Private browsing may disable storage. The complete mark is visible from first paint.
+    }
+  }, [onNavigate]);
+
+  return (
+    <span className={styles.brand} data-entering={entering || undefined} onAnimationEnd={() => setEntering(false)}>
+      <StaticBrandHomeLink locale={locale} size={48} onNavigate={onNavigate} />
+    </span>
+  );
+}

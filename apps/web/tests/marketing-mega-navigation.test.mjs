@@ -7,9 +7,9 @@ const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 test("consumer account entry is direct and distinct from business sign in in every locale", async () => {
   const navigation = await read("../src/components/marketing-mega-nav.tsx");
   for (const [account, business] of [
-    ["Mi cuenta", "Ingresar empresas"],
-    ["My account", "Business sign in"],
-    ["Minha conta", "Acesso para empresas"],
+    ["Mi cuenta", "Empresas"],
+    ["My account", "Business"],
+    ["Minha conta", "Empresas"],
   ]) {
     assert.ok(navigation.includes(`account: "${account}"`));
     assert.ok(navigation.includes(`login: "${business}"`));
@@ -20,7 +20,7 @@ test("consumer account entry is direct and distinct from business sign in in eve
   assert.equal(navigation.match(/href: "\/me"/g)?.length, 3);
   assert.doesNotMatch(navigation, /\/login\?next=\/me/);
   assert.match(navigation, /<a href=\{loginHref\} className=\{styles\.loginLink\}>\{copy\.login\}/);
-  assert.match(navigation, /href="\/\?contact=demo#contact-modal" prefetch=\{false\} className=\{styles\.headerCta\}/);
+  assert.match(navigation, /href="\/demo-lab" prefetch=\{false\} className=\{styles\.headerCta\}/);
 });
 
 test("mega navigation groups commercial and technical depth on existing routes", async () => {
@@ -65,11 +65,14 @@ test("mega navigation groups commercial and technical depth on existing routes",
   assert.match(navigation, /about: "Quem somos"/);
   assert.match(navigation, /about: "About us"/);
   assert.match(navigation, /className=\{styles\.mobileAboutLink\}/);
-  assert.equal(navigation.match(/group\.items\.filter\(\(item\) => item\.href !== "\/about"\)/g)?.length, 2);
+  assert.match(navigation, /const groups = copy\.groups\.filter\(\(group\) => group\.id !== "industries"\)/);
+  assert.match(navigation, /group\.id === "solutions" && industries/);
+  assert.equal(navigation.match(/industries\.items\.map/g)?.length, 2);
+  assert.equal(navigation.match(/group\.items\.filter\(\(item\) => item\.href !== "\/about"\)/g)?.length, 1);
   assert.match(navigation, /function isNavigationGroupCurrent/);
   assert.match(navigation, /solutions: \["\/pricing"\]/);
   assert.match(navigation, /platform: \["\/demo", "\/demo-lab", "\/proof", "\/sun", "\/offline", "\/login", "\/sdk"\]/);
-  assert.match(navigation, /resources: \["\/docs", "\/stack", "\/glossary", "\/audiences", "\/resellers"\]/);
+  assert.match(navigation, /resources: \["\/about", "\/docs", "\/stack", "\/glossary", "\/audiences", "\/resellers"\]/);
   assert.match(navigation, /aria-current=\{groupCurrent \? "page" : undefined\}/);
 });
 
@@ -79,7 +82,7 @@ test("mega navigation shares one accessible keyboard and mobile interaction mode
     read("../src/components/marketing-mega-nav.module.css"),
   ]);
 
-  assert.ok((navigation.match(/copy\.groups\.map\(\(group/g) ?? []).length >= 2);
+  assert.ok((navigation.match(/groups\.map\(\(group/g) ?? []).length >= 2);
   assert.match(navigation, /event\.key === "ArrowDown"/);
   assert.match(navigation, /event\.key === "Escape"/);
   assert.match(navigation, /event\.key !== "Tab"/);
@@ -89,7 +92,9 @@ test("mega navigation shares one accessible keyboard and mobile interaction mode
   assert.match(navigation, /mobileTriggerRef\.current\?\.focus\(\{ preventScroll: true \}\)/);
   assert.match(css, /\.mobileMenuButton\s*\{[\s\S]*min-height: 2\.75rem/);
   assert.match(css, /\.mobileAboutLink\s*\{[\s\S]*min-height: 3\.65rem/);
-  assert.match(css, /@media \(max-width: 1599px\)[\s\S]*\.desktopNav,[\s\S]*\.desktopUtility/);
+  assert.match(css, /@media not all and \(min-width: 1280px\)[\s\S]*\.desktopNav,[\s\S]*\.desktopUtility/);
+  assert.match(navigation, /const desktop = window\.matchMedia\("\(min-width: 1280px\)"\)/);
+  assert.doesNotMatch(css, /1599px/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
@@ -113,27 +118,29 @@ test("mega navigation keeps hover intent stable instead of closing on pointer ga
   assert.doesNotMatch(navigation, /onPointerLeave=\{\(\) => setOpenMenu\(null\)\}/);
 });
 
-test("public headers give the brand a responsive, prominent lockup on every viewport", async () => {
-  const [home, publicHeader, css, navigationCss, headerCss] = await Promise.all([
+test("public headers use isolated tokens and a responsive brand with a single session entrance", async () => {
+  const [home, publicHeader, brand, navigationCss, headerCss] = await Promise.all([
     read("../src/app/page.tsx"),
     read("../src/components/public-site-header.tsx"),
-    read("../src/app/globals.css"),
+    read("../src/components/marketing-header-brand.tsx"),
     read("../src/components/marketing-mega-nav.module.css"),
     read("../src/components/public-site-header.module.css"),
   ]);
 
-  assert.match(home, /<BrandHomeLink[\s\S]{0,180}size=\{64\}[\s\S]{0,100}variant="pulse"[\s\S]{0,100}theme=\{initialTheme\}/);
-  assert.match(publicHeader, /<BrandHomeLink[\s\S]{0,160}size=\{64\}[\s\S]{0,100}variant="pulse"[\s\S]{0,100}theme=\{initialTheme\}/);
-  assert.match(headerCss, /min-height: 88px/);
-  assert.match(headerCss, /\.header:global\(\.landing-mega-header\) :global\(\.theme-toggle\)\s*\{[^}]*min-height: 44px !important/);
-  assert.match(headerCss, /max-width: 760px[\s\S]*--identity-size: 56px !important/);
-  assert.match(headerCss, /max-width: 380px[\s\S]*--identity-size: 48px !important/);
-  assert.match(css, /\.landing-mega-header\s*\{[\s\S]{0,360}linear-gradient\(108deg[\s\S]{0,260}backdrop-filter: blur\(20px\) saturate\(145%\)/);
-  assert.match(css, /html\.theme-dark \.landing-mega-header,[\s\S]{0,100}html\[data-theme="dark"\] \.landing-mega-header\s*\{[\s\S]{0,260}linear-gradient\(108deg/);
-  assert.match(css, /\.landing-mega-header \.site-brand-lockup \.brand-wordmark-svg\s*\{[\s\S]{0,100}width: clamp\(11\.5rem, 15vw, 14\.5rem\)/);
-  assert.match(css, /@media \(max-width: 760px\)[\s\S]{0,520}\.landing-mega-header \.site-brand-lockup\s*\{[\s\S]{0,220}transform: scale\(0\.94\)/);
-  assert.match(navigationCss, /@media \(max-width: 1599px\)[\s\S]{0,180}\.desktopNav,[\s\S]{0,100}display: none/);
-  assert.match(css, /\.landing-mega-header \.header-main-row\s*\{[^}]*max-width: 96rem/);
+  assert.match(home, /<header className=\{headerStyles\.header\}>\s*<div className=\{headerStyles\.row\}>\s*<MarketingHeaderBrand locale=\{locale\}/);
+  assert.match(publicHeader, /<header className=\{styles\.header\}>\s*<div className=\{styles\.row\}>\s*<MarketingHeaderBrand locale=\{locale\}/);
+  assert.match(brand, /<StaticBrandHomeLink locale=\{locale\} size=\{48\}/);
+  assert.match(brand, /sessionStorage\.getItem\("nexid-brand-intro"\)/);
+  assert.match(brand, /prefers-reduced-motion: reduce/);
+  assert.match(headerCss, /min-height: 72px/);
+  assert.match(headerCss, /max-width: 767px[\s\S]*min-height: 60px[\s\S]*width: 40px; height: 40px/);
+  assert.match(headerCss, /\.brand svg \{ width: 48px; height: 48px/);
+  for (const css of [navigationCss, headerCss]) {
+    assert.doesNotMatch(css, /!important|gradient\(|backdrop-filter/);
+    assert.match(css, /var\(--nexid-/);
+  }
+  assert.doesNotMatch(headerCss, /:global|landing-mega-header|header-main-row/);
+  assert.match(navigationCss, /@media not all and \(min-width: 1280px\)[\s\S]{0,180}\.desktopNav,[\s\S]{0,100}display: none/);
   for (const group of ["desktopNav", "compactNav", "navGroup", "headerUtilities"]) {
     assert.match(navigationCss, new RegExp(`\\.${group}\\s*\\{[^}]*flex: 0 0 auto`));
   }
@@ -154,9 +161,10 @@ test("desktop, compact and mobile navigation give demos a direct entry while the
   assert.match(navigation, /focusInitialPassportFragment\(\)/);
   assert.match(navigation, /<nav className=\{styles\.compactNav\}/);
   assert.match(navigation, /href=\{SUN_DEMO_GALLERY_HREF\} className=\{styles\.mobileAboutLink\} onClick=\{handleDemoNavigation\}/);
-  assert.match(css, /@media \(min-width: 980px\) and \(max-width: 1599px\)\s*\{\s*\.compactNav\s*\{\s*display: flex/);
+  assert.match(css, /@media not all and \(min-width: 1280px\)\s*\{\s*\.desktopNav,[\s\S]*@media \(min-width: 768px\)\s*\{\s*\.compactNav\s*\{\s*display: flex/);
   assert.match(home, /id="pasaporte-digital"/);
-  assert.match(home, /href=\{VALLE_SECRETO_DEMO_HREF\} prefetch=\{false\}[^>]*data-demo-entry="valle-secreto"/);
+  const journey = await read("../src/components/simple-trust-industry-journey.tsx");
+  assert.match(journey, /href=\{VALLE_SECRETO_DEMO_HREF\} prefetch=\{false\}[^>]*data-demo-entry="valle-secreto"/);
   assert.match(globalCss, /width: clamp\(8\.75rem, calc\(100vw - 200px\), 12rem\) !important/);
 });
 
@@ -182,7 +190,7 @@ test("focused home keeps the commercial journey while the mega menu carries dept
   assert.match(page, /<MarketingMegaNav/);
   assert.doesNotMatch(page, /<CtaSection/);
   assert.doesNotMatch(page, /<SalesChatWidget/);
-  assert.match(page, /<main id="main-content" data-nav-inert>/);
+  assert.match(page, /<main id="main-content" tabIndex=\{-1\} data-nav-inert>/);
   assert.doesNotMatch(
     page,
     /OfflineFieldOperationsSection|BrandSynergySimulator|DemoRequestSection|offline-field-operations|brand-synergy|EnterpriseTrustLayersSection|Quick-Jump Hub|nexid-quick-hub-card|landing-mobile-action-dock|MobileNavSheet/,

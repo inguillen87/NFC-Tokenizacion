@@ -101,11 +101,19 @@ async function menu(page, name, allowSunDestination) {
     await page.evaluate(()=>scrollTo(0,0)); await stable(page);
     return true;
   } else {
-    for(const group of ['solutions','industries','platform','resources']) {
+    for(const group of ['solutions','platform','resources']) {
       const button=page.locator(`[data-mega-nav-group="${group}"] > button`); await button.focus(); await page.keyboard.press('ArrowDown'); await stable(page);
       const panel=page.locator('#mega-menu-'+group);
       check(await panel.isVisible()&&await button.getAttribute('aria-expanded')==='true','ArrowDown opens desktop '+group+' '+name);
       check(await panel.evaluate(e=>e.contains(document.activeElement)),'Desktop menu focuses its first link '+group+' '+name);
+      if (group === 'solutions') {
+        const industries = panel.getByRole('region', {name:'Industrias', exact:true});
+        check(await industries.isVisible() && await industries.locator('a[data-demo-entry="gallery"]').getAttribute('href') === '/sun',
+          'Solutions exposes the industry gallery '+name);
+        for (const href of ['/demo-lab?vertical=wine', '/demo-lab?vertical=seeds']) {
+          check(await industries.locator(`a[href="${href}"]`).isVisible(), 'Industry destination remains available '+href+' '+name);
+        }
+      }
       await audit(page,null,'open desktop '+group+' '+name);
       await page.keyboard.press('Escape'); await stable(page);
       check(await button.evaluate(e=>e===document.activeElement)&&await button.getAttribute('aria-expanded')==='false','Desktop Escape restores trigger '+group+' '+name);
@@ -189,13 +197,26 @@ try {
       if(path==='/') {
         const galleryReached=await menu(page,name,destination=>{allowedSunDestination=destination;});
         const actions=main.getByRole('group',{name:'Acciones principales'});
-        const primary=actions.locator('a').first(); check(await primary.getAttribute('href')===VALLE_DEMO_HREF&&await primary.getAttribute('data-demo-entry')==='valle-secreto'&&await primary.innerText()==='Explorar Valle Secreto','Hero opens the explicit closed Valle demo directly '+name);
+        const primary=actions.locator('a').first();
+        check(await primary.getAttribute('href')==='/demo-lab'&&await primary.innerText()==='Probar demo','Hero offers Demo Lab on first entry '+name);
         await primary.focus(); await page.keyboard.press('Tab');
-        const focus=await page.evaluate(()=>{const cs=getComputedStyle(document.activeElement);return{tag:document.activeElement.tagName,outlineStyle:cs.outlineStyle,outlineWidth:parseFloat(cs.outlineWidth),boxShadow:cs.boxShadow};});
-        check(focus.outlineStyle!=='none'&&focus.outlineWidth>=2||focus.boxShadow!=='none','Hero keyboard focus indicator is visible '+name,focus);
-        allowedSunDestination='valle-closed';await primary.focus();await page.keyboard.press('Enter');await page.getByTestId('sun-summary-status').waitFor();await stable(page);
+        const focus=await actions.locator('a').nth(1).evaluate(link=>{
+          const style=getComputedStyle(link);
+          return {focused:link===document.activeElement&&link.matches(':focus-visible'),
+            outlineStyle:style.outlineStyle,outlineWidth:parseFloat(style.outlineWidth),
+            outlineTransition:link.getAnimations().some(animation=>animation.transitionProperty?.startsWith('outline'))};
+        });
+        check(focus.focused&&focus.outlineStyle==='solid'&&focus.outlineWidth>=2&&!focus.outlineTransition,'Secondary hero link has an immediate keyboard focus ring '+name,focus);
+        await primary.focus();await page.keyboard.press('Enter');await page.waitForURL(origin+'/demo-lab');await stable(page);
+        const hubHeading=page.getByRole('heading',{name:'Demo Lab',exact:true,level:1});
+        await hubHeading.waitFor();
+        check(await hubHeading.isVisible(),'Keyboard primary CTA reaches Demo Lab '+name);
+        await page.goto(origin+'/',{waitUntil:'networkidle',timeout:45000});await stable(page);
+        const valle=page.locator('#como-funciona a[data-demo-entry="valle-secreto"]');
+        check(await valle.getAttribute('href')===VALLE_DEMO_HREF,'Wine journey offers the explicit closed Valle demo '+name);
+        allowedSunDestination='valle-closed';await valle.focus();await page.keyboard.press('Enter');await page.getByTestId('sun-summary-status').waitFor();await stable(page);
         const passportUrl=new URL(page.url()),status=page.getByTestId('sun-summary-status');
-        check(passportUrl.pathname==='/sun'&&passportUrl.searchParams.get('demo')==='1'&&passportUrl.searchParams.get('profile')==='valle-secreto'&&passportUrl.searchParams.get('scenario')==='closed','Keyboard primary CTA reaches explicit Valle demo '+name);
+        check(passportUrl.pathname==='/sun'&&passportUrl.searchParams.get('demo')==='1'&&passportUrl.searchParams.get('profile')==='valle-secreto'&&passportUrl.searchParams.get('scenario')==='closed','Wine journey keyboard CTA reaches explicit Valle demo '+name);
         check(await status.getAttribute('data-demo-product-state')==='VALID_CLOSED'&&await status.getAttribute('data-demo-tamper-state')==='CLOSED'&&(await page.locator('#sun-summary').innerText()).includes('Profundo 2019'),'Valle demo exposes the labelled closed sample '+name);
         check(await page.evaluate(()=>window.__geoRequests===0),'Gallery and Valle navigation request no geolocation '+name);
         report.interactions.push({name,galleryReached,valleProfile:'valle-secreto',scenario:'closed',physicalTapMeasured:false});

@@ -69,14 +69,14 @@ test("brand synergy remains a reusable truthful surface but does not crowd the h
   assert.match(navigationCss, /\.mobileMenuButton\s*\{[\s\S]*min-height:\s*2\.75rem/);
   assert.doesNotMatch(page, /BrandSynergySimulator|brand-synergy/);
   assert.match(page, /initialTheme=\{initialTheme\}/);
-  assert.match(navigation, /<ThemeToggle initialTheme=\{initialTheme\} locale=\{locale\} \/>/);
+  assert.match(navigation, /<ThemeToggle appearanceClass=\{styles\.theme\} initialTheme=\{initialTheme\} locale=\{locale\} \/>/);
   assert.match(navigation, /role="dialog" aria-modal="true"/);
-  assert.match(themeToggle, /ThemeToggle\(\{ initialTheme = "light", locale = "en", waitForClientReady = false \}/);
+  assert.match(themeToggle, /ThemeToggle\(\{ initialTheme = "light", locale = "en", waitForClientReady = false, appearanceClass \}/);
   assert.match(themeToggle, /useState<Theme>\(initialTheme\)/);
   assert.ok(
     themeToggle.indexOf('document.documentElement.getAttribute("data-theme")') < themeToggle.indexOf('localStorage.getItem("theme")'),
     "the server-rendered light default must win over stale browser storage",
   );
   assert.match(localeSwitcher, /locale-switcher inline-flex min-h-11/);
-  assert.match(localeSwitcher, /className="min-h-11 bg-transparent/);
+  assert.match(localeSwitcher, /className=\{appearanceClass \? undefined : "min-h-11 bg-transparent/);
 });

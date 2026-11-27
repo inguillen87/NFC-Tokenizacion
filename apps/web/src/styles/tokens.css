@@ -1,0 +1,101 @@
+/* Components opt in through .nexid-design-system and the --nexid-* namespace. */
+:root {
+  --nexid-bg: #f7f5f0;
+  --nexid-surface: #ffffff;
+  --nexid-surface-2: #efece5;
+  --nexid-ink: #16191d;
+  --nexid-ink-2: #4b5157;
+  --nexid-ink-3: #646a71;
+  --nexid-line: #dedad1;
+  --nexid-control-border: #7a8086;
+  --nexid-brand: #0a5c55;
+  --nexid-on-brand: #ffffff;
+  --nexid-brand-tint: #e3f0ed;
+  --nexid-ok: #197646;
+  --nexid-warn: #8a5a00;
+  --nexid-risk: #b3261e;
+
+  --nexid-font-body: var(--font-nexid-ui, Arial), sans-serif;
+  --nexid-font-heading: var(--font-nexid-heading, Georgia), serif;
+  --nexid-font-data: var(--font-nexid-mono, "Courier New"), monospace;
+  --nexid-weight-body: 400;
+  --nexid-weight-emphasis: 600;
+  --nexid-weight-heading: 500;
+  --nexid-text-xs: 0.8125rem;
+  --nexid-leading-xs: 1.125rem;
+  --nexid-text-sm: 0.875rem;
+  --nexid-leading-sm: 1.25rem;
+  --nexid-text-md: 1rem;
+  --nexid-leading-md: 1.5rem;
+  --nexid-text-lg: 1.25rem;
+  --nexid-leading-lg: 1.75rem;
+  --nexid-text-xl: 1.75rem;
+  --nexid-leading-xl: 2.125rem;
+  --nexid-text-2xl: clamp(2rem, 5vw, 3rem);
+  --nexid-leading-2xl: 1.1;
+  --nexid-text-3xl: clamp(2.5rem, 7vw, 4.5rem);
+  --nexid-leading-3xl: 1.05;
+  --nexid-copy-measure: 65ch;
+
+  --nexid-space-4: 0.25rem;
+  --nexid-space-8: 0.5rem;
+  --nexid-space-12: 0.75rem;
+  --nexid-space-16: 1rem;
+  --nexid-space-24: 1.5rem;
+  --nexid-space-32: 2rem;
+  --nexid-space-48: 3rem;
+  --nexid-space-64: 4rem;
+  --nexid-space-96: 6rem;
+  --nexid-radius-sm: 0.375rem;
+  --nexid-radius-md: 0.75rem;
+  --nexid-radius-full: 999px;
+  --nexid-shadow-floating: 0 8px 24px rgb(0 0 0 / 0.12);
+  --nexid-focus-ring: 2px solid var(--nexid-brand);
+  --nexid-focus-offset: 2px;
+
+  --nexid-duration-fast: 120ms;
+  --nexid-duration-base: 180ms;
+  --nexid-duration-slow: 320ms;
+  --nexid-duration-enter: 600ms;
+  --nexid-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+:root[data-theme="dark"] {
+  --nexid-bg: #0f1214;
+  --nexid-surface: #171b1e;
+  --nexid-surface-2: #1f2428;
+  --nexid-ink: #f1efea;
+  --nexid-ink-2: #b4b8bc;
+  --nexid-ink-3: #8e949a;
+  --nexid-line: #2b3136;
+  --nexid-control-border: #70777d;
+  --nexid-brand: #2fe1c3;
+  --nexid-on-brand: #06211e;
+  --nexid-brand-tint: #12302c;
+  --nexid-ok: #5bd08c;
+  --nexid-warn: #f2b84b;
+  --nexid-risk: #ff8a80;
+}
+
+.nexid-design-system {
+  color: var(--nexid-ink);
+  font-family: var(--nexid-font-body);
+  font-size: var(--nexid-text-md);
+  font-weight: var(--nexid-weight-body);
+  line-height: var(--nexid-leading-md);
+  font-synthesis: none;
+}
+
+.nexid-design-system :where(:focus-visible) {
+  outline: var(--nexid-focus-ring);
+  outline-offset: var(--nexid-focus-offset);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --nexid-duration-fast: 0ms;
+    --nexid-duration-base: 0ms;
+    --nexid-duration-slow: 0ms;
+    --nexid-duration-enter: 0ms;
+  }
+}

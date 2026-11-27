@@ -1,0 +1,21 @@
+{
+  "schema": "nexid.web-global-css-budget.v1",
+  "sourcePath": "apps/web/src/app/globals.css",
+  "sourceCommit": "5d3d13ac43b0892bd5bce9809bee44bdb3ed9524",
+  "sourceBlob": "bd8496a15743f053a69bfd51ec98abf19a5fd744",
+  "sourceSHA256": "5c8ddc0a09c1333c75c8921241c49bb4370108173c2bb46c4702a06f31a47c3c",
+  "sourceBytes": 1762802,
+  "metrics": {
+    "physicalLines": 61561,
+    "importantDeclarations": 7103,
+    "distinctHexColors": 481,
+    "gradientFunctions": 1988
+  },
+  "definitions": {
+    "physicalLines": "Physical lines including comments and blank lines. CRLF and lone CR normalize to LF; a final newline terminates the last line and does not add another. Empty input has zero lines.",
+    "importantDeclarations": "Declarations marked important by the existing PostCSS parser. Text in comments, quoted strings, selectors and URLs is excluded.",
+    "distinctHexColors": "Valid 3/4/6/8-digit hex color tokens in declaration values, case-insensitive and normalized to eight RGBA digits. Equivalent shorthand/full/opaque forms count once. Comments, strings, selectors and URL contents are excluded.",
+    "gradientFunctions": "Occurrences of linear/radial/conic-gradient functions, including repeating and webkit/moz/o-prefixed forms, in declaration values. Names are case-insensitive and CSS escapes are decoded. Comments, strings and URL contents are excluded."
+  },
+  "policy": "Every current metric must be less than or equal to its saved limit. This checker never updates limits. Lower limits after reviewed CSS removal; do not raise them to accept growth."
+}

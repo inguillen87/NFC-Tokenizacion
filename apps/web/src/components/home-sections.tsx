@@ -11,11 +11,8 @@ import {
 } from "lucide-react";
 import { DppRoleExplorer } from "./dpp-role-explorer";
 import { PassportFragmentTarget } from "./passport-fragment-target";
-import { HeroImmersiveSignal } from "./hero-immersive-signal";
-import { SimpleTrustFlowIntroMotion } from "./simple-trust-flow-motion";
 import { SimpleTrustIndustryJourney } from "./simple-trust-industry-journey";
-import { VALLE_SECRETO_DEMO_HREF } from "../lib/sun-demo-links";
-import nexIdDppHero from "../../public/landing/nexid-dpp-hero-v3.webp";
+import parcelInHand from "../../public/landing/parcel-in-hand.webp";
 import styles from "./home-sections.module.css";
 
 type Content = {
@@ -32,41 +29,29 @@ export function HeroSection({ content, locale }: { content: Content; locale: str
   const isEn = locale === "en";
   const isBr = locale === "pt-BR";
   const hero = content.hero;
-  const proofPoints = isEn
-    ? ["Model, batch or item identity", "Available information and history", "NFC + QR, no app"]
-    : isBr
-      ? ["Identidade por modelo, lote ou unidade", "Informação e história disponíveis", "NFC + QR, sem app"]
-      : ["Identidad por modelo, lote o unidad", "Información e historia disponibles", "NFC + QR, sin app"];
-
   return (
-    <section className={`landing-hero-section ${styles.hero}`} data-hero-presentation="immersive">
-      <div className={`hero-immersive-media ${styles.media}`} aria-hidden="true">
-        <Image src={nexIdDppHero} alt="" fill priority placeholder="blur" sizes="100vw" className="hero-immersive-image" />
-        <div className="hero-immersive-veil" />
-        <HeroImmersiveSignal locale={locale} />
+    <section className={styles.hero} aria-labelledby="home-title">
+      <div className={styles.copy}>
+        <h1 id="home-title" className={styles.title}>{hero.title}</h1>
+        <p className={styles.body}>{hero.body}</p>
+        <div className={styles.actions} role="group" aria-label={isEn ? "Main actions" : isBr ? "Ações principais" : "Acciones principales"}>
+          <Link href="/demo-lab" prefetch={false} className={styles.primary}>
+            {hero.primary}<ArrowRight size={18} aria-hidden="true" />
+          </Link>
+          <Link href="/?contact=demo#contact-modal" prefetch={false} className={styles.secondary}>
+            {hero.secondary}
+          </Link>
+        </div>
       </div>
-      <div className="hero-signal-field pointer-events-none absolute inset-0 z-0" aria-hidden="true" />
-      <div className={`container-shell hero-story-grid ${styles.grid}`}>
-          <div className={styles.copy}>
-            <p className={styles.eyebrow}>{hero.badge}</p>
-            <h1 className={styles.title}>{hero.title}</h1>
-            <p className={styles.body}>{hero.body}</p>
-            <div className={styles.actions} role="group" aria-label={isEn ? "Main actions" : isBr ? "Ações principais" : "Acciones principales"}>
-                <Link href={VALLE_SECRETO_DEMO_HREF} prefetch={false} className={styles.primary} data-demo-entry="valle-secreto">
-                  {isEn ? "Explore Valle Secreto" : "Explorar Valle Secreto"}<ArrowRight size={18} aria-hidden="true" />
-                </Link>
-                <Link href="/?contact=demo#contact-modal" prefetch={false} className={styles.secondary}>{hero.secondary}</Link>
-            </div>
-            <ul className={styles.proof} aria-label={isEn ? "Experience highlights" : isBr ? "Destaques da experiência" : "Claves de la experiencia"}>
-              {proofPoints.map((point) => (
-                <li key={point}>{point}</li>
-              ))}
-            </ul>
-            <p className={styles.caption}>
-              <span>{isEn ? "The product is the starting point" : isBr ? "O produto é o ponto de partida" : "El producto es el punto de partida"}</span>
-              <small>{isEn ? "Illustrative NFC experience" : isBr ? "Experiência NFC ilustrativa" : "Experiencia NFC ilustrativa"}</small>
-            </p>
-          </div>
+      <div className={styles.media}>
+        <Image
+          src={parcelInHand}
+          alt={isEn ? "A person touches the screen of a phone resting on the parcel they receive" : isBr ? "Uma pessoa toca na tela de um celular apoiado sobre a caixa que recebe" : "Una persona toca la pantalla de un teléfono apoyado sobre la caja que recibe"}
+          fill
+          priority
+          sizes="(min-width: 768px) 52vw, 100vw"
+          className={styles.image}
+        />
       </div>
     </section>
   );
@@ -77,29 +62,29 @@ export function SimpleTrustFlowSection({ locale }: { locale: string }) {
   const isBr = locale === "pt-BR";
   const copy = isEn
     ? {
-        eyebrow: "How it works",
-        title: "From the product to its passport, in three moments.",
-        body: "Choose an industry and follow one product from its identity to its current information and the services available through NFC or QR.",
+        title: "How it works",
+        body: "Choose an industry to follow a product through three steps.",
         primary: "Try the interactive passport",
       }
     : isBr
       ? {
-          eyebrow: "Como funciona",
-          title: "Do produto ao seu passaporte, em três momentos.",
-          body: "Escolha um setor e acompanhe um único produto desde sua identidade até as informações atuais e os serviços disponíveis por NFC ou QR.",
+          title: "Como funciona",
+          body: "Escolha um setor e acompanhe o produto em três passos.",
           primary: "Testar o passaporte interativo",
         }
       : {
-          eyebrow: "Cómo funciona",
-          title: "Del producto a su pasaporte, en tres momentos.",
-          body: "Elegí un rubro y seguí un único producto desde su identidad hasta la información vigente y los servicios disponibles por NFC o QR.",
+          title: "Cómo funciona",
+          body: "Elegí un rubro y recorré los tres pasos de un producto.",
           primary: "Probar el pasaporte interactivo",
         };
 
   return (
-    <section id="como-funciona" className="simple-trust-flow-section container-shell py-8 md:py-12">
-      <div className="simple-trust-flow-shell">
-        <SimpleTrustFlowIntroMotion eyebrow={copy.eyebrow} title={copy.title} body={copy.body} />
+    <section id="como-funciona" className={styles.flow} aria-labelledby="home-flow-title">
+      <div className={styles.flowInner}>
+        <header className={styles.flowIntro}>
+          <h2 id="home-flow-title">{copy.title}</h2>
+          <p>{copy.body}</p>
+        </header>
         <SimpleTrustIndustryJourney locale={locale} ctaLabel={copy.primary} />
       </div>
     </section>
@@ -280,87 +265,122 @@ export function CommercialValueSection({ locale }: { locale: string }) {
           detailBody: "Elegí un rol abajo para revisar campos, fuentes, responsables, nivel de registro y visibilidad.",
         };
 
+  const audiences = isEn
+    ? {
+        consumer: "For consumers", products: "Your products, in one place", consumerBody: "Open your saved passports and find the services each brand has made available.", account: "Go to my account",
+        business: "For brands", customers: "Stay in touch after the sale", businessBody: "Publish product information and choose which benefits your customers can access from the label.", contact: "Discuss a pilot",
+        details: "How information is shared",
+      }
+    : isBr
+      ? {
+          consumer: "Para consumidores", products: "Seus produtos em um só lugar", consumerBody: "Abra seus passaportes salvos e encontre os serviços que cada marca disponibilizou.", account: "Ir para minha conta",
+          business: "Para marcas", customers: "Mantenha o contato após a venda", businessBody: "Publique informações do produto e escolha quais benefícios seus clientes podem acessar pela etiqueta.", contact: "Conversar sobre um piloto",
+          details: "Como as informações são compartilhadas",
+        }
+      : {
+          consumer: "Para consumidores", products: "Tus productos, en un solo lugar", consumerBody: "Abrí tus pasaportes guardados y encontrá los servicios que habilitó cada marca.", account: "Ir a mi cuenta",
+          business: "Para marcas", customers: "Seguí en contacto después de la venta", businessBody: "Publicá la información del producto y elegí qué beneficios podrán consultar tus clientes desde la etiqueta.", contact: "Consultar por un piloto",
+          details: "Cómo se comparte la información",
+        };
+
   const stageIcons = [UserRound, Package, Building2, BarChart3] as const;
 
   return (
     <section id="pasaporte-digital" className="commercial-value-section container-shell scroll-mt-24" aria-label={copy.label}>
       <PassportFragmentTarget />
-      <div className="commercial-value-shell">
-        <div className="dpp-participant-map">
-          <header className="dpp-participant-map__intro">
-            <p>{copy.eyebrow}</p>
-            <h2>{copy.title}</h2>
-            <span>{copy.intro}</span>
-          </header>
-
-          <div className="dpp-participant-map__lanes">
-            <span><UserRound />{copy.personLane}</span>
-            <span><Building2 />{copy.businessLane}</span>
-          </div>
-
-          <ol className="dpp-participant-map__flow" aria-label={copy.label}>
-            {copy.stages.map((stage, index) => {
-              const Icon = stageIcons[index] ?? Package;
-
-              return (
-                <li key={stage.key} data-participant={stage.key}>
-                  <article className="dpp-participant-card">
-                    <div className="dpp-participant-card__topline">
-                      <span className="dpp-participant-card__icon" aria-hidden="true">
-                        <Icon />
-                      </span>
-                      <span className="dpp-participant-card__step">{stage.step}</span>
-                    </div>
-                    <p className="dpp-participant-card__actor">{stage.actor}</p>
-                    <h3>{stage.title}</h3>
-                    <p className="dpp-participant-card__body">{stage.body}</p>
-                    <span className="dpp-participant-card__detail">{stage.detail}</span>
-                  </article>
-                  {index < copy.stages.length - 1 ? (
-                    <span className="dpp-participant-arrow" aria-hidden="true">
-                      <ArrowRight />
-                    </span>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ol>
-
-          <div className="dpp-participant-map__return">
-            <div className="dpp-participant-return-copy">
-              <span className="dpp-participant-return-icon" aria-hidden="true"><BarChart3 /></span>
-              <div>
-                <strong>{copy.returnLabel}</strong>
-                <small>{copy.returnIntro}</small>
-              </div>
-            </div>
-            <ul>
-              {copy.returns.map((item) => <li key={item}>{item}</li>)}
-            </ul>
-          </div>
-
-          <aside className="dpp-participant-map__secondary" aria-label={isEn ? "Supporting roles" : isBr ? "Papéis de apoio" : "Roles complementarios"}>
-            <article>
-              <span aria-hidden="true"><Wrench /></span>
-              <div><strong>{copy.serviceTitle}</strong><p>{copy.serviceBody}</p></div>
-            </article>
-            <article>
-              <span aria-hidden="true"><Recycle /></span>
-              <div><strong>{copy.circularityTitle}</strong><p>{copy.circularityBody}</p></div>
-            </article>
-          </aside>
-
-          <p className="dpp-participant-map__boundary">
-            {copy.boundaryPrefix}<strong>{copy.boundaryBrand}</strong>{" "}{copy.boundaryBody}
-          </p>
-        </div>
-
-        <div className="dpp-participant-detail-bridge">
-          <strong>{copy.detailEyebrow}</strong>
-          <span>{copy.detailBody}</span>
-        </div>
-        <DppRoleExplorer locale={locale} />
+      <div className={styles.audiences}>
+        <section aria-labelledby="home-consumers">
+          <p>{audiences.consumer}</p>
+          <h2 id="home-consumers">{audiences.products}</h2>
+          <span>{audiences.consumerBody}</span>
+          <Link href="/me" prefetch={false}>{audiences.account}<ArrowRight size={16} aria-hidden="true" /></Link>
+        </section>
+        <section aria-labelledby="home-brands">
+          <p>{audiences.business}</p>
+          <h2 id="home-brands">{audiences.customers}</h2>
+          <span>{audiences.businessBody}</span>
+          <Link href="/?contact=demo#contact-modal" prefetch={false}>{audiences.contact}<ArrowRight size={16} aria-hidden="true" /></Link>
+        </section>
       </div>
+      <details className={styles.participants}>
+        <summary>{audiences.details}</summary>
+        <div className="commercial-value-shell">
+          <div className="dpp-participant-map">
+            <header className="dpp-participant-map__intro">
+              <p>{copy.eyebrow}</p>
+              <h2>{copy.title}</h2>
+              <span>{copy.intro}</span>
+            </header>
+
+            <div className="dpp-participant-map__lanes">
+              <span><UserRound />{copy.personLane}</span>
+              <span><Building2 />{copy.businessLane}</span>
+            </div>
+
+            <ol className="dpp-participant-map__flow" aria-label={copy.label}>
+              {copy.stages.map((stage, index) => {
+                const Icon = stageIcons[index] ?? Package;
+
+                return (
+                  <li key={stage.key} data-participant={stage.key}>
+                    <article className="dpp-participant-card">
+                      <div className="dpp-participant-card__topline">
+                        <span className="dpp-participant-card__icon" aria-hidden="true">
+                          <Icon />
+                        </span>
+                        <span className="dpp-participant-card__step">{stage.step}</span>
+                      </div>
+                      <p className="dpp-participant-card__actor">{stage.actor}</p>
+                      <h3>{stage.title}</h3>
+                      <p className="dpp-participant-card__body">{stage.body}</p>
+                      <span className="dpp-participant-card__detail">{stage.detail}</span>
+                    </article>
+                    {index < copy.stages.length - 1 ? (
+                      <span className="dpp-participant-arrow" aria-hidden="true">
+                        <ArrowRight />
+                      </span>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ol>
+
+            <div className="dpp-participant-map__return">
+              <div className="dpp-participant-return-copy">
+                <span className="dpp-participant-return-icon" aria-hidden="true"><BarChart3 /></span>
+                <div>
+                  <strong>{copy.returnLabel}</strong>
+                  <small>{copy.returnIntro}</small>
+                </div>
+              </div>
+              <ul>
+                {copy.returns.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            </div>
+
+            <aside className="dpp-participant-map__secondary" aria-label={isEn ? "Supporting roles" : isBr ? "Papéis de apoio" : "Roles complementarios"}>
+              <article>
+                <span aria-hidden="true"><Wrench /></span>
+                <div><strong>{copy.serviceTitle}</strong><p>{copy.serviceBody}</p></div>
+              </article>
+              <article>
+                <span aria-hidden="true"><Recycle /></span>
+                <div><strong>{copy.circularityTitle}</strong><p>{copy.circularityBody}</p></div>
+              </article>
+            </aside>
+
+            <p className="dpp-participant-map__boundary">
+              {copy.boundaryPrefix}<strong>{copy.boundaryBrand}</strong>{" "}{copy.boundaryBody}
+            </p>
+          </div>
+
+          <div className="dpp-participant-detail-bridge">
+            <strong>{copy.detailEyebrow}</strong>
+            <span>{copy.detailBody}</span>
+          </div>
+          <DppRoleExplorer locale={locale} />
+        </div>
+      </details>
     </section>
   );
 }
