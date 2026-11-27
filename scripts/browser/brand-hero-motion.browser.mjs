@@ -271,12 +271,12 @@ try {
       check(await actions.locator('a[href*="contact=demo"]').innerText() === 'Agendar demo para mi marca', 'Commercial action identifies its audience ' + name);
       check(await page.locator('#como-funciona a[data-demo-entry="valle-secreto"]').getAttribute('href') === '/sun?demo=1&profile=valle-secreto&scenario=closed', 'Wine journey links to Valle Secreto ' + name);
       check(/publica la marca/.test(await page.locator('h1 + p').innerText()) && /QR/.test(await page.locator('h1 + p').innerText()), 'Introduction explains the action and data source ' + name);
-      check(await media.getAttribute('alt') === 'Ilustración de un teléfono junto a la etiqueta NFC de una caja', 'Editorial illustration has an accessible description ' + name);
+      check(await media.getAttribute('alt') === 'Una persona toca la pantalla de un teléfono apoyado sobre la caja que recibe', 'Editorial photograph has an accessible description ' + name);
       const imageFraction = await media.evaluate(image => {
         const rect = image.getBoundingClientRect();
         return Math.max(0, Math.min(innerHeight, rect.bottom) - Math.max(0, rect.top)) / rect.height;
       });
-      check(imageFraction >= 1/3, 'At least a third of the illustration is visible on entry ' + name, {imageFraction});
+      check(imageFraction >= 1/3, 'At least a third of the photograph is visible on entry ' + name, {imageFraction});
       const targets=await page.locator('header button, header [data-brand-home-link], [role="group"][aria-label="Acciones principales"] a').evaluateAll(nodes => nodes.filter(element => element.getClientRects().length && getComputedStyle(element).visibility !== 'hidden').map(element => { const rect=element.getBoundingClientRect(); return { label:element.getAttribute('aria-label') || element.textContent.trim().slice(0,50),width:rect.width,height:rect.height }; }));
       check(targets.length >= 3 && targets.every(target => target.width >= 44 && target.height >= 44), 'Primary targets at least44 ' + name, targets);
       if (reducedMotion === 'no-preference') {
@@ -294,7 +294,7 @@ try {
       await media.scrollIntoViewIfNeeded(); await page.waitForTimeout(350);
       const heroSamples=await phaseSamples(page,media);
       check(heroSamples.every(sample=>sample[0]?.visible),'Hero is actually visible while phase is sampled '+name);
-      check(!phaseChanged(heroSamples) && heroSamples.every(sample => sample.every(idle)), 'Editorial illustration remains still ' + name, heroSamples);
+      check(!phaseChanged(heroSamples) && heroSamples.every(sample => sample.every(idle)), 'Editorial photograph remains still ' + name, heroSamples);
       if (reducedMotion === 'reduce') {
         check(!phaseChanged(logoSamples) && logoSamples.every(sample => sample.every(idle)), 'Reduced motion leaves logo still and idle ' + name, logoSamples);
         const loops=await page.evaluate(() => document.getAnimations().filter(animation => animation.playState === 'running' && animation.effect?.getTiming().iterations === Infinity).map(animation => ({ name:animation.animationName, target:animation.effect?.target?.getAttribute?.('class') })));
@@ -352,14 +352,14 @@ try {
       await workflowHeading.screenshot({path:join(output,'workflow-heading-'+name+'.png')});
       await page.evaluate(() => scrollTo(0,document.documentElement.scrollHeight-innerHeight)); await page.waitForTimeout(500);
       const offscreenSamples=await phaseSamples(page,media);
-      check(offscreenSamples.every(sample => sample.every(item => !item.visible && idle(item))), 'Offscreen editorial illustration is idle ' + name, offscreenSamples);
+      check(offscreenSamples.every(sample => sample.every(item => !item.visible && idle(item))), 'Offscreen editorial photograph is idle ' + name, offscreenSamples);
       const offscreenLogos=await snapshots(page.locator('[data-brand-home-link][data-brand-motion]'));
       check(offscreenLogos.filter(item => !item.visible).every(idle), 'Offscreen logos pause CSS and SMIL ' + name, offscreenLogos);
       await page.evaluate(() => scrollTo(0,0)); await page.waitForTimeout(400);
       if (reducedMotion === 'no-preference') {
         await media.scrollIntoViewIfNeeded();await page.waitForTimeout(350);
         const returned=await phaseSamples(page,media);
-        check(!phaseChanged(returned) && returned.every(sample => sample[0]?.visible && idle(sample[0])), 'Editorial illustration stays visible and still on return ' + name, returned.map(sample => ({ loops:sample[0]?.loops })));
+        check(!phaseChanged(returned) && returned.every(sample => sample[0]?.visible && idle(sample[0])), 'Editorial photograph stays visible and still on return ' + name, returned.map(sample => ({ loops:sample[0]?.loops })));
       }
       check(await page.evaluate(() => window.__geoRequests === 0), 'Initial page does not request geolocation ' + name);
       await page.reload({waitUntil:'networkidle'});

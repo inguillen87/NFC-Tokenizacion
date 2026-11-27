@@ -25,8 +25,8 @@ test("home hero is large, friendly and truthful without becoming a technical das
   assert.ok(Math.max(...remSizes) >= 4, "desktop hero H1 must reach at least 4rem");
   assert.match(css, /\.title\s*\{[^}]*font-size:\s*clamp\(/);
   assert.match(css, /\.body\s*\{[^}]*line-height:\s*1\.5/);
-  assert.match(sections, /import nexIdDppHero from "\.\.\/\.\.\/public\/landing\/nexid-dpp-hero-v3\.webp"/);
-  assert.match(hero, /src=\{nexIdDppHero\}/);
+  assert.match(sections, /import parcelInHand from "\.\.\/\.\.\/public\/landing\/parcel-in-hand\.webp"/);
+  assert.match(hero, /src=\{parcelInHand\}/);
   assert.doesNotMatch(hero, /InstitutionalVideoPanel/);
   assert.doesNotMatch(hero, /HeroScene|heroStats|nexid-hero-atlas|nexid-hero-board/);
 

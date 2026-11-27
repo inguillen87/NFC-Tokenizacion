@@ -63,7 +63,7 @@
   height: clamp(200px, 45vw, 340px);
   overflow: hidden;
 }
-.image { object-fit: cover; object-position: right 62%; }
+.image { object-fit: cover; object-position: 60% 52%; }
 .audiences {
   display: grid;
   gap: 0;
@@ -109,7 +109,7 @@
     padding-inline-end: clamp(20px, 4vw, 64px);
   }
   .media { height: auto; }
-  .image { object-position: 87% center; }
+  .image { object-position: 63% 52%; }
   .audiences { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (forced-colors: active) {

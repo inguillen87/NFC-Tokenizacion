@@ -12,7 +12,7 @@ import {
 import { DppRoleExplorer } from "./dpp-role-explorer";
 import { PassportFragmentTarget } from "./passport-fragment-target";
 import { SimpleTrustIndustryJourney } from "./simple-trust-industry-journey";
-import nexIdDppHero from "../../public/landing/nexid-dpp-hero-v3.webp";
+import parcelInHand from "../../public/landing/parcel-in-hand.webp";
 import styles from "./home-sections.module.css";
 
 type Content = {
@@ -45,8 +45,8 @@ export function HeroSection({ content, locale }: { content: Content; locale: str
       </div>
       <div className={styles.media}>
         <Image
-          src={nexIdDppHero}
-          alt={isEn ? "Illustration of a phone beside an NFC tag on a box" : isBr ? "Ilustração de um celular ao lado da etiqueta NFC de uma caixa" : "Ilustración de un teléfono junto a la etiqueta NFC de una caja"}
+          src={parcelInHand}
+          alt={isEn ? "A person touches the screen of a phone resting on the parcel they receive" : isBr ? "Uma pessoa toca na tela de um celular apoiado sobre a caixa que recebe" : "Una persona toca la pantalla de un teléfono apoyado sobre la caja que recibe"}
           fill
           priority
           sizes="(min-width: 768px) 52vw, 100vw"

@@ -6,11 +6,11 @@ const home = await readFile(new URL("../src/components/home-sections.tsx", impor
 const hero = home.slice(home.indexOf("export function HeroSection"), home.indexOf("export function SimpleTrustFlowSection"));
 const styles = await readFile(new URL("../src/components/home-sections.module.css", import.meta.url), "utf8");
 
-test("one local, responsive NFC illustration is prioritised on the landing", async () => {
-  const asset = await stat(new URL("../public/landing/nexid-dpp-hero-v3.webp", import.meta.url));
+test("one local, responsive delivery photograph is prioritised on the landing", async () => {
+  const asset = await stat(new URL("../public/landing/parcel-in-hand.webp", import.meta.url));
   assert.ok(asset.size < 90_000);
   assert.equal((hero.match(/<Image/g) ?? []).length, 1);
-  assert.match(hero, /src=\{nexIdDppHero\}/);
+  assert.match(hero, /src=\{parcelInHand\}/);
   assert.match(hero, /\bfill\b/);
   assert.match(hero, /\bpriority\b/);
   assert.match(hero, /sizes="\(min-width: 768px\) 52vw, 100vw"/);
