@@ -111,16 +111,20 @@ function functionFrom(source, name, bindings) {
   return new Function(...Object.keys(bindings), `${code}\nreturn ${name};`)(...Object.values(bindings));
 }
 
-test('actual snapshot reader adds current projection without changing historical contract or fresh decision', async () => {
+test('actual snapshot reader refreshes editorial and report access for the stored event while preserving the reading', async () => {
   const source = await readFile(new URL('../src/lib/sun-diagnostics.ts', import.meta.url), 'utf8');
   const historical = { eventId: '715', identity: { eventId: '715', bid: 'QA' }, product: { agro: { technicalSheetUrl: 'https://example.invalid/historical.pdf' } },
-    status: { code: 'VALID_OPENED' }, tapContext: { utcTime: '2026-09-19T00:00:00Z' }, ttStatus: 'opened' };
+    status: { code: 'VALID_OPENED' }, tapContext: { utcTime: '2026-09-19T00:00:00Z' }, ttStatus: 'opened',
+    supportReport: { token: 'old-fixture', eventId: '712' } };
   let fresh = false, lookups = [], editorial = projectCurrentPassportEditorial(row());
+  const reportLookups = [];
+  const currentReport = { token: 'current-fixture', eventId: '715' };
+  let report = null;
   const reader = functionFrom(source, 'getSunDiagnosticSnapshot', {
     sql: async () => [{ id: 510, trace_id: 'trace', created_at: '2026-09-19T00:00:00Z', bid: 'QA', uid_hex: 'QA_ONLY', result_json: { contract: structuredClone(historical) } }],
     ensureTable: async () => {}, asRecord: value => value || {}, resolveCurrentSnapshotIdentity: async () => null, resolveCurrentSnapshotTapLocation: async () => null,
     readCurrentPassportEditorial: async eventId => { lookups.push(eventId); return { ...editorial }; },
-    createSupportReportCapability: async () => null,
+    createSupportReportCapability: async eventId => { reportLookups.push(eventId); return report; },
     normalizeSnapshotContractFromCurrentIdentity: value => value, sanitizeSnapshotPublicCoordinates: value => value,
     normalizeSunProfileMismatchContract: value => value, normalizeSnapshotContractFromCurrentTap: value => value,
     verifySunFreshHandoffToken: () => fresh ? { ok: true, payload: { exp: 1790100000 } } : { ok: false },
@@ -129,12 +133,17 @@ test('actual snapshot reader adds current projection without changing historical
   });
   for (const state of [false, true]) {
     fresh = state;
-    const result = await reader('510', 'trace');
-    assert.equal(result.contract.currentEditorial.state, 'published');
-    assert.equal(result.snapshot_access, state ? 'fresh_handoff' : 'historical');
-    for (const key of ['product', 'status', 'tapContext', 'ttStatus']) assert.deepEqual(result.contract[key], historical[key]);
+    for (const issuedReport of [null, currentReport]) {
+      report = issuedReport;
+      const result = await reader('510', 'trace');
+      assert.equal(result.contract.currentEditorial.state, 'published');
+      assert.deepEqual(result.contract.supportReport, issuedReport);
+      assert.equal(result.snapshot_access, state ? 'fresh_handoff' : 'historical');
+      for (const key of ['product', 'status', 'tapContext', 'ttStatus']) assert.deepEqual(result.contract[key], historical[key]);
+    }
   }
-  assert.deepEqual(lookups, ['715', '715']);
+  assert.deepEqual(lookups, ['715', '715', '715', '715']);
+  assert.deepEqual(reportLookups, ['715', '715', '715', '715']);
   for (const state of ['invalid', 'unavailable', 'legacy', 'withdrawn', 'unpublished']) {
     editorial = { protocol: 'nexid.current-editorial.v1', source: 'passport_studio', state, observedAt: null };
     const result = await reader('510', 'trace');
