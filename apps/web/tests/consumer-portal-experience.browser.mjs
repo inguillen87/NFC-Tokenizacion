@@ -53,9 +53,20 @@ async function checkPortalDestinations(page,width,theme) {
   });
   check(bounds.targets && (width>=1280?bounds.lateral:width<1024?bounds.mobile:true),width+'/'+theme+' navigation reserves its own space and touch targets');
   if(width===320) {
-    const controls=header.getByRole('link',{name:'Inicio',exact:true});
-    const homeBox=await controls.boundingBox(),appearanceBox=await header.locator('[aria-label="Apariencia y sesión"]').boundingBox();
-    check(homeBox && appearanceBox && Math.abs(homeBox.y-appearanceBox.y)<=1,width+'/'+theme+' Inicio and account controls share one line');
+    const accountControls=header.locator('[aria-label="Apariencia y sesión"]');
+    for(const widerText of [false,true]) {
+      const textStyle=widerText?await page.addStyleTag({content:'.consumer-portal-root > header a, .consumer-portal-root > header button {font-family: Verdana, sans-serif;letter-spacing: .04em;}'}):null;
+      try {
+        const homeBox=await home.boundingBox(),appearanceBox=await accountControls.boundingBox();
+        check(homeBox && appearanceBox && Math.abs(homeBox.y-appearanceBox.y)<=1 && homeBox.x+homeBox.width<=appearanceBox.x && appearanceBox.x+appearanceBox.width<=width,width+'/'+theme+' Inicio and account controls share one line (wide text '+widerText+')');
+        check(await nav.locator('a,button').evaluateAll(items=>items.every(item=>{
+          const label=item.querySelector('span'), range=document.createRange();
+          range.selectNodeContents(label);
+          const lines=range.getClientRects(), target=item.getBoundingClientRect();
+          return lines.length===1 && lines[0].left>=target.left && lines[0].right<=target.right && target.right<=innerWidth;
+        })),width+'/'+theme+' primary labels fit on one line inside their targets (wide text '+widerText+')');
+      } finally { if(textStyle)await textStyle.evaluate(el=>el.remove()); }
+    }
     await page.evaluate(()=>{document.documentElement.style.zoom='2';});
     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
     check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),width+'/'+theme+' catalog and header reflow at 200 percent zoom');

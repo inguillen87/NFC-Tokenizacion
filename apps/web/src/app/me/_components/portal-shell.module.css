@@ -113,6 +113,13 @@
 .portal a:focus-visible, .portal button:focus-visible { outline: 3px solid var(--portal-accent); outline-offset: 3px; }
 .main:focus { outline: none; }
 
+@media (max-width: 22rem) {
+  .headerRow { padding-inline: max(.6rem, env(safe-area-inset-left)) max(.6rem, env(safe-area-inset-right)); }
+  .homeLink > svg { display: none; }
+  .navigationItems { grid-template-columns: repeat(5, minmax(max-content, 1fr)); gap: .125rem; }
+  .navigationItem { min-width: 44px; }
+}
+
 @media (min-width: 40rem) {
   .headerRow { padding-inline: 1.5rem; }
   .main { padding-top: 2rem; padding-inline: 1.5rem; }
