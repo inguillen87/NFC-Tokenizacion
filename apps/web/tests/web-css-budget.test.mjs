@@ -121,5 +121,6 @@ test("existing mandatory Web CI executes the test wildcard and build's static QA
   assert.equal(JSON.parse(rootPackage).scripts["qa:static"], "node scripts/qa-static.mjs");
   assert.match(JSON.parse(rootPackage).scripts["build:web"], /^npm run qa:static &&/);
   assert.match(JSON.parse(webPackage).scripts.test, /--test tests\/\*\.test\.mjs/);
-  assert.match(workflow, /npm test --workspace=web\s+\n\s+npm run build:web/);
+  const normalizedWorkflow = workflow.replaceAll("\r\n", "\n");
+  assert.match(normalizedWorkflow, /^([ \t]+)npm test --workspace=web[ \t]*\n\1npm run build:web[ \t]*$/m);
 });
