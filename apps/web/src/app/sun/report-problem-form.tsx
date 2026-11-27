@@ -49,10 +49,24 @@ function ReportProblemSession(props: ReportProblemProps) {
       if (window.location.hash !== "#report-problem" || !details.current) return;
       details.current.open = true;
       details.current.scrollIntoView({ block: "start" });
+      details.current.querySelector("summary")?.focus({ preventScroll: true });
     };
+    function reopen(event: MouseEvent) {
+      if (window.location.hash !== "#report-problem" || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || !(event.target instanceof Element)) return;
+      if (!event.target.closest('a[href="#report-problem"], button[data-sun-report-link="#report-problem"]:enabled')) return;
+      // A repeated fragment navigation does not dispatch hashchange.
+      event.preventDefault();
+      reveal();
+    }
     reveal();
+    document.addEventListener("click", reopen);
     window.addEventListener("hashchange", reveal);
-    return () => { mounted.current = false; controller.current?.abort(); window.removeEventListener("hashchange", reveal); };
+    return () => {
+      mounted.current = false;
+      controller.current?.abort();
+      document.removeEventListener("click", reopen);
+      window.removeEventListener("hashchange", reveal);
+    };
   }, []);
   useEffect(() => { if (review) reviewHeading.current?.focus(); }, [review]);
 
@@ -100,7 +114,7 @@ function ReportProblemSession(props: ReportProblemProps) {
 
   return <section id="report-problem" className={styles.root} aria-labelledby="report-problem-title" data-testid="report-problem-form" data-report-step={received ? "received" : review ? "review" : "description"} data-report-ready={ready} data-sun-server-evidence="true">
     <details ref={details} className={styles.details}>
-      <summary className={styles.summary} data-testid="report-problem-summary"><h2 id="report-problem-title"><MessageSquareWarning size={19} aria-hidden="true" /><span>{copy.title}</span><ChevronDown size={18} aria-hidden="true" /></h2></summary>
+      <summary className={styles.summary} data-testid="report-problem-summary"><h2 id="report-problem-title"><MessageSquareWarning size={19} aria-hidden="true" /><span>{available || props.isDemoPreview ? copy.title : copy.unavailableTitle}</span><ChevronDown size={18} aria-hidden="true" /></h2></summary>
       <div className={styles.content}>
         {props.isDemoPreview ? <p className={styles.note}>{copy.demo}</p> : received ? <div role="status" className={styles.receipt} data-testid="report-problem-receipt">
           <CheckCircle2 size={24} aria-hidden="true" /><h3>{received.existing ? copy.existing : copy.received}</h3>

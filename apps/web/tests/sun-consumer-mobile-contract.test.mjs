@@ -35,15 +35,15 @@ test("consumer copy leads with the decision while preserving the physical bounda
 test("opened or manually declared states expose a report path and keep protected actions gated", () => {
   assert.match(page, /const isOpenedAttentionState = isVerifiedOpenedState \|\| isManualOpenedState/);
   assert.match(page, /const isRiskBlocked =[\s\S]*?isInvalidSealState/);
-  assert.match(page, /\? \{ label: "Avisar a la marca", href: reportProblemHref, tone: "risk" \}/);
+  assert.match(page, /isManualOpenedState \|\| \(isFreshCommercialTap && isVerifiedOpenedState\)\s+\? \{ \.\.\.reportNavigation, tone: "risk" \}/);
   assert.match(actions, /const isManualOpenedConsumerFlow = tapState === "manual_opened"/);
   assert.match(actions, /const isOpenedConsumerFlow = isSensorOpenedConsumerFlow \|\| isManualOpenedConsumerFlow/);
   assert.match(actions, /const commercialActionsAllowed = canExecute && !isManualOpenedConsumerFlow/);
   assert.match(actions, /const showReportFlow = isOpenedConsumerFlow \|\| tapState === "blocked"/);
-  assert.match(actions, /Describir el problema/);
-  assert.match(page, /const reportProblemHref = "#report-problem"/);
+  assert.match(actions, /reportNavigation\.label/);
+  assert.match(page, /const reportNavigation = getReportNavigation\(reportContext\)/);
   assert.match(page, /<ReportProblemForm/);
-  assert.match(actions, /if \(actionKey === "report"\) \{\s+window.location.hash = "report-problem";\s+return;/);
+  assert.match(actions, /if \(actionKey === "report"\) \{\s+window.location.hash = reportNavigation\.href;\s+return;/);
 });
 
 test("phone location is explicit, low-precision and sends only the minimal browser context", () => {

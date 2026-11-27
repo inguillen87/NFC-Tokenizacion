@@ -37,9 +37,10 @@ function contract(u) {
   const trace = u.searchParams.get('trace') || '';
   const qr = u.searchParams.get('qr') === '1', agro = trace.startsWith('agro'), token = u.searchParams.get('fresh');
   const fresh = !qr && valid(token || '', eventId);
-  return { ok: true, verdict: qr ? 'identified' : 'valid', status: { code: qr ? 'IDENTIFIED' : 'VALID_CLOSED', productState: qr ? 'NOT_REGISTERED' : 'VALID_CLOSED', tone: 'good', tamperSupported: !qr, tamperStatus: qr ? 'UNKNOWN' : 'CLOSED', carrierProfileCode: qr ? 'qr_basic' : 'ntag424_dna_tt' },
+  const manual = trace.startsWith('report-manual');
+  return { ok: true, verdict: qr ? 'identified' : 'valid', status: { code: qr ? 'IDENTIFIED' : manual ? 'MANUAL_OPENED' : 'VALID_CLOSED', productState: qr ? 'NOT_REGISTERED' : manual ? 'VALID_MANUAL_OPENED' : 'VALID_CLOSED', tone: 'good', tamperSupported: !qr, tamperStatus: qr ? 'UNKNOWN' : 'CLOSED', carrierProfileCode: qr ? 'qr_basic' : 'ntag424_dna_tt' },
     ...(qr ? {} : { currentEditorial: editorial(trace) }),
-    supportReport: trace === 'no-support' ? null : { token: supportCapability(eventId), eventId, expiresAt: new Date(Date.now() + 900000).toISOString() },
+    supportReport: trace === 'no-support' ? null : { token: supportCapability(eventId), eventId: trace === 'report-manual-mismatch' ? '900002' : eventId, expiresAt: new Date(Date.now() + 900000).toISOString() },
     identity: { bid: 'QA-ONLY', tenantSlug: 'qa-brand', eventId, tagStatus: 'active' },
     product: { name: agro ? 'Producto agro QA' : 'Vino de ensayo local', winery: 'Empresa QA', category: agro ? 'Agro' : 'Vino', vertical: agro ? 'agro' : 'vino', region: 'Origen declarado QA', ...(agro ? { agro: { productName: 'Producto agro QA', technicalSheetUrl: 'https://documents.example.invalid/technical.pdf', safetySheetUrl: 'https://documents.example.invalid/safety.pdf' } } : {}) },
     tag_tamper: { available: !qr, status: qr ? 'not_available' : 'closed', raw: qr ? null : '4343' }, technical: { tt: { raw: '4343', source: 'enc_decrypted', length: 2 } },
