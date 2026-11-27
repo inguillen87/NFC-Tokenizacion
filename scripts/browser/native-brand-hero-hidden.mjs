@@ -92,9 +92,18 @@ function state() {
 }
 
 function productReady() {
-  const image=document.querySelector('section[aria-labelledby="home-title"] img');
-  return Boolean(document.readyState==='complete'&&image?.complete&&image.naturalWidth>0
-    &&document.querySelector('header a[data-brand-home-link] [data-identity-variant="static"]'));
+  const logo = document.querySelector('header a[data-brand-home-link]');
+  const image = document.querySelector('section[aria-labelledby="home-title"] img');
+  const inView = element => {
+    const rect = element?.getBoundingClientRect();
+    return Boolean(rect && rect.width > 0 && rect.height > 0 && rect.right > 0
+      && rect.left < innerWidth && rect.bottom > 0 && rect.top < innerHeight
+      && getComputedStyle(element).visibility === 'visible');
+  };
+  return document.readyState === 'complete' && !document.hidden && document.fonts.status === 'loaded'
+    && inView(logo) && inView(image) && image.complete && image.naturalWidth > 0
+    && image.currentSrc.includes('parcel-in-hand.')
+    && Boolean(logo.querySelector('[data-identity-variant="static"]')) && !logo.closest('[data-entering]');
 }
 
 export function validateNativeExpressions() {
@@ -194,7 +203,7 @@ export async function verifyNativeBrandHeroHidden({chromiumExecutable,origin,out
         for(let attempt=0;attempt<100;attempt++){
           if(await evaluate(probeOnly?expressions.blankReady:expressions.productReady)){ready=true;break;}await delay(100);
         }
-        if(!ready)throw Error('native_product_render_timeout');await delay(600);
+        if(!ready)throw Error('native_product_render_timeout');
         const before=await sample();await delay(500);const moving=await sample();
         check(!before.hidden&&before.visibilityState==='visible','Native page initially visible '+theme,{state:before.visibilityState});
         if(!probeOnly){
