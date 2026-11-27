@@ -52,6 +52,15 @@ async function checkPortalDestinations(page,width,theme) {
       targets:[...el.querySelectorAll('a,button')].every(item=>{const r=item.getBoundingClientRect();return r.width>=44 && r.height>=44;})};
   });
   check(bounds.targets && (width>=1280?bounds.lateral:width<1024?bounds.mobile:true),width+'/'+theme+' navigation reserves its own space and touch targets');
+  if(width===320) {
+    const controls=header.getByRole('link',{name:'Inicio',exact:true});
+    const homeBox=await controls.boundingBox(),appearanceBox=await header.locator('[aria-label="Apariencia y sesión"]').boundingBox();
+    check(homeBox && appearanceBox && Math.abs(homeBox.y-appearanceBox.y)<=1,width+'/'+theme+' Inicio and account controls share one line');
+    await page.evaluate(()=>{document.documentElement.style.zoom='2';});
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),width+'/'+theme+' catalog and header reflow at 200 percent zoom');
+    await page.evaluate(()=>{document.documentElement.style.zoom='';});
+  }
   await home.focus();await page.keyboard.press('Enter');await page.waitForURL(base+'/me');
   await header.locator('a[href="/me"][aria-current="page"]').waitFor();
 }

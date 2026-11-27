@@ -31,8 +31,8 @@
 }
 
 .header { width: 100%; border-bottom: 1px solid var(--portal-border); background: var(--portal-surface); box-shadow: var(--portal-shadow); }
-.headerRow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .65rem; width: min(100%, 88rem); min-height: 4.75rem; margin-inline: auto; padding: .55rem max(.85rem, env(safe-area-inset-right)) .55rem max(.85rem, env(safe-area-inset-left)); }
-.brandArea { display: flex; align-items: center; gap: clamp(.35rem, 2vw, 1rem); min-width: 0; }
+.headerRow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .65rem .4rem; width: min(100%, 88rem); min-height: 4.75rem; margin-inline: auto; padding: .55rem max(.85rem, env(safe-area-inset-right)) .55rem max(.85rem, env(safe-area-inset-left)); }
+.brandArea { display: flex; flex-wrap: wrap; align-items: center; gap: clamp(.35rem, 2vw, 1rem); min-width: 0; max-width: 100%; }
 .header .brand { display: inline-flex; min-width: 0; min-height: 3.5rem; border-radius: .85rem; }
 .header .brandLockup { gap: .4rem; max-width: none; }
 .brand :global(.brand-mark) { width: 3.25rem !important; height: 3.25rem !important; flex-shrink: 0; --brand-mark-bg: transparent; --brand-mark-border: transparent; --brand-mark-plate: transparent; }
