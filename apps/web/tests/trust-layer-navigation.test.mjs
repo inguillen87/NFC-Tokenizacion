@@ -99,12 +99,12 @@ test("home mega navigation exposes product depth without duplicating a technical
   assert.match(navigation, /label: "Documentation"[\s\S]*href: "\/docs"/);
   assert.match(navigation, /label: "SDK and APIs"[\s\S]*href: "\/sdk"/);
   assert.doesNotMatch(page, /OfflineFieldOperationsSection|BrandSynergySimulator|DemoRequestSection|offline-field-operations|brand-synergy/);
-  assert.ok((navigation.match(/copy\.groups\.map\(\(group/g) ?? []).length >= 2, "desktop and mobile must share the same groups");
+  assert.ok((navigation.match(/groups\.map\(\(group/g) ?? []).length >= 2, "desktop and mobile must share the same groups");
   assert.match(navigation, /label: "Plans and pilots"[\s\S]*href: "\/pricing"/);
   assert.match(navigation, /className=\{styles\.navDirectLink\}/);
   assert.match(navigation, /href="\/about"/);
   assert.match(navigation, /role="dialog" aria-modal="true"/);
-  assert.match(css, /\.navGroupButton,[\s\S]*min-height: 2\.65rem/);
+  assert.match(css, /\.navGroupButton,[\s\S]*min-height: 2\.75rem/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.doesNotMatch(`${page}\n${navigation}`, /landing-mobile-action-dock|nexid-quick-hub-card/);
 });

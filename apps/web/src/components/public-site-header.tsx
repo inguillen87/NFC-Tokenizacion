@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { productUrls, schedulingUrls } from "@product/config";
 import { resolveThemePreference, THEME_PREFERENCE_VERSION_COOKIE } from "@product/ui/theme-preference";
 import { getWebI18n } from "../lib/locale";
-import { BrandHomeLink } from "./brand-home-link";
+import { MarketingHeaderBrand } from "./marketing-header-brand";
 import { MarketingMegaNav } from "./marketing-mega-nav";
 import { PublicRouteContext } from "./public-route-context";
 import styles from "./public-site-header.module.css";
@@ -23,17 +23,10 @@ export async function PublicSiteHeader() {
 
   return (
     <>
-      <a href="#main-content" className="landing-skip-link">{skipLabel}</a>
-      <header className={`site-header landing-mega-header public-site-header sticky top-0 z-50 border-b ${styles.header}`}>
-        <div className="container-shell header-main-row flex items-center justify-between gap-4">
-          <BrandHomeLink
-            locale={locale}
-            size={64}
-            variant="pulse"
-            theme={initialTheme}
-            brandClassName="site-brand-identity"
-            className="landing-brand-link"
-          />
+      <a href="#main-content" className={styles.skipLink}>{skipLabel}</a>
+      <header className={styles.header}>
+        <div className={styles.row}>
+          <MarketingHeaderBrand locale={locale} />
           <MarketingMegaNav
             locale={locale}
             locales={locales}

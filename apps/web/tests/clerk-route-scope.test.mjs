@@ -147,6 +147,8 @@ test("unconfigured Web3 keeps its existing fallback; configured guard errors nev
 test("root layout renders public/consumer content and theme without importing or instantiating Clerk", async () => {
   const Empty = () => null;
   const mocks = {
+    "../components/site-motion-config": { SiteMotionConfig: ({ children }) => children },
+    "../styles/fonts": { nexidFontVariables: "qa-fonts" },
     "next/headers": { cookies: async () => ({ get: name => ({ value: name === "theme" ? "light" : "white-first-v2" }) }) },
     "@product/config": { siteConfig: {} },
     "../lib/locale": { getWebI18n: async () => ({ locale: "es-AR" }) },

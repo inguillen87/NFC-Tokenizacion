@@ -13,14 +13,18 @@ import tailwindcss from '@tailwindcss/postcss';
 
 const root=resolve(fileURLToPath(new URL('../../../',import.meta.url))),web=join(root,'apps/web');
 const sourcePaths=['apps/web/src/components/marketing-mega-nav.tsx','apps/web/src/components/marketing-mega-nav.module.css','apps/web/src/components/public-site-header.module.css','apps/web/src/components/brand-home-link.tsx','apps/web/src/components/brand-home-link.module.css','apps/web/src/components/brand-home-link-static.tsx','apps/web/src/components/passport-fragment-restoration.ts','apps/web/src/app/globals.css','apps/web/tests/marketing-mega-navigation.browser.mjs','apps/web/tests/marketing-mega-navigation.test.mjs','packages/ui/src/brand/brand-lockup.tsx','packages/ui/src/brand/brand-mark.tsx','packages/ui/src/brand/brand-wordmark.tsx','packages/ui/src/theme-toggle.tsx','packages/ui/src/locale-switcher.tsx'];
+sourcePaths.push('apps/web/src/components/marketing-header-brand.tsx','apps/web/src/styles/tokens.css');
 const sourceHashes=async()=>Object.fromEntries(await Promise.all(sourcePaths.map(async path=>[path,createHash('sha256').update(await readFile(join(root,path))).digest('hex')])));
 const sourceHashesStart=await sourceHashes();
+const navigationSource=await readFile(join(web,'src/components/marketing-mega-nav.tsx'),'utf8');
+const desktopBreakpointQuery=/const desktop = window\.matchMedia\("([^"]+)"\)/.exec(navigationSource)?.[1];
+assert.ok(desktopBreakpointQuery,'Read the actual runtime breakpoint query');
 const output=resolve(process.env.QA_OUTPUT||join(root,'artifacts/browser/marketing-navigation-details'));
 await mkdir(output,{recursive:true});
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE?pathToFileURL(process.env.PLAYWRIGHT_MODULE).href:'playwright-core');
-const fixture=`import React from 'react';import{createRoot}from'react-dom/client';import{MarketingMegaNav}from'./src/components/marketing-mega-nav';import{BrandHomeLink}from'./src/components/brand-home-link';import headerStyles from'./src/components/public-site-header.module.css';
+const fixture=`import React from 'react';import{createRoot}from'react-dom/client';import{MarketingMegaNav}from'./src/components/marketing-mega-nav';import{MarketingHeaderBrand}from'./src/components/marketing-header-brand';import headerStyles from'./src/components/public-site-header.module.css';
 const locale=document.documentElement.lang,theme=document.documentElement.dataset.theme;
-createRoot(document.getElementById('navigation')).render(<header className={'site-header landing-mega-header public-site-header sticky top-0 z-50 border-b '+headerStyles.header}><div className="container-shell header-main-row flex items-center justify-between gap-4"><BrandHomeLink locale={locale} size={64} variant="pulse" theme={theme} brandClassName="site-brand-identity" className="landing-brand-link"/><MarketingMegaNav locale={locale} locales={['es-AR','en','pt-BR']} initialTheme={theme} loginHref="https://business.example.invalid/login" meetingHref="https://example.invalid/meeting"/></div></header>);`;
+createRoot(document.getElementById('navigation')).render(<header className={headerStyles.header}><div className={headerStyles.row}><MarketingHeaderBrand locale={locale}/><MarketingMegaNav locale={locale} locales={['es-AR','en','pt-BR']} initialTheme={theme} loginHref="https://business.example.invalid/login" meetingHref="https://example.invalid/meeting"/></div></header>);`;
 const nextShim=`import React from'react';export const usePathname=()=>location.pathname;export const useSearchParams=()=>new URLSearchParams(location.search);export const useRouter=()=>({push(url){location.assign(url)},refresh(){location.reload()}});export default React.forwardRef(function Link({href,prefetch,...props},ref){return <a {...props} href={href} ref={ref}/>});`;
 const uiShim=['theme-toggle','locale-switcher','brand/brand-lockup','brand/brand-mark'].map(name=>`export * from ${JSON.stringify(join(root,'packages/ui/src',name+'.tsx').replaceAll('\\','/'))};`).join('\n');
 const bundle=await build({stdin:{contents:fixture,resolveDir:web,loader:'tsx'},bundle:true,write:false,outdir:join(output,'bundle'),platform:'browser',format:'iife',jsx:'automatic',define:{'process.env.NODE_ENV':'"production"'},loader:{'.module.css':'local-css'},plugins:[{name:'native-fixture-routing',setup(builder){
@@ -31,6 +35,7 @@ const bundle=await build({stdin:{contents:fixture,resolveDir:web,loader:'tsx'},b
 const js=bundle.outputFiles.find(file=>file.path.endsWith('.js')).contents,css=bundle.outputFiles.find(file=>file.path.endsWith('.css')).contents;
 await writeFile(join(output,'fixture.css'),css);
 const globals=(await postcss([tailwindcss({base:web})]).process(await readFile(join(web,'src/app/globals.css'),'utf8'),{from:join(web,'src/app/globals.css')})).css;
+const tokens=await readFile(join(web,'src/styles/tokens.css'),'utf8');
 // Hold real HTTP bytes until the test observes the mounted React navigation.
 // Releasing a response changes no DOM, focus, React state or browser lifecycle.
 const pendingNativeLoads=new Map();
@@ -41,6 +46,7 @@ const server=createServer((req,res)=>{
  if(path==='/fixture.js'){res.setHeader('content-type','text/javascript');return res.end(js);}
  if(path==='/fixture.css'){res.setHeader('content-type','text/css');return res.end(css);}
  if(path==='/base.css'){res.setHeader('content-type','text/css');return res.end(globals);}
+ if(path==='/tokens.css'){res.setHeader('content-type','text/css');return res.end(tokens);}
  if(path==='/native-load-delay.svg'){
   const kind=new URL(req.url,'http://fixture.invalid').searchParams.get('case');
   res.setHeader('content-type','image/svg+xml');
@@ -48,13 +54,13 @@ const server=createServer((req,res)=>{
   return;
  }
  if(path==='/favicon.ico'){res.writeHead(204);return res.end();}
- if(!['/','/about','/me','/sun'].includes(path)){res.writeHead(404);return res.end();}
+ if(!['/','/about','/me','/sun','/demo-lab'].includes(path)){res.writeHead(404);return res.end();}
  const theme=/(?:^|;\s*)theme=dark(?:;|$)/.test(req.headers.cookie||'')?'dark':'light';
  const requestedLocale=/\bnav_locale=(es-AR|en|pt-BR)(?:;|$)/.exec(req.headers.cookie||'')?.[1];
  const locale=requestedLocale||'es-AR';
  const nativeKind=path==='/'?/\bnav_load_case=([^;]+)/.exec(req.headers.cookie||'')?.[1]:null;
  if(['late-heading','late-asset','early-input'].includes(nativeKind)){
-  const head=`<!doctype html><html lang="${locale}" data-theme="${theme}" class="theme-${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Native fragment loading fixture</title><link rel="stylesheet" href="/base.css"><link rel="stylesheet" href="/fixture.css"><style>html{scroll-behavior:auto!important}body{margin:0}#navigation{display:contents}main{padding:24px}#prelude{height:1200px}#pasaporte-digital{padding:24px}#tail{height:800px}h1,h2{margin:0 0 20px;font-size:28px}.fixture-action{min-height:44px}html[data-theme="dark"] main{background:#10282f;color:#edf5f4}</style></head><body><div id="navigation"></div><script async src="/fixture.js"></script><main id="main-content" data-nav-inert><h1>Home — synthetic delayed content</h1><button class="fixture-action" id="native-early-control">Conservar mi foco</button><div id="prelude"></div>`;
+  const head=`<!doctype html><html lang="${locale}" data-theme="${theme}" class="theme-${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Native fragment loading fixture</title><link rel="stylesheet" href="/tokens.css"><link rel="stylesheet" href="/base.css"><link rel="stylesheet" href="/fixture.css"><style>html{scroll-behavior:auto!important}body{margin:0}#navigation{display:contents}main{padding:24px}#prelude{height:1200px}#pasaporte-digital{padding:24px}#tail{height:800px}h1,h2{margin:0 0 20px;font-size:28px}.fixture-action{min-height:44px}html[data-theme="dark"] main{background:#10282f;color:#edf5f4}</style></head><body><div id="navigation"></div><script async src="/fixture.js"></script><main id="main-content" data-nav-inert><h1>Home — synthetic delayed content</h1><button class="fixture-action" id="native-early-control">Conservar mi foco</button><div id="prelude"></div>`;
   const destination='<section id="pasaporte-digital" class="scroll-mt-24"><h2>Pasaporte digital de prueba</h2><button class="fixture-action" id="destination-action">Siguiente acción local</button></section><div id="tail"></div></main><aside id="foreign-inert" data-nav-inert inert aria-hidden="false">Pre-existing inert fixture</aside>';
   res.setHeader('content-type','text/html;charset=utf-8');
   if(nativeKind==='late-heading'){
@@ -67,11 +73,11 @@ const server=createServer((req,res)=>{
  }
  // The React mount adapter is layout-transparent, matching the production
  // header's body-level containing block without overriding its sticky CSS.
- res.setHeader('content-type','text/html;charset=utf-8');res.end(`<!doctype html><html lang="${locale}" data-theme="${theme}" class="theme-${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Navigation component fixture</title><link rel="stylesheet" href="/base.css"><link rel="stylesheet" href="/fixture.css"><style>html{scroll-behavior:auto!important}body{margin:0}#navigation{display:contents}main{padding:24px}#prelude{height:1200px}#pasaporte-digital{padding:24px}#tail{height:800px}h1,h2{margin:0 0 20px;font-size:28px}.fixture-action{min-height:44px}html[data-theme="dark"] main{background:#10282f;color:#edf5f4}</style></head><body><div id="navigation"></div><main id="main-content" data-nav-inert><h1>${path==='/'?'Home':path==='/me'?'Me — synthetic routing destination':path==='/sun'?'SUN gallery':'About'} — synthetic content</h1>${path==='/about'?'<a id="saved-passport-link" class="fixture-action" href="/#pasaporte-digital">Abrir fragmento guardado</a>':''}<div id="prelude"></div>${path==='/'?'<section id="pasaporte-digital" class="scroll-mt-24"><h2>Pasaporte digital de prueba</h2><button class="fixture-action" id="destination-action">Siguiente acción local</button></section>':''}<div id="tail"></div></main><aside id="foreign-inert" data-nav-inert inert aria-hidden="false">Pre-existing inert fixture</aside><script src="/fixture.js"></script></body></html>`);
+ res.setHeader('content-type','text/html;charset=utf-8');res.end(`<!doctype html><html lang="${locale}" data-theme="${theme}" class="theme-${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Navigation component fixture</title><link rel="stylesheet" href="/tokens.css"><link rel="stylesheet" href="/base.css"><link rel="stylesheet" href="/fixture.css"><style>html{scroll-behavior:auto!important}body{margin:0}#navigation{display:contents}main{padding:24px}#prelude{height:1200px}#pasaporte-digital{padding:24px}#tail{height:800px}h1,h2{margin:0 0 20px;font-size:28px}.fixture-action{min-height:44px}html[data-theme="dark"] main{background:#10282f;color:#edf5f4}</style></head><body><div id="navigation"></div><main id="main-content" data-nav-inert><h1>${path==='/'?'Home':path==='/me'?'Me — synthetic routing destination':path==='/sun'?'SUN gallery':'About'} — synthetic content</h1>${path==='/about'?'<a id="saved-passport-link" class="fixture-action" href="/#pasaporte-digital">Abrir fragmento guardado</a>':''}<div id="prelude"></div>${path==='/'?'<section id="pasaporte-digital" class="scroll-mt-24"><h2>Pasaporte digital de prueba</h2><button class="fixture-action" id="destination-action">Siguiente acción local</button></section>':''}<div id="tail"></div></main><aside id="foreign-inert" data-nav-inert inert aria-hidden="false">Pre-existing inert fixture</aside><script src="/fixture.js"></script></body></html>`);
 });
 await new Promise((ok,fail)=>{server.once('error',fail);server.listen(Number(process.env.QA_PORT||3302),'127.0.0.1',ok)});
 const origin=`http://127.0.0.1:${server.address().port}`;
-const report={realComponents:true,realCss:true,realHeaderBrand:true,syntheticHomeAboutContent:true,syntheticConsumerDestination:true,syntheticGalleryDestination:true,savedFragmentFixtureLink:true,nativeBrowserRoutingAdapter:true,actualNextPageAcceptance:false,customerAuthenticationAcceptance:false,physicalTapMeasured:false,gpsMeasured:false,businessWritesAllowed:false,sourceHashesStart,origin,checks:[],views:[],consumerEntryCases:[],earlyFocusedMenuCases:[],nativeLoadCases:[],errors:[],blockedRequests:[],browserClosed:false,serverClosed:false};
+const report={realComponents:true,realCss:true,realHeaderBrand:true,realDesignTokens:true,fontLoadingAcceptance:false,syntheticHomeAboutContent:true,syntheticConsumerDestination:true,syntheticGalleryDestination:true,savedFragmentFixtureLink:true,nativeBrowserRoutingAdapter:true,actualNextPageAcceptance:false,customerAuthenticationAcceptance:false,physicalTapMeasured:false,gpsMeasured:false,businessWritesAllowed:false,sourceHashesStart,origin,checks:[],views:[],consumerEntryCases:[],earlyFocusedMenuCases:[],earlyDesktopFocusCases:[],nativeLoadCases:[],breakpointCases:[],errors:[],blockedRequests:[],browserClosed:false,serverClosed:false};
 const check=(passed,name,details)=>report.checks.push({name,passed:Boolean(passed),...(details===undefined?{}:{details})});
 const frames=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
 const visibleSelector='a[href],button:not([disabled]),select,summary,[tabindex]:not([tabindex="-1"])';
@@ -130,6 +136,28 @@ async function earlyMenuInteraction(page,name){
  const details={name,...initial,nativeDestinationFocused:destination};report.earlyFocusedMenuCases.push(details);
  check(initial.focusedOnMount&&initial.retainedThroughAutofocus&&destination,'Early menu interaction keeps link focus and native destination '+name,details);
 }
+async function earlyDesktopInteraction(page,name,resourcesLabel){
+ await page.evaluate(()=>{
+  window.__earlyDesktopFocus={focusedOnMount:false};
+  const observer=new MutationObserver(()=>{
+   const about=document.querySelector('#mega-menu-resources a[href="/about"]');
+   if(!about)return;
+   about.focus();window.__earlyDesktopFocus.focusedOnMount=document.activeElement===about;
+   observer.disconnect();
+  });
+  observer.observe(document.body,{childList:true,subtree:true});
+ });
+ await page.getByRole('button',{name:resourcesLabel,exact:true}).press('ArrowDown');
+ await page.locator('#mega-menu-resources a[href="/about"]').waitFor();await frames(page);
+ const initial=await page.evaluate(()=>({focusedOnMount:window.__earlyDesktopFocus.focusedOnMount,
+  retainedThroughAutofocus:document.activeElement?.matches('#mega-menu-resources a[href="/about"]')}));
+ check(initial.focusedOnMount&&initial.retainedThroughAutofocus,'Early desktop interaction retains explicit About focus '+name,initial);
+ assert.ok(initial.focusedOnMount&&initial.retainedThroughAutofocus,'Do not activate a different link after lost early desktop focus');
+ await page.keyboard.press('Enter');
+ const destination=await page.waitForURL(origin+'/about',{timeout:3000}).then(()=>true,()=>false);
+ report.earlyDesktopFocusCases.push({name,...initial,destination});
+ check(destination,'Early desktop interaction follows the chosen native destination '+name);
+}
 async function failureSnapshot(page){
  return page.evaluate(()=>({url:location.origin+location.pathname+location.hash,readyState:document.readyState,
   activeElement:document.activeElement?.outerHTML.slice(0,500),
@@ -149,7 +177,7 @@ async function nativeLoadCase(width,theme,kind){
   document.addEventListener('focusin',()=>event('focusin'));
   window.addEventListener('load',()=>event('load'),{once:true});
   const observer=new MutationObserver(()=>{
-   if(!document.querySelector('button[aria-label="Abrir navegación"]'))return;
+   if(!document.querySelector('[data-consumer-entry="header"]'))return;
    probe.navigationMounted={readyState:document.readyState,at:performance.now(),destinationPresent:Boolean(document.querySelector('#pasaporte-digital h2'))};
    observer.disconnect();
   });
@@ -163,7 +191,7 @@ async function nativeLoadCase(width,theme,kind){
   const committed=page.waitForURL(origin+'/#pasaporte-digital',{waitUntil:'commit'});
   await page.locator('#saved-passport-link').press('Enter',{noWaitAfter:true});
   await committed;
-  await page.getByRole('button',{name:'Abrir navegación',exact:true}).waitFor({state:'attached'});await frames(page);
+  await page.locator('[data-consumer-entry="header"]').waitFor({state:'attached'});await frames(page);
   details.beforeRelease=await page.evaluate(()=>({readyState:document.readyState,destinationPresent:Boolean(document.querySelector('#pasaporte-digital h2')),probe:window.__nativeLoadProbe}));
   check(pendingNativeLoads.has(kind)&&details.beforeRelease.readyState!=='complete'
    &&details.beforeRelease.probe.navigationMounted?.readyState!=='complete'
@@ -199,9 +227,9 @@ async function nativeLoadCase(width,theme,kind){
 
 async function consumerEntryCase(width,theme,locale){
  const copy={
-  'es-AR':{account:'Mi cuenta',business:'Ingresar empresas',menu:'Abrir navegación',demo:'Agendar demo'},
-  en:{account:'My account',business:'Business sign in',menu:'Open navigation',demo:'Book a demo'},
-  'pt-BR':{account:'Minha conta',business:'Acesso para empresas',menu:'Abrir navegação',demo:'Agendar demo'},
+  'es-AR':{account:'Mi cuenta',business:'Empresas',menu:'Abrir navegación',demo:'Probar demo',solutions:'Soluciones',platform:'Plataforma',resources:'Recursos'},
+  en:{account:'My account',business:'Business',menu:'Open navigation',demo:'Try the demo',solutions:'Solutions',platform:'Platform',resources:'Resources'},
+  'pt-BR':{account:'Minha conta',business:'Empresas',menu:'Abrir navegação',demo:'Experimentar demo',solutions:'Soluções',platform:'Plataforma',resources:'Recursos'},
  }[locale];
  const name=`consumer-entry-${width}-${theme}-${locale}`,context=await browser.newContext({viewport:{width,height:900},locale,reducedMotion:'reduce',serviceWorkers:'block'});
  const details={name,width,theme,locale,completed:false};report.consumerEntryCases.push(details);
@@ -217,21 +245,27 @@ async function consumerEntryCase(width,theme,locale){
   check(details.headerAccount.width>=44&&details.headerAccount.height>=44&&details.headerAccount.fontSize>=12&&details.headerAccount.withinViewport&&details.headerAccount.unobstructed,'Closed account is legible unobstructed44px target '+name,details.headerAccount);
   check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.body.scrollWidth<=innerWidth),'Production header brand and account have zero horizontal overflow '+name,details.header);
   const ring=await focusRing(account);check(ring.outline==='solid'&&ring.width>=3&&ring.ratio>=3,'Consumer account retains visible keyboard focus '+name,ring);
-  check(await page.locator('header > div > [data-brand-home-link] [data-identity-variant="pulse"]').count()===1,'Original header logo artwork remains mounted '+name);
+  check(await page.locator('header > div [data-brand-home-link] [data-identity-variant="static"]').count()===1,
+   'Header keeps the complete static brand artwork '+name);
+  const brandMark=await page.locator('header > div [data-brand-home-link] svg').evaluate(node=>({width:node.getBoundingClientRect().width,height:node.getBoundingClientRect().height}));
+  check(brandMark.width===(width<768?40:48)&&brandMark.height===(width<768?40:48),
+   'Header brand uses the approved mobile and desktop dimensions '+name,brandMark);
+  check(await page.locator('header').evaluate(node=>node.getAnimations({subtree:true}).every(animation=>animation.playState!=='running')),
+   'Reduced motion leaves the complete header without running animation '+name);
   await page.screenshot({path:join(output,name+'-closed-viewport.png')});
   await account.press('Enter');await page.waitForURL(origin+'/me');
   check(new URL(page.url()).pathname==='/me'&&new URL(page.url()).search===''&&await page.getByRole('dialog').count()===0,'Keyboard account follows direct /me without business login or query rewrite '+name);
   await page.goto(origin+'/',{waitUntil:'networkidle'});await page.locator('[data-consumer-entry="header"]').click();await page.waitForURL(origin+'/me');
   check(new URL(page.url()).pathname==='/me','Pointer account reaches same /me destination '+name);
   await page.goto(origin+'/',{waitUntil:'networkidle'});
-  if(width<1600){
+  if(width<1280){
    const trigger=page.getByRole('button',{name:copy.menu,exact:true});details.menuTrigger=await bounds(trigger);
    check(details.menuTrigger.width>=44&&details.menuTrigger.height>=44&&details.menuTrigger.withinViewport&&details.menuTrigger.unobstructed,'Closed menu trigger remains a separate unobstructed44px target '+name,details.menuTrigger);
    await trigger.press('Enter');const dialog=page.getByRole('dialog');await dialog.waitFor();await frames(page);
    const menuAccount=dialog.locator('[data-consumer-entry="menu"]');details.menuAccount=await bounds(menuAccount);
    check(await menuAccount.innerText()===copy.account&&await menuAccount.getAttribute('href')==='/me'&&details.menuAccount.height>=44&&details.menuAccount.withinViewport&&details.menuAccount.unobstructed,'Open menu exposes immediate direct consumer account '+name,details.menuAccount);
    const business=dialog.getByRole('link',{name:copy.business,exact:true});check(await business.getAttribute('href')==='https://business.example.invalid/login','Business login stays separate from consumer account '+name);
-   check(await dialog.getByRole('link',{name:copy.demo,exact:true}).getAttribute('href')==='/?contact=demo#contact-modal','Commercial demo remains available in mobile menu '+name);
+   check(await dialog.getByRole('link',{name:copy.demo,exact:true}).getAttribute('href')==='/demo-lab','Commercial demo remains available in mobile menu '+name);
    details.scrolledTargets=[];
    for(const [label,target] of [['featured',dialog.locator('details[open] > div > a[href="/demo-lab"]')],['business',business],['demo',dialog.getByRole('link',{name:copy.demo,exact:true})]]){
     await target.scrollIntoViewIfNeeded();await frames(page);const geometry=await bounds(target);details.scrolledTargets.push({label,...geometry});
@@ -242,16 +276,227 @@ async function consumerEntryCase(width,theme,locale){
    await menuAccount.press('Enter');await page.waitForURL(origin+'/me');
    check(await page.getByRole('dialog').count()===0&&await page.locator('#main-content').evaluate(node=>!node.inert),'Menu account closes dialog and releases inert content on navigation '+name);
   }else{
+   const groupButtons=page.locator('[data-mega-nav-group] > button');
+   check(JSON.stringify(await groupButtons.allTextContents())===JSON.stringify([copy.solutions,copy.platform,copy.resources]),
+    'Desktop exposes exactly three localized navigation groups '+name);
    check(await page.getByRole('link',{name:copy.business,exact:true}).isVisible()&&await page.getByRole('link',{name:copy.business,exact:true}).getAttribute('href')==='https://business.example.invalid/login','Desktop business login remains separately visible '+name);
-   check(await page.getByRole('link',{name:copy.demo,exact:true}).isVisible(),'Desktop commercial demo stays visible '+name);
+   check(await page.getByRole('link',{name:copy.demo,exact:true}).isVisible()&&await page.getByRole('link',{name:copy.demo,exact:true}).getAttribute('href')==='/demo-lab','Desktop primary demo uses the direct Demo Lab route '+name);
+   await page.getByRole('button',{name:copy.solutions,exact:true}).press('ArrowDown');
+   await page.locator('#mega-menu-solutions').waitFor();await frames(page);
+   const gallery=page.locator('#mega-menu-solutions [data-demo-entry="gallery"]');
+   check(await gallery.getAttribute('href')==='/sun','Desktop industry gallery belongs to Solutions '+name);
+   await gallery.press('Enter');await page.waitForURL(origin+'/sun');
+   check(new URL(page.url()).pathname==='/sun'&&!new URL(page.url()).search,'Desktop gallery follows its native destination '+name);
+   await page.goto(origin+'/',{waitUntil:'networkidle'});
+   await page.getByRole('button',{name:copy.resources,exact:true}).press('ArrowDown');
+   const resourcesFirst=page.locator('#mega-menu-resources [data-menu-link]').first();
+   await page.waitForFunction(()=>document.querySelector('#mega-menu-resources [data-menu-link]')===document.activeElement);
+   check(await resourcesFirst.evaluate(node=>node===document.activeElement),'Resources ArrowDown completes its initial keyboard focus '+name);
+   await page.keyboard.press('Tab');
+   const aboutLink=page.locator('#mega-menu-resources a[href="/about"]');
+   check(await aboutLink.evaluate(node=>node===document.activeElement),'Resources Tab reaches About in the real keyboard order '+name);
+   await page.keyboard.press('Enter');await page.waitForURL(origin+'/about');
+   check(await page.getByRole('button',{name:copy.resources,exact:true}).getAttribute('aria-current')==='page',
+    'About stays reachable and current inside Resources '+name);
+   await page.goto(origin+'/',{waitUntil:'networkidle'});
+   await earlyDesktopInteraction(page,name,copy.resources);
+   await page.getByRole('link',{name:copy.demo,exact:true}).press('Enter');await page.waitForURL(origin+'/demo-lab');
+   check(new URL(page.url()).pathname==='/demo-lab'&&!new URL(page.url()).search,'Primary demo follows the direct native Demo Lab route '+name);
   }
   details.completed=true;
  }catch(error){report.errors.push({name,error:error.message.slice(0,180),snapshot:await failureSnapshot(page)});await page.screenshot({path:join(output,name+'-failure.png')}).catch(captureError=>report.errors.push({name,error:'failure-screenshot: '+captureError.message.slice(0,160)}));}
  finally{await context.close();await writeFile(join(output,'report.json'),JSON.stringify(report,null,2));}
 }
+async function focusedControlGeometry(locator) {
+ return locator.evaluate(node => {
+  const rect = node.getBoundingClientRect();
+  return {
+   active: node === document.activeElement,
+   visible: rect.width > 0 && rect.height > 0 && getComputedStyle(node).visibility !== 'hidden',
+   withinViewport: rect.left >= 0 && rect.right <= innerWidth && rect.top >= 0 && rect.bottom <= innerHeight,
+   left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
+   viewportWidth: innerWidth, documentWidth: document.documentElement.scrollWidth,
+  };
+ });
+}
+
+async function breakpointQueryParity(page) {
+ // An iframe accepts fractional CSS widths even when the automation viewport
+ // accepts only integers. Evaluate the source queries with native matchMedia;
+ // no parser or replacement query duplicates their comparison logic.
+ return page.evaluate(async desktopQuery => {
+  const desktopNavigation=document.querySelector('[data-mega-nav-group]')?.closest('nav');
+  const compactNavigation=[...document.querySelectorAll('nav a[data-demo-entry="gallery"]')]
+   .map(link=>link.closest('nav')).find(nav=>nav!==desktopNavigation);
+  function displayQueries(element,display) {
+   const matches=[];
+   function visit(rules,parents) {
+    for(const rule of rules) {
+     if(rule instanceof CSSMediaRule) visit(rule.cssRules,[...parents,rule.conditionText]);
+     else if(rule instanceof CSSStyleRule&&rule.style.display===display&&element?.matches(rule.selectorText)) matches.push(parents);
+    }
+   }
+   for(const sheet of document.styleSheets) visit(sheet.cssRules,[]);
+   if(matches.length!==1||matches[0].length===0) throw new Error('Expected one conditional '+display+' rule for navigation');
+   return matches[0];
+  }
+  const queries={desktop:[desktopQuery],compact:displayQueries(desktopNavigation,'none'),compactRow:displayQueries(compactNavigation,'flex')};
+  const frame=document.createElement('iframe');
+  frame.title='Breakpoint media-query probe';
+  frame.tabIndex=-1;
+  frame.setAttribute('aria-hidden','true');
+  frame.style.cssText='position:fixed;left:-10000px;top:0;height:40px;border:0;visibility:hidden';
+  document.body.append(frame);
+  const cases=[];
+  try {
+   for(const width of [767,767.5,768,1279,1279.5,1280,1280.5]) {
+    frame.style.width=`${width}px`;
+    await new Promise(resolve=>requestAnimationFrame(resolve));
+    const actual=Object.fromEntries(Object.entries(queries).map(([name,conditions])=>[name,conditions.every(query=>frame.contentWindow.matchMedia(query).matches)]));
+    const actualWidth=frame.getBoundingClientRect().width;
+    const nativeViewportWidth=frame.contentWindow.innerWidth;
+    const expected=Number.isInteger(width)?{desktop:width>=1280,compact:width<1280,compactRow:width>=768&&width<1280}:null;
+    // Fractional iframe box sizes may produce a rounded CSS viewport in Chrome.
+    // Test exact thresholds at integer viewports and native complementarity at
+    // fractional ones, without pretending the border box is its media viewport.
+    cases.push({width,actualWidth,nativeViewportWidth,expected,actual,
+     passed:Math.abs(actualWidth-width)<0.01&&actual.desktop!==actual.compact
+      &&(!expected||Object.entries(expected).every(([key,value])=>actual[key]===value))});
+   }
+   return{queries,cases,passed:cases.every(entry=>entry.passed)};
+  } finally { frame.remove(); }
+ },desktopBreakpointQuery);
+}
+
+async function resizeBreakpointViewport(page,width) {
+ const before=await page.evaluate(()=>({...window.__navigationBreakpointState}));
+ await page.setViewportSize({width,height:900});
+ const desktop=width>=1280;
+ if(before.matches!==desktop) {
+  await page.waitForFunction(({events,desktop})=>window.__navigationBreakpointState.events>events&&window.__navigationBreakpointState.matches===desktop,
+   {events:before.events,desktop},{timeout:3000});
+ }
+ await frames(page);
+}
+
+async function breakpointNavigationCase(theme, reducedMotion, textScale) {
+ const name = `breakpoint-${theme}-${reducedMotion}-text${textScale}`;
+ const context = await browser.newContext({ viewport: { width: 1200, height: 900 }, reducedMotion, serviceWorkers: 'block' });
+ const details = { name, theme, reducedMotion, textScale, completed: false };
+ report.breakpointCases.push(details);
+ await context.addCookies([{ name: 'theme', value: theme, url: origin }, { name: 'nexid_theme_version', value: 'white-first-v2', url: origin }]);
+ const page = await context.newPage();
+ page.on('pageerror', error => report.errors.push({ name, error: error.message.slice(0, 180) }));
+ await page.route('**/*', route => {
+  const request = route.request();
+  const url = new URL(request.url());
+  if (request.method() !== 'GET' || url.origin !== origin || /^\/api(?:\/|$)/.test(url.pathname)) {
+   report.blockedRequests.push({ name, method: request.method(), path: url.pathname });
+   return route.abort();
+  }
+  return route.continue();
+ });
+ try {
+  await page.goto(origin + '/', { waitUntil: 'networkidle' });
+  await page.locator('[data-consumer-entry="header"]').waitFor();
+  await page.evaluate(query=>{
+   const media=matchMedia(query);
+   window.__navigationBreakpointState={matches:media.matches,events:0};
+   media.addEventListener('change',event=>{
+    window.__navigationBreakpointState.matches=event.matches;
+    window.__navigationBreakpointState.events++;
+   });
+  },desktopBreakpointQuery);
+  await page.evaluate(scale => { document.documentElement.style.fontSize = `${16 * scale}px`; }, textScale);
+  await frames(page);
+  details.queryParity=await breakpointQueryParity(page);
+  check(details.queryParity.passed,'Runtime and CSS queries have no gap or overlap at exact and fractional boundaries '+name,details.queryParity);
+  const originalOverflow = await page.evaluate(() => {
+   document.body.style.overflow = 'clip';
+   return document.body.style.overflow;
+  });
+  await openMenu(page);
+  check(await page.locator('#main-content').evaluate(node => node.inert), 'Breakpoint case starts with a modal drawer ' + name);
+  await resizeBreakpointViewport(page,1280);
+  const closedOnDesktop = await page.waitForFunction(() => !document.querySelector('[role="dialog"]'), undefined, { timeout: 3000 }).then(() => true, () => false);
+  check(closedOnDesktop, 'Expanding to desktop closes the compact drawer ' + name);
+  details.desktop = await failureSnapshot(page);
+  if (!closedOnDesktop) return;
+  await retained(page, 'desktop breakpoint ' + name);
+  check(await page.evaluate(expected => document.body.style.overflow === expected, originalOverflow), 'Breakpoint closure preserves the previous body overflow ' + name);
+  check(await page.locator('button[aria-label="Abrir navegación"]').getAttribute('aria-expanded')==='false',
+   'Breakpoint closure clears the compact expanded state '+name);
+
+  const solutions = page.getByRole('button', { name: 'Soluciones', exact: true });
+  details.desktopControl = await focusedControlGeometry(solutions);
+  check(details.desktopControl.active && details.desktopControl.visible && details.desktopControl.withinViewport,
+   'Drawer focus moves to a visible desktop control ' + name, details.desktopControl);
+  const solutionsFocus = await focusRing(solutions);
+  check(solutionsFocus.focusVisible && solutionsFocus.width >= 3, 'Desktop control retains a visible focus ring ' + name, solutionsFocus);
+  await solutions.press('ArrowDown');
+  await frames(page);
+  check(await page.locator('#mega-menu-solutions').isVisible(), 'Desktop menu opens with the keyboard after resize ' + name);
+  await resizeBreakpointViewport(page,1200);
+  const closedOnCompact = await page.waitForFunction(() => !document.querySelector('#mega-menu-solutions'), undefined, { timeout: 3000 }).then(() => true, () => false);
+  check(closedOnCompact, 'Shrinking to compact navigation clears the desktop menu ' + name);
+  if (!closedOnCompact) return;
+  const trigger = page.getByRole('button', { name: 'Abrir navegación', exact: true });
+  details.compactControl = await focusedControlGeometry(trigger);
+  check(details.compactControl.active && details.compactControl.visible && details.compactControl.withinViewport,
+   'Desktop menu focus moves to the visible compact trigger ' + name, details.compactControl);
+  check(await page.locator('[data-mega-nav-group] button[aria-expanded="true"]').count()===0,
+   'Breakpoint closure clears the desktop expanded state '+name);
+  await resizeBreakpointViewport(page,1280);
+  check(await page.locator('#mega-menu-solutions').count() === 0 && await page.getByRole('dialog').count() === 0,
+   'Returning to desktop keeps both menus closed ' + name);
+  const returnedDesktopControl=await focusedControlGeometry(solutions);
+  check(returnedDesktopControl.active&&returnedDesktopControl.visible&&returnedDesktopControl.withinViewport,
+   'A compact trigger hidden by CSS restores visible desktop focus '+name,returnedDesktopControl);
+  await page.screenshot({ path: join(output, name + '-desktop.png') });
+
+  const outsideControl=page.locator('#destination-action');
+  await outsideControl.focus();
+  await resizeBreakpointViewport(page,1200);
+  check(await outsideControl.evaluate(node=>node===document.activeElement),
+   'Resize preserves explicit focus outside navigation '+name);
+
+  await resizeBreakpointViewport(page,1280);
+  await solutions.focus();
+  await page.locator('#main-content h1').click();
+  const bodyAfterClick=await page.evaluate(()=>document.activeElement===document.body);
+  await resizeBreakpointViewport(page,1200);
+  check(bodyAfterClick&&await page.evaluate(()=>document.activeElement===document.body),
+   'A body click clears old navigation focus before resize '+name);
+
+  await resizeBreakpointViewport(page,1280);
+  await solutions.focus();
+  await solutions.evaluate(node=>node.blur());
+  const bodyAfterBlur=await page.evaluate(()=>document.activeElement===document.body);
+  await resizeBreakpointViewport(page,1200);
+  check(bodyAfterBlur&&await page.evaluate(()=>document.activeElement===document.body),
+   'Intentional blur clears old navigation focus before resize '+name);
+
+  await resizeBreakpointViewport(page,390);
+  const mobileTrigger = await openMenu(page);
+  await page.keyboard.press('Escape');
+  await frames(page);
+  check(await page.getByRole('dialog').count() === 0 && await mobileTrigger.evaluate(node => node === document.activeElement),
+   'Escape still restores the mobile trigger after breakpoint changes ' + name);
+  await retained(page, 'mobile breakpoint ' + name);
+  await page.screenshot({ path: join(output, name + '-mobile.png') });
+  details.completed = true;
+ } catch (error) {
+  report.errors.push({ name, error: error.message.slice(0, 180), snapshot: await failureSnapshot(page) });
+ } finally {
+  await context.close();
+  await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2));
+ }
+}
+
 try{
- for(const width of [320,390,768,1920])for(const theme of ['light','dark'])for(const locale of ['es-AR','en','pt-BR'])await consumerEntryCase(width,theme,locale);
- for(const width of [320,390,768,1440])for(const theme of ['light','dark']){
+ for(const theme of ['light','dark'])for(const reducedMotion of ['reduce','no-preference'])for(const textScale of [1,2])await breakpointNavigationCase(theme,reducedMotion,textScale);
+ for(const width of [320,390,768,1280,1440,1920])for(const theme of ['light','dark'])for(const locale of ['es-AR','en','pt-BR'])await consumerEntryCase(width,theme,locale);
+ for(const width of [320,390,768,1200])for(const theme of ['light','dark']){
   const name=`${width} ${theme}`,context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce',serviceWorkers:'block'});
   await context.addCookies([{name:'theme',value:theme,url:origin},{name:'nexid_theme_version',value:'white-first-v2',url:origin}]);
   const page=await context.newPage();page.on('pageerror',error=>report.errors.push({name,error:error.message.slice(0,180)}));
@@ -262,7 +507,7 @@ try{
    check(await page.getByRole('button',{name:'Cerrar navegación',exact:true}).evaluate(node=>node===document.activeElement),'Open focuses close '+name);
    check(await page.locator('#main-content').evaluate(node=>node.inert),'Open makes content inert '+name);
    const dialog=page.getByRole('dialog'),brand=dialog.locator('[data-brand-home-link]');
-   for(const [label,locator]of [['brand',brand],['close',dialog.getByRole('button',{name:'Cerrar navegación',exact:true})],['account',dialog.locator('[data-consumer-entry="menu"]')],['gallery',dialog.locator('[data-demo-entry="gallery"]')],['about',dialog.getByRole('link',{name:'Quiénes somos',exact:true})],['item',dialog.locator('[data-menu-link]').first()],['summary',dialog.locator('summary').first()],['login',dialog.getByRole('link',{name:'Ingresar empresas',exact:true})],['demo',dialog.getByRole('link',{name:'Agendar demo',exact:true})]]){
+   for(const [label,locator]of [['brand',brand],['close',dialog.getByRole('button',{name:'Cerrar navegación',exact:true})],['account',dialog.locator('[data-consumer-entry="menu"]')],['gallery',dialog.locator('[data-demo-entry="gallery"]')],['about',dialog.getByRole('link',{name:'Quiénes somos',exact:true})],['item',dialog.locator('[data-menu-link]').first()],['summary',dialog.locator('summary').first()],['login',dialog.getByRole('link',{name:'Empresas',exact:true})],['demo',dialog.getByRole('link',{name:'Probar demo',exact:true})]]){
     const ring=await focusRing(locator);check(ring.alpha===1&&ring.outline==='solid'&&ring.width>=3&&ring.ratio>=3,'Solid visible focus '+label+' '+name,ring);
    }
    const summary=dialog.locator('summary').first();await summary.focus();await page.keyboard.press('Enter');await frames(page);
@@ -271,10 +516,20 @@ try{
     if(!el.getClientRects().length||el.closest('[inert]')||getComputedStyle(el).visibility==='hidden')return false;
     const closed=el.closest('details:not([open])');return !closed||closed.querySelector(':scope > summary')?.contains(el);
    }).length,visibleSelector);
+   const expectedTabOrder=[brand,dialog.getByRole('button',{name:'Cerrar navegación',exact:true}),
+    dialog.getByRole('link',{name:'Empresas',exact:true}),dialog.getByRole('link',{name:'Probar demo',exact:true}),
+    dialog.locator('[data-consumer-entry="menu"]'),dialog.locator('[data-demo-entry="gallery"]'),
+    dialog.getByRole('link',{name:'Quiénes somos',exact:true}),
+    ...[0,1,2].map(index=>dialog.locator('summary').nth(index)),dialog.locator('select'),dialog.locator('button').last()];
+   check(expectedTabOrder.length===visibleCount,'Closed-details Tab order includes primary actions before groups and utilities last '+name,{visibleCount,expected:expectedTabOrder.length});
    await brand.focus();const visited=[];
-   for(let i=0;i<visibleCount;i++){visited.push(await page.evaluate(()=>document.activeElement?.outerHTML.slice(0,200)));await page.keyboard.press('Tab');check(await dialog.evaluate(node=>node.contains(document.activeElement)),'Tab remains inside closed-details dialog '+name+' '+i);}
+   for(let i=0;i<visibleCount;i++){
+    check(expectedTabOrder[i]&&await expectedTabOrder[i].evaluate(node=>node===document.activeElement),'Logical modal Tab order '+name+' '+i);
+    visited.push(await page.evaluate(()=>document.activeElement?.outerHTML.slice(0,200)));await page.keyboard.press('Tab');
+    check(await dialog.evaluate(node=>node.contains(document.activeElement)),'Tab remains inside closed-details dialog '+name+' '+i);
+   }
    check(await brand.evaluate(node=>node===document.activeElement)&&new Set(visited).size===visibleCount,'Forward Tab visits visible controls once '+name,{visibleCount,visited});
-   await page.keyboard.press('Shift+Tab');check(await dialog.getByRole('link',{name:'Agendar demo',exact:true}).evaluate(node=>node===document.activeElement),'Reverse Tab reaches visible final control '+name);
+   await page.keyboard.press('Shift+Tab');check(await dialog.locator('button').last().evaluate(node=>node===document.activeElement),'Reverse Tab reaches the final theme utility '+name);
    await page.keyboard.press('Escape');await dialog.waitFor({state:'detached'});await frames(page);
    check(await trigger.evaluate(node=>node===document.activeElement),'Escape returns trigger focus '+name);await retained(page,'Escape '+name);
    trigger=await openMenu(page);await page.getByRole('button',{name:'Cerrar navegación',exact:true}).press('Enter');await frames(page);
@@ -306,4 +561,6 @@ try{
 }finally{await browser.close();report.browserClosed=true;await new Promise(ok=>server.close(ok));report.serverClosed=true;report.sourceHashesEnd=await sourceHashes();check(JSON.stringify(report.sourceHashesEnd)===JSON.stringify(report.sourceHashesStart),'Real navigation and fixture source inputs remain unchanged during QA');await writeFile(join(output,'report.json'),JSON.stringify(report,null,2))}
 console.log(JSON.stringify({views:report.views.length,checks:report.checks.length,failed:report.checks.filter(check=>!check.passed),errors:report.errors,browserClosed:report.browserClosed,serverClosed:report.serverClosed,output},null,2));
 assert.equal(report.views.length,8);assert.equal(report.nativeLoadCases.length,12);assert.ok(report.nativeLoadCases.every(item=>item.completed));assert.ok(report.checks.every(check=>check.passed));assert.equal(report.errors.length,0);
-assert.equal(report.consumerEntryCases.length,24);assert.ok(report.consumerEntryCases.every(item=>item.completed));
+assert.equal(report.consumerEntryCases.length,36);assert.ok(report.consumerEntryCases.every(item=>item.completed));
+assert.equal(report.earlyDesktopFocusCases.length,18);assert.ok(report.earlyDesktopFocusCases.every(item=>item.focusedOnMount&&item.retainedThroughAutofocus&&item.destination));
+assert.equal(report.breakpointCases.length,8);assert.ok(report.breakpointCases.every(item=>item.completed));

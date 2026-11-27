@@ -1,8 +1,11 @@
+import { SiteMotionConfig } from "../components/site-motion-config";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 import "maplibre-gl/dist/maplibre-gl.css";
+import "../styles/tokens.css";
 import "./generated/root-base.css";
+import { nexidFontVariables } from "../styles/fonts";
 import { siteConfig } from "@product/config";
 import { ContextualHelpBot } from "../components/contextual-helpbot";
 import { PwaInstallPrompt } from "../components/pwa-install-prompt";
@@ -202,7 +205,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   );
 
   return (
-    <html lang={locale} suppressHydrationWarning className={theme === "light" ? "theme-light" : undefined} data-theme={theme}>
+    <html lang={locale} suppressHydrationWarning className={`${nexidFontVariables}${theme === "light" ? " theme-light" : ""}`} data-theme={theme}>
       <head>
         <meta property="og:image:alt" content={socialCopy.imageAlt} />
         <meta name="twitter:image:alt" content={socialCopy.imageAlt} />
@@ -211,7 +214,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       </head>
       <body>
         {process.env.NODE_ENV !== "production" ? <script dangerouslySetInnerHTML={{ __html: extensionConsoleShieldScript }} /> : null}
-        {content}
+        <SiteMotionConfig>{content}</SiteMotionConfig>
       </body>
     </html>
   );

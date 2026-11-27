@@ -49,7 +49,7 @@ test("landing mega navigation stays compact, keyboard-safe and overflow-free", a
     readFile(new URL("../src/components/marketing-mega-nav.module.css", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /site-header landing-mega-header/);
+  assert.match(page, /<header className=\{headerStyles\.header\}/);
   assert.match(page, /<main id="main-content" tabIndex=\{-1\} data-nav-inert>/);
   assert.match(navigation, /aria-expanded=\{expanded\}/);
   assert.match(navigation, /aria-controls=\{`mega-menu-\$\{group\.id\}`\}/);
@@ -61,7 +61,7 @@ test("landing mega navigation stays compact, keyboard-safe and overflow-free", a
   assert.match(navigation, /mobileCloseRef\.current\?\.focus\(\)/);
   assert.match(navigation, /mobileTriggerRef\.current\?\.focus\(\{ preventScroll: true \}\)/);
   assert.match(css, /\.mobileMenuButton\s*\{[\s\S]*width: 2\.75rem/);
-  assert.match(css, /@media \(max-width: 1599px\)[\s\S]*\.mobileMenuButton[\s\S]*display: inline-flex/);
+  assert.match(css, /@media not all and \(min-width: 1280px\)[\s\S]*\.mobileMenuButton[\s\S]*display: inline-flex/);
   assert.match(css, /@media \(max-width: 520px\)[\s\S]*\.mobileDialog[\s\S]*width: 100%/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });
