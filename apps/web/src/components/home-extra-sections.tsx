@@ -1,8 +1,12 @@
 import type { CSSProperties } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, Building2, CircleHelp, LockOpen, UserRound } from "lucide-react";
 import { sunDemoScenarioHref } from "../lib/sun-demo-links";
 import { BrandControlCenterPreview } from "./brand-control-center-preview";
+import wineShot from "../../public/landing/connected-journey/wine-journey-02.webp";
+import agroShot from "../../public/landing/connected-journey/agro-journey-02.webp";
+import packagingShot from "../../public/landing/connected-journey/packaging-journey-02.webp";
 import fx from "./home-enhancements.module.css";
 
 export function ReadingOutcomesSection({ locale }: { locale: string }) {
@@ -143,6 +147,80 @@ export function ControlCenterSection({ locale }: { locale: string }) {
       <div className={`${fx.controlCenterStage} ${fx.reveal}`} data-reveal>
         <BrandControlCenterPreview locale={locale} />
       </div>
+    </section>
+  );
+}
+
+export function DemoLauncherSection({ locale }: { locale: string }) {
+  const isEn = locale === "en";
+  const isBr = locale === "pt-BR";
+  const copy = isEn
+    ? {
+        eyebrow: "Try it with a product", title: "Pick an industry. Open its passport.", scope: "Guided demos · sample data",
+        open: "Open the demo", all: "See every demo", platform: "How the platform works", compare: "Compare approaches",
+        demos: [
+          { key: "wine", name: "Wine and beverages", body: "Origin, seal status and service from the bottle." },
+          { key: "agro", name: "Agro", body: "Batch, documentation and guidance in the field." },
+          { key: "packaging", name: "Packaging and premium goods", body: "Product information and benefits from the pack." },
+        ],
+      }
+    : isBr
+      ? {
+          eyebrow: "Teste com um produto", title: "Escolha um setor. Abra o passaporte.", scope: "Demos guiadas · dados de exemplo",
+          open: "Abrir a demo", all: "Ver todas as demos", platform: "Como a plataforma funciona", compare: "Comparar abordagens",
+          demos: [
+            { key: "wine", name: "Vinhos e bebidas", body: "Origem, estado do lacre e serviço a partir da garrafa." },
+            { key: "agro", name: "Agro", body: "Lote, documentação e orientação no campo." },
+            { key: "packaging", name: "Embalagens e produtos premium", body: "Informação do produto e benefícios a partir da embalagem." },
+          ],
+        }
+      : {
+          eyebrow: "Probalo con un producto", title: "Elegí un rubro. Abrí su pasaporte.", scope: "Demos guiadas · datos de ejemplo",
+          open: "Abrir la demo", all: "Ver todas las demos", platform: "Cómo funciona la plataforma", compare: "Comparar enfoques",
+          demos: [
+            { key: "wine", name: "Vinos y bebidas", body: "Origen, estado del sello y servicio desde la botella." },
+            { key: "agro", name: "Agro", body: "Lote, documentación y guía en el campo." },
+            { key: "packaging", name: "Packaging y productos premium", body: "Información del producto y beneficios desde el envase." },
+          ],
+        };
+  const media = { wine: wineShot, agro: agroShot, packaging: packagingShot } as const;
+  const hrefs = {
+    wine: sunDemoScenarioHref("valle-secreto", "closed"),
+    agro: sunDemoScenarioHref("agrochem", "closed"),
+    packaging: sunDemoScenarioHref("fragrance", "closed"),
+  } as const;
+
+  return (
+    <section className={`container-shell ${fx.launcher}`} aria-labelledby="home-demos">
+      <header className={`${fx.outcomesIntro} ${fx.reveal}`} data-reveal>
+        <p className={fx.audienceLabel}>{copy.eyebrow}</p>
+        <h2 id="home-demos">{copy.title}</h2>
+        <p>{copy.scope}</p>
+      </header>
+      <ul className={fx.launcherGrid}>
+        {copy.demos.map((demo, index) => {
+          const key = demo.key as keyof typeof media;
+          return (
+            <li key={demo.key} className={fx.reveal} data-reveal style={{ "--reveal-i": index } as CSSProperties}>
+              <Link href={hrefs[key]} prefetch={false} className={fx.launcherCard} data-spotlight data-demo-entry={demo.key}>
+                <span className={fx.launcherMedia}>
+                  <Image src={media[key]} alt="" fill sizes="(min-width: 860px) 30vw, 92vw" />
+                </span>
+                <span className={fx.launcherBody}>
+                  <strong>{demo.name}</strong>
+                  <span>{demo.body}</span>
+                  <em>{copy.open}<ArrowRight size={16} aria-hidden="true" /></em>
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+      <p className={`${fx.launcherLinks} ${fx.reveal}`} data-reveal>
+        <Link href="/demo-lab" prefetch={false} className={fx.audienceSecondary}>{copy.all}</Link>
+        <Link href="/platform" prefetch={false} className={fx.audienceSecondary}>{copy.platform}</Link>
+        <Link href="/compare" prefetch={false} className={fx.audienceSecondary}>{copy.compare}</Link>
+      </p>
     </section>
   );
 }

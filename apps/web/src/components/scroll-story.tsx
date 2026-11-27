@@ -11,7 +11,7 @@ import {
   type MotionStyle,
   type MotionValue,
 } from "framer-motion";
-import { BadgeCheck, Check, Gift, MessageCircle, Nfc, ShieldCheck } from "lucide-react";
+import { BadgeCheck, Check, Gift, MapPin, MessageCircle, Nfc, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import wineScene from "../../public/landing/connected-journey/wine-journey-01.webp";
 import styles from "./scroll-story.module.css";
@@ -36,10 +36,10 @@ const COPY: Record<StoryLocale, {
 }> = {
   "es-AR": {
     eyebrow: "La experiencia, paso a paso",
-    title: "Un tap. Tres segundos. Todo lo que la marca quiere contarte.",
+    title: "Un toque. El producto te cuenta su historia.",
     scope: "Demo · datos de ejemplo",
     chapters: [
-      { step: "01", title: "Acercás el celular", body: "La etiqueta NFC responde con un mensaje único para esa lectura. No hace falta instalar ninguna app." },
+      { step: "01", title: "El celular toca el producto", body: "La etiqueta NFC responde con un mensaje único para esa lectura. No hace falta instalar ninguna app." },
       { step: "02", title: "nexID comprueba la lectura", body: "El servidor compara el mensaje con el registro de la marca y aplica su política. Te dice qué se comprobó y qué no." },
       { step: "03", title: "Se abre el pasaporte", body: "Origen, información publicada y los servicios que la marca habilitó: beneficios, garantía o contacto." },
     ],
@@ -56,10 +56,10 @@ const COPY: Record<StoryLocale, {
   },
   en: {
     eyebrow: "The experience, step by step",
-    title: "One tap. Three seconds. Everything the brand wants to tell you.",
+    title: "One touch. The product tells its own story.",
     scope: "Demo · sample data",
     chapters: [
-      { step: "01", title: "You tap the phone", body: "The NFC label answers with a message that is unique to that reading. There is no app to install." },
+      { step: "01", title: "The phone touches the product", body: "The NFC label answers with a message that is unique to that reading. There is no app to install." },
       { step: "02", title: "nexID checks the reading", body: "The server compares the message with the brand record and applies its policy. It tells you what was checked and what was not." },
       { step: "03", title: "The passport opens", body: "Origin, published information and the services the brand enabled: benefits, warranty or contact." },
     ],
@@ -76,10 +76,10 @@ const COPY: Record<StoryLocale, {
   },
   "pt-BR": {
     eyebrow: "A experiência, passo a passo",
-    title: "Um toque. Três segundos. Tudo o que a marca quer contar.",
+    title: "Um toque. O produto conta a própria história.",
     scope: "Demo · dados de exemplo",
     chapters: [
-      { step: "01", title: "Você aproxima o celular", body: "A etiqueta NFC responde com uma mensagem única para essa leitura. Não é preciso instalar nenhum app." },
+      { step: "01", title: "O celular toca o produto", body: "A etiqueta NFC responde com uma mensagem única para essa leitura. Não é preciso instalar nenhum app." },
       { step: "02", title: "A nexID confere a leitura", body: "O servidor compara a mensagem com o registro da marca e aplica a política. Diz o que foi conferido e o que não foi." },
       { step: "03", title: "O passaporte se abre", body: "Origem, informação publicada e os serviços que a marca habilitou: benefícios, garantia ou contato." },
     ],
@@ -131,17 +131,24 @@ export function ScrollStory({ locale }: { locale: string }) {
   const tiltX = useSpring(pointerX, { stiffness: 150, damping: 18 });
   const tiltY = useSpring(pointerY, { stiffness: 150, damping: 18 });
 
-  const turn = useTransform(progress, [0, 0.33, 0.66, 1], [-32, -10, 8, 0]);
-  const lean = useTransform(progress, [0, 0.5, 1], [10, 4, 0]);
+  const turn = useTransform(progress, [0, 0.3, 0.62, 1], [-34, 22, 10, 0]);
+  const lean = useTransform(progress, [0, 0.3, 1], [12, 5, 0]);
+  const approach = useTransform(progress, [0, 0.3, 0.62, 0.82, 1], ["-46%", "-4%", "-10%", "18%", "18%"]);
+  const productX = useTransform(progress, [0, 0.62, 0.86], ["0%", "0%", "34%"]);
+  const productOpacity = useTransform(progress, [0, 0.62, 0.86], [1, 1, 0.16]);
+  const productTurn = useTransform(progress, [0, 0.3, 1], [-24, -30, -38]);
+  const contact = useTransform(progress, [0.2, 0.3, 0.44, 0.62], [0, 1, 0.75, 0]);
+  const beam = useTransform(progress, [0.26, 0.34, 0.58, 0.66], [0, 1, 1, 0]);
+  const gridShift = useTransform(progress, [0, 1], [0, 220]);
+  const gridPosition = useTransform(gridShift, (value) => `0px ${value}px`);
+  const holo = useTransform(progress, [0.72, 0.86], [0, 1]);
+  const holoRise = useTransform(progress, [0.72, 1], [40, 0]);
   const rotateY = useTransform([turn, tiltX], ([base, tilt]: number[]) => base + tilt * 9);
   const rotateX = useTransform([lean, tiltY], ([base, tilt]: number[]) => base - tilt * 7);
   const lift = useTransform(progress, [0, 1], [24, -12]);
-  const scale = useTransform(progress, [0, 0.33, 1], [0.9, 1, 1.04]);
+  const scale = useTransform(progress, [0, 0.3, 0.62, 1], [0.86, 0.96, 1, 1.06]);
   const railScale = useTransform(progress, [0, 1], [0.04, 1]);
   const haloOpacity = useTransform(progress, [0, 0.3, 0.45, 1], [0.9, 0.9, 0.35, 0.5]);
-  const chipOneY = useTransform(progress, [0, 1], [40, -60]);
-  const chipTwoY = useTransform(progress, [0, 1], [-30, 50]);
-  const chipTwoOpacity = useTransform(progress, [0.3, 0.42], [0, 1]);
 
   const textOpacity = [useChapterOpacity(progress, 0, 0.28), useChapterOpacity(progress, 1, 0.28), useChapterOpacity(progress, 2, 0.28)];
   const screenOpacity = [useChapterOpacity(progress, 0), useChapterOpacity(progress, 1), useChapterOpacity(progress, 2)];
@@ -158,7 +165,7 @@ export function ScrollStory({ locale }: { locale: string }) {
   };
 
   return (
-    <section ref={sectionRef} className={styles.story} data-static={isStatic || undefined} aria-labelledby="home-scroll-story">
+    <section ref={sectionRef} id="como-funciona" className={styles.story} data-static={isStatic || undefined} aria-labelledby="home-scroll-story">
       <div className={styles.sticky}>
         <div className={styles.backdrop} aria-hidden="true"><span /><span /></div>
         <div className={`container-shell ${styles.layout}`}>
@@ -180,11 +187,32 @@ export function ScrollStory({ locale }: { locale: string }) {
           </div>
 
           <div className={styles.stage} onPointerMove={onPointerMove} onPointerLeave={onPointerLeave} aria-hidden="true">
+            <motion.span className={styles.grid} style={{ backgroundPosition: gridPosition }} />
             <motion.span className={styles.halo} style={{ opacity: haloOpacity }} />
-            <motion.span className={`${styles.chip} ${styles.chipOne}`} style={{ y: chipOneY }}><Nfc size={15} />NFC</motion.span>
-            <motion.span className={`${styles.chip} ${styles.chipTwo}`} style={{ y: chipTwoY, opacity: chipTwoOpacity }}><ShieldCheck size={15} />{copy.checked}</motion.span>
 
-            <motion.div className={styles.phone} style={{ rotateY, rotateX, y: lift, scale }}>
+            <motion.div className={styles.product} style={{ x: productX, opacity: productOpacity, rotateY: productTurn }}>
+              <span className={styles.productFront}>
+                <span className={styles.productLabel}><i /><i /><i /></span>
+                <span className={styles.tag}>
+                  <Nfc size={18} />
+                  <motion.i style={{ opacity: contact }} />
+                  <motion.i style={{ opacity: contact }} />
+                </span>
+              </span>
+              <span className={styles.productSide} />
+              <span className={styles.productTop} />
+            </motion.div>
+
+            <motion.svg className={styles.beam} viewBox="0 0 200 60" preserveAspectRatio="none" style={{ opacity: beam }}>
+              <path d="M6 44C60 4 140 4 194 30" pathLength="1" />
+              <path d="M6 44C60 4 140 4 194 30" pathLength="1" />
+            </motion.svg>
+
+            <motion.span className={`${styles.holo} ${styles.holoOne}`} style={{ opacity: holo, y: holoRise }}><MapPin size={14} />{copy.origin}</motion.span>
+            <motion.span className={`${styles.holo} ${styles.holoTwo}`} style={{ opacity: holo, y: holoRise }}><Gift size={14} />{copy.services[0]}</motion.span>
+            <motion.span className={`${styles.holo} ${styles.holoThree}`} style={{ opacity: holo, y: holoRise }}><ShieldCheck size={14} />{copy.services[1]}</motion.span>
+
+            <motion.div className={styles.phone} style={{ x: approach, rotateY, rotateX, y: lift, scale }}>
               <span className={styles.phoneEdge} />
               <div className={styles.screen}>
                 <span className={styles.notch} />
@@ -196,6 +224,7 @@ export function ScrollStory({ locale }: { locale: string }) {
                 </motion.div>
 
                 <motion.div className={`${styles.view} ${styles.viewCheck}`} style={{ opacity: screenOpacity[1] }}>
+                  <span className={styles.scan} />
                   <ul>
                     {copy.checks.map((check) => (
                       <li key={check}><span><Check size={12} strokeWidth={3} /></span>{check}</li>

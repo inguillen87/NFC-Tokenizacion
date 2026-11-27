@@ -3,10 +3,8 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import {
   HeroSection,
-  SimpleTrustFlowSection,
-  CommercialValueSection,
 } from "../components/home-sections";
-import { AudienceSection, ControlCenterSection, ReadingOutcomesSection } from "../components/home-extra-sections";
+import { AudienceSection, DemoLauncherSection } from "../components/home-extra-sections";
 import { LandingMotion, LandingScrollProgress } from "../components/landing-motion";
 import { ScrollStory } from "../components/scroll-story";
 import { BrandHomeLink } from "../components/brand-home-link";
@@ -17,7 +15,6 @@ import { MarketingMegaNav } from "../components/marketing-mega-nav";
 import { landingContent } from "../lib/landing-content";
 import { getWebI18n } from "../lib/locale";
 import { CommercialContactModal } from "../components/commercial-contact-modal";
-import { ConnectedProductIndustryProvider } from "../components/connected-product-industry-context";
 import { productUrls, schedulingUrls } from "@product/config";
 import { resolveThemePreference, THEME_PREFERENCE_VERSION_COOKIE } from "@product/ui/theme-preference";
 import { Building2, Facebook, Globe2, Instagram, Linkedin } from "lucide-react";
@@ -132,13 +129,8 @@ export default async function HomePage() {
         <HeroSection content={content} locale={locale} />
         <ScrollStory locale={locale} />
 
-        <ConnectedProductIndustryProvider>
-          <SimpleTrustFlowSection locale={locale} />
-          <ReadingOutcomesSection locale={locale} />
-          <AudienceSection locale={locale} loginHref={loginHref} />
-          <CommercialValueSection locale={locale} />
-          <ControlCenterSection locale={locale} />
-        </ConnectedProductIndustryProvider>
+        <DemoLauncherSection locale={locale} />
+        <AudienceSection locale={locale} loginHref={loginHref} />
         <CommercialContactModal initialLocale={locale} />
       </main>
 

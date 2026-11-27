@@ -7,6 +7,7 @@ const compare = read("src/app/compare/page.tsx");
 const compareCss = read("src/app/compare/compare.module.css");
 const sections = read("src/components/home-extra-sections.tsx");
 const home = read("src/app/page.tsx");
+const platform = read("src/app/platform/page.tsx");
 const sitemap = read("src/app/sitemap.ts");
 
 test("the comparison names approaches, never vendors, and states its scope", () => {
@@ -32,19 +33,28 @@ test("the comparison is a shared public page that reflows on small screens", () 
   assert.match(sitemap, /path: "\/compare"/);
 });
 
-test("the home explains the three reading outcomes with curated demo scenarios", () => {
+test("the platform page explains the three reading outcomes with curated demo scenarios", () => {
   assert.match(sections, /export function ReadingOutcomesSection/);
   assert.match(sections, /const scenarios = \["closed", "opened", "invalid"\] as const;/);
   assert.match(sections, /sunDemoScenarioHref\("valle-secreto", scenarios\[index\] \?\? "closed"\)/);
   assert.match(sections, /No demuestra falsificación: qué significa lo define la política de cada marca/);
   assert.match(sections, /la ficha sigue disponible y las acciones protegidas se bloquean/);
   assert.match(sections, /<Link href="\/compare" prefetch=\{false\}/);
-  assert.match(home, /<ReadingOutcomesSection locale=\{locale\} \/>\s*<AudienceSection/);
+  assert.match(platform, /<SimpleTrustFlowSection locale=\{locale\} \/>\s*<ReadingOutcomesSection locale=\{locale\} \/>/);
 });
 
-test("the home brings back the interactive brand panel, labelled as sample data", () => {
+test("the platform page hosts the interactive brand panel, labelled as sample data", () => {
   assert.match(sections, /export function ControlCenterSection/);
   assert.match(sections, /<BrandControlCenterPreview locale=\{locale\} \/>/);
   assert.match(sections, /Todo en este panel son datos ilustrativos de muestra/);
-  assert.match(home, /<CommercialValueSection locale=\{locale\} \/>\s*<ControlCenterSection locale=\{locale\} \/>/);
+  assert.match(platform, /<CommercialValueSection locale=\{locale\} \/>\s*<ControlCenterSection locale=\{locale\} \/>/);
+});
+
+test("the home stays short: hero, scroll story, demo launcher and audiences", () => {
+  assert.match(home, /<HeroSection content=\{content\} locale=\{locale\} \/>\s*<ScrollStory locale=\{locale\} \/>\s*<DemoLauncherSection locale=\{locale\} \/>\s*<AudienceSection locale=\{locale\} loginHref=\{loginHref\} \/>/);
+  assert.doesNotMatch(home, /SimpleTrustFlowSection|CommercialValueSection|ControlCenterSection|ReadingOutcomesSection/);
+  assert.match(sections, /export function DemoLauncherSection/);
+  assert.match(sections, /sunDemoScenarioHref\("agrochem", "closed"\)/);
+  assert.match(sections, /<Link href="\/platform" prefetch=\{false\}/);
+  assert.match(platform, /<PublicSiteHeader \/>/);
 });

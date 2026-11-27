@@ -36,9 +36,9 @@ test("landing motion is progressive and honours reduced motion", () => {
   assert.match(css, /@media \(forced-colors: active\)/);
 });
 
-test("the home offers the account and the business entrances after the journey", () => {
+test("the home offers the account and the business entrances after the demos", () => {
   assert.match(sections, /export function AudienceSection/);
   assert.match(sections, /<Link href="\/me" prefetch=\{false\} className=\{fx\.audiencePrimary\}/);
   assert.match(sections, /<a href=\{loginHref\} className=\{fx\.audienceSecondary\}/);
-  assert.match(home, /<SimpleTrustFlowSection locale=\{locale\} \/>\s*<ReadingOutcomesSection locale=\{locale\} \/>\s*<AudienceSection locale=\{locale\} loginHref=\{loginHref\} \/>/);
+  assert.match(home, /<DemoLauncherSection locale=\{locale\} \/>\s*<AudienceSection locale=\{locale\} loginHref=\{loginHref\} \/>/);
 });

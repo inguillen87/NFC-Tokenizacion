@@ -180,8 +180,8 @@ test("focused home keeps the commercial journey while the mega menu carries dept
 
   for (const surface of [
     "<HeroSection",
-    "<SimpleTrustFlowSection",
-    "<CommercialValueSection",
+    "<ScrollStory",
+    "<DemoLauncherSection",
     "<CommercialContactModal",
     "site-footer",
   ]) {

@@ -369,6 +369,31 @@
 .controlCenter { padding-bottom: clamp(2.5rem, 6vw, 4.5rem); }
 .controlCenterStage { margin-top: clamp(1.5rem, 3.5vw, 2.5rem); }
 
+/* ---------- Demo launcher ---------- */
+.launcher { padding-block: clamp(3rem, 7vw, 5.5rem) 0; color: #172f39; }
+:global(html[data-theme="dark"]) .launcher { color: #edf5f4; }
+:global(html[data-theme="dark"]) .launcher .outcomesIntro > p:last-child { color: #b4c6ca; }
+.launcherGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.1rem; margin: clamp(1.5rem, 3.5vw, 2.5rem) 0 0; padding: 0; list-style: none; }
+.launcherCard { position: relative; display: flex; flex-direction: column; height: 100%; overflow: hidden; border: 1px solid #dae7e7; border-radius: 1.5rem; color: inherit; text-decoration: none; background: #ffffff; box-shadow: 0 18px 44px rgb(23 47 57 / 0.08); transition: transform 300ms cubic-bezier(0.2, 0, 0, 1), box-shadow 300ms ease, border-color 300ms ease; }
+.launcherCard::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: radial-gradient(18rem circle at var(--spot-x, 50%) var(--spot-y, 0%), rgb(47 225 195 / 0.22), transparent 60%); opacity: 0; transition: opacity 300ms ease; pointer-events: none; }
+.launcherCard:hover { transform: translateY(-6px); border-color: #2fe1c3; box-shadow: 0 30px 70px rgb(8 127 120 / 0.22), 0 0 0 1px rgb(47 225 195 / 0.4); }
+.launcherCard:hover::after { opacity: 1; }
+.launcherCard:focus-visible { outline: 3px solid #087f78; outline-offset: 4px; }
+.launcherMedia { position: relative; display: block; aspect-ratio: 16 / 10; overflow: hidden; }
+.launcherMedia img { object-fit: cover; transition: transform 700ms cubic-bezier(0.2, 0, 0, 1); }
+.launcherMedia::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgb(6 33 30 / 0.45)); }
+.launcherCard:hover .launcherMedia img { transform: scale(1.07); }
+.launcherBody { display: flex; flex: 1; flex-direction: column; gap: .4rem; padding: 1.2rem 1.3rem 1.3rem; }
+.launcherBody strong { font-size: 1.2rem; font-weight: 770; letter-spacing: -.025em; }
+.launcherBody > span { font-size: .93rem; line-height: 1.55; color: #526772; }
+.launcherBody em { display: inline-flex; align-items: center; gap: .5rem; margin-top: auto; padding-top: .8rem; font-size: .88rem; font-style: normal; font-weight: 700; color: #087f78; transition: gap 200ms ease; }
+.launcherCard:hover .launcherBody em { gap: .85rem; }
+.launcherLinks { display: flex; flex-wrap: wrap; gap: .4rem 1.6rem; margin: 1.5rem 0 0; }
+:global(html[data-theme="dark"]) .launcherCard { border-color: #294249; background: #12303a; box-shadow: 0 18px 44px rgb(0 0 0 / 0.35); }
+:global(html[data-theme="dark"]) .launcherCard:focus-visible { outline-color: #64d9c7; }
+:global(html[data-theme="dark"]) .launcherBody > span { color: #b4c6ca; }
+:global(html[data-theme="dark"]) .launcherBody em { color: #64d9c7; }
+
 /* ---------- Small screens ---------- */
 @media (max-width: 760px) {
   .aurora span { width: 70vmax; filter: blur(54px); }
@@ -382,6 +407,7 @@
   .tapCard { transform-origin: 50% 100%; }
   .audiences { grid-template-columns: minmax(0, 1fr); }
   .outcomesList { grid-template-columns: minmax(0, 1fr); }
+  .launcherGrid { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ---------- Preferences ---------- */
@@ -389,8 +415,8 @@
   .progress { display: none; }
   .aurora span, .tapTrigger, .tapTriggerIcon { animation: none !important; }
   .depth { translate: none; transition: none; }
-  .tapTrigger, .tapLink, .audienceCard, .audienceCard::before, .audiencePrimary, .audienceSecondary, .outcomeCard, .outcomeLink { transition: none; }
-  .tapTrigger:hover, .tapTrigger:active, .audienceCard:hover, .outcomeCard:hover { transform: none; }
+  .tapTrigger, .tapLink, .audienceCard, .audienceCard::before, .audiencePrimary, .audienceSecondary, .outcomeCard, .outcomeLink, .launcherCard, .launcherCard::after, .launcherMedia img, .launcherBody em { transition: none; }
+  .tapTrigger:hover, .tapTrigger:active, .audienceCard:hover, .outcomeCard:hover, .launcherCard:hover, .launcherCard:hover .launcherMedia img { transform: none; }
 }
 @media (forced-colors: active) {
   .aurora, .progress { display: none; }

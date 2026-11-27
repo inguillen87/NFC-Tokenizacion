@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -12,8 +13,8 @@ test("unified release preserves the approved clean home composition", async () =
   assert.match(layout, /nexID \| Pasaporte digital de producto y trazabilidad/);
   assert.match(home, /<header className=\{headerStyles\.header\}/);
   assert.match(home, /<HeroSection content=\{content\} locale=\{locale\} \/>/);
-  assert.match(home, /<SimpleTrustFlowSection locale=\{locale\} \/>/);
-  assert.match(home, /<CommercialValueSection locale=\{locale\} \/>/);
+  assert.match(readFileSync(new URL("../src/app/platform/page.tsx", import.meta.url), "utf8"), /<SimpleTrustFlowSection locale=\{locale\} \/>/);
+  assert.match(readFileSync(new URL("../src/app/platform/page.tsx", import.meta.url), "utf8"), /<CommercialValueSection locale=\{locale\} \/>/);
   assert.match(home, /<CommercialContactModal initialLocale=\{locale\} \/>/);
   assert.match(sections, /<DppRoleExplorer locale=\{locale\} \/>/);
   assert.match(sections, /Del producto a su pasaporte, en tres momentos\./);
