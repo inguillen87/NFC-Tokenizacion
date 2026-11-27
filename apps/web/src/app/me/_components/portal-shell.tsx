@@ -3,7 +3,7 @@ import { ThemeToggle } from "@product/ui";
 import { BrandHomeLink } from "../../../components/brand-home-link";
 import { TapAssociationBanner, type TapSaveHandoffFallback } from "./tap-association-banner";
 import { ConsumerLogoutButton } from "./consumer-logout-button";
-import { PortalNavigation } from "./portal-navigation";
+import { PortalHomeLink, PortalNavigation } from "./portal-navigation";
 import styles from "./portal-shell.module.css";
 
 export function PortalShell({ title, subtitle, children, tapSaveHandoffFallback }: {
@@ -21,7 +21,7 @@ export function PortalShell({ title, subtitle, children, tapSaveHandoffFallback 
         <div className={styles.headerRow}>
           <div className={styles.brandArea}>
             <BrandHomeLink size={52} variant="static" className={styles.brand} brandClassName={styles.brandLockup} />
-            <span className={styles.portalLabel}>Mi espacio</span>
+            <PortalHomeLink />
           </div>
           <div className={styles.accountControls} aria-label="Apariencia y sesión">
             <div className={styles.themeControl}><ThemeToggle locale="es-AR" /></div>

@@ -7,16 +7,15 @@ import { BookOpen, Gift, Home, Leaf, MoreHorizontal, PackageCheck, Radio, Shield
 import styles from "./portal-shell.module.css";
 
 export const PORTAL_PRIMARY_DESTINATIONS = [
-  { href: "/me", label: "Inicio", icon: Home },
   { href: "/me/products", label: "Productos", icon: PackageCheck },
   { href: "/me/taps", label: "Historial", icon: Radio },
   { href: "/me/rewards", label: "Beneficios", icon: Gift },
+  { href: "/me/marketplace", label: "Catálogo", icon: Store },
 ] as const;
 
 export const PORTAL_MORE_DESTINATIONS = [
   { href: "/me/passport", label: "Mi pasaporte", detail: "Cuenta y registros digitales", icon: BookOpen },
   { href: "/me/brands", label: "Marcas", detail: "Marcas asociadas y sus novedades", icon: Users },
-  { href: "/me/marketplace", label: "Catálogo", detail: "Productos y opciones disponibles", icon: Store },
   { href: "/me/wallet", label: "Billetera digital", detail: "Activos y registros de tu cuenta", icon: WalletCards },
   { href: "/me/experiences", label: "Experiencias", detail: "Experiencias disponibles para tu cuenta", icon: Sparkles },
   { href: "/me/sommelier", label: "Asistente de vinos", detail: "Orientación general sobre vinos", icon: Wine },
@@ -26,7 +25,7 @@ export const PORTAL_MORE_DESTINATIONS = [
 ] as const;
 
 export const PORTAL_MORE_GROUPS = [
-  { label: "Productos y marcas", destinations: ["/me/brands", "/me/marketplace", "/me/experiences"] },
+  { label: "Productos y marcas", destinations: ["/me/brands", "/me/experiences"] },
   { label: "Herramientas", destinations: ["/me/sommelier", "/me/cork-analyzer"] },
   { label: "Mi cuenta", destinations: ["/me/passport", "/me/wallet", "/me/privacy", "/me/security"] },
 ] as const;
@@ -35,6 +34,15 @@ export function isPortalDestinationActive(pathname: string | null, href: string)
   if (!pathname) return false;
   const normalized = pathname.replace(/\/+$/, "") || "/";
   return normalized === href || (href !== "/me" && normalized.startsWith(`${href}/`));
+}
+
+export function PortalHomeLink() {
+  const pathname = usePathname();
+  return (
+    <Link href="/me" prefetch={false} className={styles.homeLink} aria-current={isPortalDestinationActive(pathname, "/me") ? "page" : undefined}>
+      <Home size={16} aria-hidden="true" /><span>Inicio</span>
+    </Link>
+  );
 }
 
 export function PortalNavigation() {
