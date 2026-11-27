@@ -1766,9 +1766,6 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           livePillLabel={livePillLabel}
           pulseClass={pulseClass}
         />
-        {isDemoPreview && (valleDemo || syngentaDemo || (isDemoLabHandoff && ["agrochem", "fragrance", "perfume"].includes(readParam(params, "profile")))) ? (
-          <SunDemoScenarioSelector profile={valleDemo ? "valle-secreto" : syngentaDemo ? "syngenta" : readParam(params, "profile") as "agrochem" | "fragrance" | "perfume"} scenario={demoScenario} />
-        ) : null}
         <ProductNotices tenant={String(result.identity?.tenantSlug||"")} bid={String(result.identity?.bid||"")} enabled={!isDemoPreview && result.ok===true && Boolean(result.identity?.tenantSlug && result.identity?.bid)}/>
 
         {demoLabReturnHref ? (
@@ -1806,8 +1803,8 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
           />
         ) : null}
 
-        {!isAgroDpp ? <>
-        {/* 1. First-tap summary: product first, then a compact truthful result. */}
+        {/* Product and reading outcome come before the demo controls. */}
+        {!isAgroDpp ? (
         <section
           id="sun-summary"
           aria-labelledby="sun-summary-product-title"
@@ -2003,7 +2000,13 @@ export default async function SunPage({ searchParams }: { searchParams: Promise<
             {!isDemoPreview && <ConsumerPassportLink save={saveToAccount} />}
           </div>
         </section>
+        ) : null}
 
+        {isDemoPreview && (valleDemo || syngentaDemo || (isDemoLabHandoff && ["agrochem", "fragrance", "perfume"].includes(readParam(params, "profile")))) ? (
+          <SunDemoScenarioSelector profile={valleDemo ? "valle-secreto" : syngentaDemo ? "syngenta" : readParam(params, "profile") as "agrochem" | "fragrance" | "perfume"} scenario={demoScenario} />
+        ) : null}
+
+        {!isAgroDpp ? <>
         {/* 2. Product photo and producer content, followed by optional reading data. */}
         <section id="product-info" aria-labelledby="sun-product-title" className={`${passportStyles.productProfile} rounded-3xl border border-white/5 bg-slate-950 p-5 shadow-xl relative overflow-hidden`}>
           <div className="flex flex-col items-center">
