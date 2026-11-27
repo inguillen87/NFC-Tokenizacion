@@ -164,7 +164,8 @@ test("desktop, compact and mobile navigation give demos a direct entry while the
   assert.match(css, /@media not all and \(min-width: 1280px\)\s*\{\s*\.desktopNav,[\s\S]*@media \(min-width: 768px\)\s*\{\s*\.compactNav\s*\{\s*display: flex/);
   assert.match(home, /id="pasaporte-digital"/);
   const journey = await read("../src/components/simple-trust-industry-journey.tsx");
-  assert.match(journey, /href=\{VALLE_SECRETO_DEMO_HREF\} prefetch=\{false\}[^>]*data-demo-entry="valle-secreto"/);
+  assert.match(journey, /href="\/about" prefetch=\{false\}/);
+  assert.doesNotMatch(journey, /valle.secreto/i);
   assert.match(globalCss, /width: clamp\(8\.75rem, calc\(100vw - 200px\), 12rem\) !important/);
 });
 

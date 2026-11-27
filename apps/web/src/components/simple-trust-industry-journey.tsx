@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { VALLE_SECRETO_DEMO_HREF } from "../lib/sun-demo-links";
 import styles from "./home-sections.module.css";
 import { ArrowRight } from "lucide-react";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
@@ -30,6 +29,7 @@ type StepCopy = {
 
 type JourneyCopy = {
   selectorLabel: string;
+  aboutNexid: string;
   railLabel: string;
   previous: string;
   next: string;
@@ -51,6 +51,7 @@ const DEMO_PROFILE_BY_INDUSTRY: Readonly<Record<SimpleTrustIndustry, "wine" | "p
 const JOURNEY_COPY: Record<JourneyLocale, JourneyCopy> = {
   "es-AR": {
     selectorLabel: "Elegí un rubro",
+    aboutNexid: "Conocé NexID",
     railLabel: "Pasos del recorrido del producto",
     previous: "Paso anterior",
     next: "Paso siguiente",
@@ -86,6 +87,7 @@ const JOURNEY_COPY: Record<JourneyLocale, JourneyCopy> = {
   },
   en: {
     selectorLabel: "Choose an industry",
+    aboutNexid: "About NexID",
     railLabel: "Steps in the product journey",
     previous: "Previous step",
     next: "Next step",
@@ -121,6 +123,7 @@ const JOURNEY_COPY: Record<JourneyLocale, JourneyCopy> = {
   },
   "pt-BR": {
     selectorLabel: "Escolha um setor",
+    aboutNexid: "Conheça a NexID",
     railLabel: "Etapas da jornada do produto",
     previous: "Etapa anterior",
     next: "Próxima etapa",
@@ -310,11 +313,9 @@ export function SimpleTrustIndustryJourney({ locale, ctaLabel }: { locale: strin
           {ctaLabel}
           <ArrowRight aria-hidden="true" />
         </Link>
-        {activeIndustry === "bottles" && (
-          <Link href={VALLE_SECRETO_DEMO_HREF} prefetch={false} className={styles.secondary} data-demo-entry="valle-secreto">
-            {normalizedLocale === "en" ? "Explore Valle Secreto" : "Explorar Valle Secreto"}
-          </Link>
-        )}
+        <Link href="/about" prefetch={false} className={styles.secondary}>
+          {copy.aboutNexid}
+        </Link>
       </div>
     </div>
   );
