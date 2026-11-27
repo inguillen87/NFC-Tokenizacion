@@ -8,7 +8,8 @@ const css = read("src/components/scroll-story.module.css");
 const home = read("src/app/page.tsx");
 
 test("the scroll story is labelled as sample data and keeps the evidence boundary", () => {
-  assert.match(story, /Demo · datos de ejemplo/);
+  assert.match(story, /MUESTRA DEMO · SIN TAP FÍSICO/);
+  assert.match(story, /Fotografía: Valle Secreto · referencia visual de la demo/);
   assert.match(story, /Te dice qué se comprobó y qué no/);
   assert.doesNotMatch(story, /fetch\(|auténtic|authentic|autêntic|garantiz/i);
 });
@@ -18,7 +19,7 @@ test("the scroll story degrades to a static list under reduced motion", () => {
   assert.match(story, /data-static=\{isStatic \|\| undefined\}/);
   assert.match(css, /\.story\[data-static\] \{ height: auto; \}/);
   assert.match(css, /\.story\[data-static\] \.sticky \{ position: relative;/);
-  assert.match(css, /\.story\[data-static\] \.viewPassport \{ opacity: 1 !important; \}/);
+  assert.match(css, /\.story\[data-static\] \.viewPassport, \.story\[data-static\] \.viewPassport \* \{ opacity: 1 !important; \}/);
 });
 
 test("the scroll story sits right after the hero and keeps its decoration out of the accessibility tree", () => {
