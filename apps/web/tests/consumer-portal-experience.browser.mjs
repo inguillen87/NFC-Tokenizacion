@@ -59,12 +59,13 @@ async function checkPortalDestinations(page,width,theme) {
       try {
         const homeBox=await home.boundingBox(),appearanceBox=await accountControls.boundingBox();
         check(homeBox && appearanceBox && Math.abs(homeBox.y-appearanceBox.y)<=1 && homeBox.x+homeBox.width<=appearanceBox.x && appearanceBox.x+appearanceBox.width<=width,width+'/'+theme+' Inicio and account controls share one line (wide text '+widerText+')');
-        check(await nav.locator('a,button').evaluateAll(items=>items.every(item=>{
+        const labels=await nav.locator('a,button').evaluateAll(items=>items.map(item=>{
           const label=item.querySelector('span'), range=document.createRange();
           range.selectNodeContents(label);
-          const lines=range.getClientRects(), target=item.getBoundingClientRect();
-          return lines.length===1 && lines[0].left>=target.left && lines[0].right<=target.right && target.right<=innerWidth;
-        })),width+'/'+theme+' primary labels fit on one line inside their targets (wide text '+widerText+')');
+          return {text:label.textContent,lines:[...range.getClientRects()].map(rect=>[rect.left,rect.right]),target:item.getBoundingClientRect().toJSON()};
+        }));
+        const clipped=labels.filter(({lines,target})=>lines.length!==1 || lines[0][0]<target.left || lines[0][1]>target.right || target.right>width);
+        check(!clipped.length,width+'/'+theme+' primary labels fit on one line inside their targets (wide text '+widerText+'): '+JSON.stringify(clipped));
       } finally { if(textStyle)await textStyle.evaluate(el=>el.remove()); }
     }
     await page.evaluate(()=>{document.documentElement.style.zoom='2';});

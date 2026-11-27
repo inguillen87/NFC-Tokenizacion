@@ -116,8 +116,9 @@
 @media (max-width: 22rem) {
   .headerRow { padding-inline: max(.6rem, env(safe-area-inset-left)) max(.6rem, env(safe-area-inset-right)); }
   .homeLink > svg { display: none; }
-  .navigationItems { grid-template-columns: repeat(5, minmax(max-content, 1fr)); gap: .125rem; }
-  .navigationItem { min-width: 44px; }
+  .navigation { padding-inline: max(.25rem, env(safe-area-inset-left)) max(.25rem, env(safe-area-inset-right)); }
+  .navigationItems { grid-template-columns: repeat(5, minmax(max-content, 1fr)); gap: 1px; }
+  .navigationItem { min-width: 44px; padding-inline: 0; }
 }
 
 @media (min-width: 40rem) {
