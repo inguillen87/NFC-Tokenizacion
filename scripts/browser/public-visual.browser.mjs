@@ -200,8 +200,13 @@ try {
         const primary=actions.locator('a').first();
         check(await primary.getAttribute('href')==='/demo-lab'&&await primary.innerText()==='Probar demo','Hero offers Demo Lab on first entry '+name);
         await primary.focus(); await page.keyboard.press('Tab');
-        const focus=await page.evaluate(()=>{const cs=getComputedStyle(document.activeElement);return{tag:document.activeElement.tagName,outlineStyle:cs.outlineStyle,outlineWidth:parseFloat(cs.outlineWidth),boxShadow:cs.boxShadow};});
-        check(focus.outlineStyle!=='none'&&focus.outlineWidth>=2||focus.boxShadow!=='none','Hero keyboard focus indicator is visible '+name,focus);
+        const focus=await actions.locator('a').nth(1).evaluate(link=>{
+          const style=getComputedStyle(link);
+          return {focused:link===document.activeElement&&link.matches(':focus-visible'),
+            outlineStyle:style.outlineStyle,outlineWidth:parseFloat(style.outlineWidth),
+            outlineTransition:link.getAnimations().some(animation=>animation.transitionProperty?.startsWith('outline'))};
+        });
+        check(focus.focused&&focus.outlineStyle==='solid'&&focus.outlineWidth>=2&&!focus.outlineTransition,'Secondary hero link has an immediate keyboard focus ring '+name,focus);
         await primary.focus();await page.keyboard.press('Enter');await page.waitForURL(origin+'/demo-lab');await stable(page);
         const hubHeading=page.getByRole('heading',{name:'Demo Lab',exact:true,level:1});
         await hubHeading.waitFor();
