@@ -4,6 +4,10 @@ const nextConfig = {
   transpilePackages: ["@product/ui", "@product/config", "@product/core"],
   async headers() {
     return [
+      {
+        source: "/fonts/fraunces/fraunces-latin-500.c51a8809.woff2",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
       {source: "/maplibre/6.4.1/:asset",headers:[
         {key:"Cache-Control",value:"public, max-age=31536000, immutable"},
         {key:"Referrer-Policy",value:"no-referrer"},

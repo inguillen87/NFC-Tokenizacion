@@ -11,17 +11,6 @@ export const nexidInterfaceFont = localFont({
   fallback: ["Arial", "sans-serif"],
 });
 
-export const nexidHeadingFont = localFont({
-  src: "./fonts/fraunces/fraunces-latin-500.woff2",
-  variable: "--font-nexid-heading",
-  weight: "500",
-  style: "normal",
-  display: "swap",
-  preload: false,
-  adjustFontFallback: "Times New Roman",
-  fallback: ["Georgia", "Times New Roman", "serif"],
-});
-
 export const nexidDataFont = localFont({
   src: "./fonts/jetbrains-mono/jetbrains-mono-latin-400.woff2",
   variable: "--font-nexid-mono",
@@ -35,6 +24,5 @@ export const nexidDataFont = localFont({
 
 export const nexidFontVariables = [
   nexidInterfaceFont.variable,
-  nexidHeadingFont.variable,
   nexidDataFont.variable,
 ].join(" ");

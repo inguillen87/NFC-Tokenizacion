@@ -5,6 +5,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import sharp from 'sharp';
+import { checkDelayedLandingFonts } from './landing-font-stability.mjs';
 import { verifyNativeBrandHeroHidden, validateAllowedClerkOrigins, readOnlyRequestDecision, blockedWriteCategory } from './native-brand-hero-hidden.mjs';
 
 // Remote callers must supply provider-verified metadata and acquire protection
@@ -205,6 +206,12 @@ async function keyboardNavigation(page, name) {
 }
 
 try {
+  if (local) {
+    report.delayedLandingFonts = [];
+    for (const locale of ['es-AR', 'en', 'pt-BR']) {
+      report.delayedLandingFonts.push(await checkDelayedLandingFonts(browser, origin, locale));
+    }
+  }
   if (expectedRelease) {
     const releaseContext = await browser.newContext({ serviceWorkers:'block' });
     try {
