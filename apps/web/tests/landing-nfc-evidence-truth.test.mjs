@@ -9,9 +9,9 @@ const proofSection = await readFile(new URL("../src/components/landing-proof-sec
 
 test("landing content scopes tap validation to digital evidence in ES, EN and PT", () => {
   const heroBodies = [...content.matchAll(/hero:\s*\{[^{}]*badge:\s*"[^"]+"[^{}]*body:\s*"([^"]+)"[^{}]*\}/g)].map((match) => match[1]);
-  assert.match(content, /Tu marca publica la información/);
-  assert.match(content, /Sua marca publica a informação/);
-  assert.match(content, /Your brand publishes the information/);
+  assert.match(content, /origen y los servicios que publica la marca/);
+  assert.match(content, /origem e os serviços que a marca disponibiliza/);
+  assert.match(content, /origin and services shared by the brand/);
   assert.equal(heroBodies.length, 3);
   for (const heroBody of heroBodies) {
     assert.doesNotMatch(heroBody, /SUN|\bTT\b|hash-only|cumple|compliant|certified|certificado/i);

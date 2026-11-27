@@ -16,7 +16,7 @@ test("unified release preserves the approved clean home composition", async () =
   assert.match(home, /<CommercialValueSection locale=\{locale\} \/>/);
   assert.match(home, /<CommercialContactModal initialLocale=\{locale\} \/>/);
   assert.match(sections, /<DppRoleExplorer locale=\{locale\} \/>/);
-  assert.match(sections, /Del producto a su pasaporte, en tres momentos\./);
+  assert.match(sections, /Elegí un rubro y recorré los tres pasos de un producto\./);
 
   assert.doesNotMatch(home, /mobile-optimized-header/);
   assert.doesNotMatch(home, /landing-brand-synergy-band/);
