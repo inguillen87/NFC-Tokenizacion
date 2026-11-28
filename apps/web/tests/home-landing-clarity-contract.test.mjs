@@ -17,7 +17,7 @@ test("home hero is large, friendly and truthful without becoming a technical das
     readFile(new URL("../src/components/home-sections.module.css", import.meta.url), "utf8"),
   ]);
   const hero = sliceBetween(sections, "export function HeroSection", "export function SimpleTrustFlowSection");
-  assert.match(hero, /<h1 className=\{styles\.title\}/);
+  assert.match(hero, /<h1 id="home-title" className=\{styles\.title\}/);
   const titleRule = css.match(/\.title\s*\{([^}]+)\}/)?.[1];
   assert.ok(titleRule, "hero H1 must keep an explicit responsive type scale");
   const remSizes = [...titleRule.matchAll(/(\d+(?:\.\d+)?)rem/g)].map((match) => Number(match[1]));

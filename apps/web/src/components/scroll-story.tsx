@@ -380,7 +380,7 @@ export function ScrollStory({ locale }: { locale: string }) {
               <span className={styles.phoneEdge} />
               <div className={styles.screen}>
                 <span className={styles.notch} />
-                <span className={styles.statusBar}><b>9:41</b><span><Signal size={11} /><Wifi size={11} /><BatteryFull size={13} /></span></span>
+                <span className={styles.statusBar} aria-hidden="true"><b className={styles.clock} /><span><Signal size={11} /><Wifi size={11} /><BatteryFull size={13} /></span></span>
 
                 <motion.div className={`${styles.view} ${styles.viewHome}`} style={{ opacity: screenOpacity[0] }}>
                   <motion.div className={styles.banner} style={{ y: bannerY, opacity: bannerOpacity }}>

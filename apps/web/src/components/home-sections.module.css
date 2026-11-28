@@ -23,7 +23,7 @@
   gap: 0;
   padding-block: clamp(3rem, 7vw, 6rem);
 }
-.copy { position: relative; min-width: 0; width: min(54%, 47rem); }
+.copy { position: relative; min-width: 0; width: min(54%, 47rem); background: var(--hero-paper); box-shadow: 0 0 4rem 2rem var(--hero-paper); }
 .copy::before { content: ""; position: absolute; z-index: -1; inset: -5rem -9rem -5rem -6rem; background: radial-gradient(closest-side, var(--hero-paper) 58%, transparent); pointer-events: none; }
 .copy > * { animation: heroRise 720ms cubic-bezier(.2, 0, 0, 1) both; }
 .copy > :nth-child(1) { animation-delay: 80ms; }
@@ -97,7 +97,7 @@
   :global(html[data-theme]) .hero:global(.landing-hero-section)::before { display: none; }
   .hero :global(.hero-signal-field) { background: none !important; }
   .hero .grid { min-height: 0; padding-block: 2.5rem calc(18rem + 2.25rem); }
-  .copy { width: 100%; max-width: 42rem; }
+  .copy { width: 100%; max-width: 42rem; box-shadow: none; }
   .copy::before { display: none; }
   .hero .media { top: auto !important; bottom: .75rem; right: .75rem !important; left: .75rem !important; height: 17rem !important; overflow: hidden; border-radius: 1.4rem; }
   .hero .media :global(.hero-immersive-image) { object-fit: contain !important; object-position: center !important; }

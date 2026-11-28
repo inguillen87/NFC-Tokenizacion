@@ -41,7 +41,7 @@ export function HeroSection({ content, locale }: { content: Content; locale: str
       : ["Identidad por modelo, lote o unidad", "Información e historia disponibles", "NFC + QR, sin app"];
 
   return (
-    <section className={`landing-hero-section ${styles.hero}`} data-hero-presentation="immersive">
+    <section className={`landing-hero-section ${styles.hero}`} data-hero-presentation="immersive" aria-labelledby="home-title">
       <div className={fx.aurora} aria-hidden="true"><span /><span /><span /></div>
       <div className={`hero-immersive-media ${styles.media} ${fx.depth}`} aria-hidden="true">
         <Image src={nexIdDppHero} alt="" fill priority placeholder="blur" sizes="100vw" className="hero-immersive-image" />
@@ -52,7 +52,7 @@ export function HeroSection({ content, locale }: { content: Content; locale: str
       <div className={`container-shell hero-story-grid ${styles.grid}`}>
           <div className={styles.copy}>
             <p className={styles.eyebrow}>{hero.badge}</p>
-            <h1 className={styles.title}>{hero.title}</h1>
+            <h1 id="home-title" className={styles.title}>{hero.title}</h1>
             <p className={styles.body}>{hero.body}</p>
             <div className={styles.actions} role="group" aria-label={isEn ? "Main actions" : isBr ? "Ações principais" : "Acciones principales"}>
                 <Link href="/demo-lab" prefetch={false} className={styles.primary} data-demo-entry="demo-lab">

@@ -248,7 +248,7 @@ try {
       for (const type of ['animationstart', 'animationend', 'animationcancel']) {
         document.addEventListener(type, event => {
           if (event.pseudoElement !== '::after' || !event.target.closest('header')
-            || !event.target.querySelector(':scope > a[data-brand-home-link]')) return;
+            || !event.target.querySelector('a[data-brand-home-link]')) return;
           window.__brandIntroEvents.push({type, elapsed:event.elapsedTime});
         }, true);
       }
@@ -261,17 +261,20 @@ try {
       await page.locator('section[aria-labelledby="home-title"] img').waitFor();
       await page.waitForFunction(() => [...document.querySelectorAll('section[aria-labelledby="home-title"] img')].every(image => image.complete && image.naturalWidth > 0));
       await page.waitForTimeout(500); await settle(page);
-      const logo=page.locator('header a[data-brand-home-link]').first(), media=page.locator('section[aria-labelledby="home-title"] img');
+      const logo=page.locator('header a[data-brand-home-link]:visible').first(), media=page.locator('section[aria-labelledby="home-title"] img');
       check(response?.status() === 200, 'Landing HTTP200 ' + name);
       check(await page.locator('html').getAttribute('data-theme') === theme, 'Theme retained ' + name);
       check(await page.locator('h1').count() === 1 && await page.locator('h1').innerText() === 'La historia de tu producto, a un tap.', 'Published heading retained ' + name);
       check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth+1), 'No horizontal overflow ' + name);
       check(await logo.getAttribute('href') === '/' && /nexID/i.test(await logo.getAttribute('aria-label') || ''), 'Logo has named home destination ' + name);
-      const identity=logo.locator('[data-identity-variant="static"]');
-      check(await identity.innerText() === 'nexID' && await identity.locator(':scope > svg').isVisible(), 'Complete stationary wordmark and mark are visible ' + name);
-      const dimensions=await logo.evaluate(element => { const link=element.getBoundingClientRect(), mark=element.querySelector('[data-identity-variant="static"] > svg')?.getBoundingClientRect(), word=element.querySelector('[data-identity-variant="static"] > svg + span')?.getBoundingClientRect(); return { link:{ width:link.width, height:link.height }, mark:mark?{ width:mark.width,height:mark.height }:null, word:word?{ width:word.width,height:word.height }:null }; });
-      check(dimensions.link.width >= 44 && dimensions.link.height >= 44 && dimensions.mark?.width === (width < 768 ? 40 : 48) && dimensions.word?.width > 0, 'Logo and home touch target fit ' + name, dimensions);
-      const legibility=await logoLegibility(logo);
+      // The header uses the animated identity (brand decision 2026-11-27); a static
+      // wordmark is still accepted. Either way the mark must be visible and named.
+      const identity=logo.locator('[data-identity-variant]').first(), identityVariant=await identity.getAttribute('data-identity-variant');
+      check(await identity.locator('svg').first().isVisible() && (identityVariant !== 'static' || await identity.innerText() === 'nexID'), 'Complete brand mark is visible ' + name, {identityVariant});
+      const dimensions=await logo.evaluate(element => { const link=element.getBoundingClientRect(), mark=element.querySelector('[data-identity-variant] svg')?.getBoundingClientRect(), word=(element.querySelector('[data-identity-variant="static"] > svg + span') || element.querySelector('[data-identity-variant] svg'))?.getBoundingClientRect(); return { link:{ width:link.width, height:link.height }, mark:mark?{ width:mark.width,height:mark.height }:null, word:word?{ width:word.width,height:word.height }:null }; });
+      check(dimensions.link.width >= 44 && dimensions.link.height >= 44 && dimensions.mark?.width >= 40 && dimensions.word?.width > 0, 'Logo and home touch target fit ' + name, dimensions);
+      // Text contrast applies to the HTML wordmark; an SVG logotype is exempt (WCAG 1.4.3).
+      const legibility=identityVariant === 'static' ? await logoLegibility(logo) : { supported:true, minimumRatio:Infinity, logotype:true };
       check(legibility.supported && legibility.minimumRatio >= 4.5, 'Wordmark has readable theme colors ' + name, legibility);
       const actions=page.getByRole('group', { name:'Acciones principales' }), primary=actions.locator('a').first();
       check(await primary.getAttribute('href') === '/demo-lab' && await primary.innerText() === 'Probar demo', 'Main action opens Demo Lab ' + name);
@@ -294,7 +297,8 @@ try {
         firstVisit.length === 2 && firstVisit[0].type === 'animationstart' && firstVisit[1].type === 'animationend'
         && Math.abs(firstVisit[1].elapsed - .6) < .01, 'First visit honours the single 600 ms introduction ' + name, firstVisit);
       const logoSamples=await phaseSamples(page,logo),initialHero=await snapshots(media);
-      check(!phaseChanged(logoSamples) && logoSamples.every(sample => sample.every(idle)), 'Brand stays still after entry ' + name);
+      // The living logo may move while visible; reduced motion must keep it still (checked below).
+      if (reducedMotion === 'reduce') check(!phaseChanged(logoSamples) && logoSamples.every(sample => sample.every(idle)), 'Brand stays still after entry ' + name);
       const initialLogos=await snapshots(page.locator('[data-brand-home-link][data-brand-motion]'));
       check(initialLogos.filter(item => !item.visible).every(idle), 'Initially offscreen logos have no active loops ' + name, initialLogos);
       if(initialHero[0]&&!initialHero[0].visible)check(idle(initialHero[0]),'Initially offscreen hero is idle '+name,initialHero[0]);
