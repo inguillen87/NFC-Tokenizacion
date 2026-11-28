@@ -68,7 +68,7 @@ test("landing hero uses one commercial CTA and one passport discovery CTA", asyn
   const sections = await readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8");
   const hero = await readFile(new URL("../src/components/hero-scene.tsx", import.meta.url), "utf8");
 
-  assert.match(sections, /href=\{VALLE_SECRETO_DEMO_HREF\}[^>]*data-demo-entry="valle-secreto"[^>]*>[\s\S]*"Explorar Valle Secreto"/);
+  assert.match(sections, /href="\/demo-lab"[^>]*data-demo-entry="demo-lab"[^>]*>[\s\S]*"Probar la demo"/);
   assert.match(sections, /href="\/\?contact=demo#contact-modal"[^>]*>[\s\S]*\{hero\.secondary\}/);
   assert.doesNotMatch(sections, /href="\/docs"[^>]*>[\s\S]{0,100}\{secondaryCta\}/);
   assert.match(hero, /routeTitle: "RUTA DECLARADA · DEMO"/);
@@ -119,7 +119,7 @@ test("landing hero exposes two clear actions without repeating an institutional 
   assert.match(sections, /<p className=\{styles\.body\}>\{hero\.body\}/);
   assert.doesNotMatch(sections, /<HeroScene|const heroStats = \[/);
   assert.match(sections, /href="\/\?contact=demo#contact-modal" prefetch=\{false\} className=\{styles\.secondary\}/);
-  assert.match(sections, /href=\{VALLE_SECRETO_DEMO_HREF\} prefetch=\{false\} className=\{styles\.primary\}/);
+  assert.match(sections, /href="\/demo-lab" prefetch=\{false\} className=\{styles\.primary\}/);
   assert.doesNotMatch(sections, /styles\.actions[\s\S]{0,1200}href="\/(?:proof\/verify|pricing|docs)"/);
   assert.doesNotMatch(sections, /mobileDocsCta|landing-mobile-hero-actions__muted/);
   assert.match(sections, /className=\{styles\.actions\} role="group" aria-label=/);

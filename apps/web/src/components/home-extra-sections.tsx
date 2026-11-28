@@ -68,7 +68,7 @@ export function ReadingOutcomesSection({ locale }: { locale: string }) {
               <span className={fx.outcomeIcon} aria-hidden="true"><Icon size={22} /></span>
               <h3>{outcome.title}</h3>
               <p>{outcome.body}</p>
-              <Link href={sunDemoScenarioHref("valle-secreto", scenarios[index] ?? "closed")} prefetch={false} className={fx.outcomeLink}>
+              <Link href={sunDemoScenarioHref("agrochem", scenarios[index] ?? "closed")} prefetch={false} className={fx.outcomeLink}>
                 {copy.example}<span className={fx.srOnly}>: {outcome.title}</span><ArrowRight size={15} aria-hidden="true" />
               </Link>
             </li>
@@ -185,7 +185,7 @@ export function DemoLauncherSection({ locale }: { locale: string }) {
         };
   const media = { wine: wineShot, agro: agroShot, packaging: packagingShot } as const;
   const hrefs = {
-    wine: sunDemoScenarioHref("valle-secreto", "closed"),
+    wine: "/demo-lab?vertical=wine",
     agro: sunDemoScenarioHref("agrochem", "closed"),
     packaging: sunDemoScenarioHref("fragrance", "closed"),
   } as const;

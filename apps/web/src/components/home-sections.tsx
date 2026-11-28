@@ -15,7 +15,6 @@ import { PassportFragmentTarget } from "./passport-fragment-target";
 import { HeroImmersiveSignal } from "./hero-immersive-signal";
 import { SimpleTrustFlowIntroMotion } from "./simple-trust-flow-motion";
 import { SimpleTrustIndustryJourney } from "./simple-trust-industry-journey";
-import { VALLE_SECRETO_DEMO_HREF } from "../lib/sun-demo-links";
 import nexIdDppHero from "../../public/landing/nexid-dpp-hero-v3.webp";
 import { HeroTapDemo } from "./hero-tap-demo";
 import styles from "./home-sections.module.css";
@@ -56,8 +55,8 @@ export function HeroSection({ content, locale }: { content: Content; locale: str
             <h1 className={styles.title}>{hero.title}</h1>
             <p className={styles.body}>{hero.body}</p>
             <div className={styles.actions} role="group" aria-label={isEn ? "Main actions" : isBr ? "Ações principais" : "Acciones principales"}>
-                <Link href={VALLE_SECRETO_DEMO_HREF} prefetch={false} className={styles.primary} data-demo-entry="valle-secreto">
-                  {isEn ? "Explore Valle Secreto" : "Explorar Valle Secreto"}<ArrowRight size={18} aria-hidden="true" />
+                <Link href="/demo-lab" prefetch={false} className={styles.primary} data-demo-entry="demo-lab">
+                  {isEn ? "Try the demo" : isBr ? "Testar a demo" : "Probar la demo"}<ArrowRight size={18} aria-hidden="true" />
                 </Link>
                 <Link href="/?contact=demo#contact-modal" prefetch={false} className={styles.secondary}>{hero.secondary}</Link>
             </div>

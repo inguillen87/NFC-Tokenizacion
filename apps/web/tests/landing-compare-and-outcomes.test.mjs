@@ -36,7 +36,7 @@ test("the comparison is a shared public page that reflows on small screens", () 
 test("the platform page explains the three reading outcomes with curated demo scenarios", () => {
   assert.match(sections, /export function ReadingOutcomesSection/);
   assert.match(sections, /const scenarios = \["closed", "opened", "invalid"\] as const;/);
-  assert.match(sections, /sunDemoScenarioHref\("valle-secreto", scenarios\[index\] \?\? "closed"\)/);
+  assert.match(sections, /sunDemoScenarioHref\("agrochem", scenarios\[index\] \?\? "closed"\)/);
   assert.match(sections, /No demuestra falsificación: qué significa lo define la política de cada marca/);
   assert.match(sections, /la ficha sigue disponible y las acciones protegidas se bloquean/);
   assert.match(sections, /<Link href="\/compare" prefetch=\{false\}/);
@@ -57,4 +57,10 @@ test("the home stays short: hero, scroll story, demo launcher and audiences", ()
   assert.match(sections, /sunDemoScenarioHref\("agrochem", "closed"\)/);
   assert.match(sections, /<Link href="\/platform" prefetch=\{false\}/);
   assert.match(platform, /<PublicSiteHeader \/>/);
+});
+
+test("the home names no customer or prospect brand", () => {
+  for (const file of ["src/components/home-sections.tsx", "src/components/home-extra-sections.tsx", "src/components/hero-tap-demo.tsx", "src/components/scroll-story.tsx", "src/app/page.tsx"]) {
+    assert.doesNotMatch(read(file), /valle.secreto|syngenta|trivento|rutini/i, file);
+  }
 });

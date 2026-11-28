@@ -15,7 +15,7 @@ test("the simulated hero tap is labelled as sample data and never calls an API",
   assert.match(tap, /Demo · dados de exemplo/);
   assert.match(tap, /no certifica por sí sola el producto físico/);
   assert.doesNotMatch(tap, /fetch\(|auténtic|authentic|autêntic|original/i);
-  assert.match(tap, /href=\{VALLE_SECRETO_DEMO_HREF\}/);
+  assert.match(tap, /href="\/demo-lab" prefetch=\{false\} className=\{styles\.tapLink\}/);
 });
 
 test("the simulated tap is operable by keyboard and announced", () => {

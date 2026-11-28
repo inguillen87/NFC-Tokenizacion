@@ -4,7 +4,6 @@ import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Check, Nfc, X } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { VALLE_SECRETO_DEMO_HREF } from "../lib/sun-demo-links";
 import styles from "./home-enhancements.module.css";
 
 type TapLocale = "es-AR" | "en" | "pt-BR";
@@ -160,7 +159,7 @@ export function HeroTapDemo({ locale }: { locale: string }) {
               ))}
             </ol>
             <p className={styles.tapBoundary}>{copy.boundary}</p>
-            <Link href={VALLE_SECRETO_DEMO_HREF} prefetch={false} className={styles.tapLink} data-demo-entry="hero-tap">
+            <Link href="/demo-lab" prefetch={false} className={styles.tapLink} data-demo-entry="hero-tap">
               {copy.open}
               <ArrowRight size={16} aria-hidden="true" />
             </Link>
