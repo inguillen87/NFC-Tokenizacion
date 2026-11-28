@@ -19,6 +19,7 @@ import { CommercialContactModal } from "../components/commercial-contact-modal";
 import { productUrls, schedulingUrls } from "@product/config";
 import { resolveThemePreference, THEME_PREFERENCE_VERSION_COOKIE } from "@product/ui/theme-preference";
 import { Building2, Facebook, Globe2, Instagram, Linkedin } from "lucide-react";
+import "../styles/pro-motion.css";
 
 export default async function HomePage() {
   const { locale, locales } = await getWebI18n();

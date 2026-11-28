@@ -15,6 +15,7 @@ import { DemoLabFeaturedJourney } from "./demo-lab-featured-journey";
 import { DemoLabThemeToggle } from "./demo-lab-hub-theme";
 import { BrandHomeLink } from "../../../components/brand-home-link";
 import surfaceStyles from "./demo-lab-surface.module.css";
+import "../../../styles/pro-motion.css";
 const DemoLabClient = dynamic(() => import("./demo-lab-client").then((module) => module.DemoLabClient));
 import {
   Box,

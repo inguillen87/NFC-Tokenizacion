@@ -7,6 +7,7 @@ import { PricingRoiCalculator } from "../../components/pricing-roi-calculator";
 import { PricingQuoteConfigurator } from "../../components/pricing-quote-configurator";
 import { PublicSiteHeader } from "../../components/public-site-header";
 import "./pricing-light-theme.css";
+import "../../styles/pro-motion.css";
 
 export const metadata: Metadata = {
   title: "Pricing | nexID enterprise product identity",
