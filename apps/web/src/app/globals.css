@@ -61555,33 +61555,3 @@ html:is(.theme-light, [data-theme="light"]) .dpp-participant-detail-bridge {
     color: CanvasText;
   }
 }
-
-/* Pricing light theme: earlier sweeps paint muted and cyan labels for a dark
-   page (#cbd5e1, #67e8f9), which vanish on white. Use readable tones; the dark
-   zones below restore their own palette. */
-html:is(.theme-light, [data-theme="light"]) .nexid-pricing-page :is(.text-slate-300, .text-slate-400) { color: #475569 !important; }
-html:is(.theme-light, [data-theme="light"]) .nexid-pricing-page .text-slate-500 { color: #64748b !important; }
-html:is(.theme-light, [data-theme="light"]) .nexid-pricing-page :is(.text-cyan-200, .text-cyan-300) { color: #0e7490 !important; }
-html:is(.theme-light, [data-theme="light"]) .nexid-pricing-page :is(.text-teal-200, .text-teal-300) { color: #0f766e !important; }
-html:is(.theme-light, [data-theme="light"]) .nexid-pricing-page :is(.nexid-pricing-card > p, .nexid-pricing-roi__header > div:first-child > span, .nexid-pricing-roi__results-heading > span, .nexid-pricing-roi__architecture header span) { color: #0e7490 !important; }
-html:is(.theme-light, [data-theme="light"]) .nexid-pricing-page :is(.nexid-pricing-roi__results-heading svg, .nexid-pricing-roi__architecture header > svg) { color: #0f766e !important; }
-
-/* Quote result stays a dark "estimate ticket" in both themes. The light
-   sweeps above lighten bg-slate-950 while pricing keeps white text, which made
-   the recommendation unreadable; restore a coherent dark palette here. */
-html:is(.theme-light, [data-theme="light"]) .nexid-pricing-page .nexid-quote-result {
-  background:
-    radial-gradient(circle at 90% 0%, rgba(34, 211, 238, 0.16), transparent 22rem),
-    linear-gradient(180deg, #0b1626 0%, #07101d 100%) !important;
-  border-color: rgba(14, 116, 144, 0.28) !important;
-  color: #f8fafc !important;
-}
-html:is(.theme-light, [data-theme="light"]) .nexid-pricing-page :is(.nexid-quote-result, .nexid-quote-hero) :is(.text-white, .text-slate-50, .text-slate-100, .text-slate-200) { color: #f8fafc !important; }
-html:is(.theme-light, [data-theme="light"]) .nexid-pricing-page :is(.nexid-quote-result, .nexid-quote-hero) :is(.text-slate-300, .text-slate-400) { color: #cbd5e1 !important; }
-html:is(.theme-light, [data-theme="light"]) .nexid-pricing-page :is(.nexid-quote-result, .nexid-quote-hero) .text-slate-500 { color: #94a3b8 !important; }
-html:is(.theme-light, [data-theme="light"]) .nexid-pricing-page :is(.nexid-quote-result, .nexid-quote-hero) :is(.text-cyan-100, .text-cyan-200, .text-cyan-300) { color: #67e8f9 !important; }
-html:is(.theme-light, [data-theme="light"]) .nexid-pricing-page :is(.nexid-quote-result, .nexid-quote-hero) :is(.text-emerald-50, .text-emerald-100, .text-emerald-200, .text-emerald-300) { color: #a7f3d0 !important; }
-html:is(.theme-light, [data-theme="light"]) .nexid-pricing-page :is(.nexid-quote-result, .nexid-quote-hero) :is(.text-violet-50, .text-violet-100, .text-violet-200) { color: #ddd6fe !important; }
-html:is(.theme-light, [data-theme="light"]) .nexid-pricing-page :is(.nexid-quote-result, .nexid-quote-hero) .text-amber-300 { color: #fcd34d !important; }
-html:is(.theme-light, [data-theme="light"]) .nexid-pricing-page :is(.nexid-quote-result, .nexid-quote-hero) :is(.bg-white\/5) { background-color: rgba(255, 255, 255, 0.05) !important; }
-html:is(.theme-light, [data-theme="light"]) .nexid-pricing-page .nexid-quote-result a.bg-cyan-300 { color: #020617 !important; }
