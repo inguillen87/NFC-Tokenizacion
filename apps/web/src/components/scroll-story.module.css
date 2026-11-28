@@ -195,3 +195,28 @@
   .backdrop, .halo { display: none; }
   .phone, .screen, .holo { border: 1px solid CanvasText; }
 }
+
+/* ---------- Light theme: a bright lab instead of a dark band ---------- */
+:global(html[data-theme="light"]) .story {
+  --s-ink: #102a33;
+  --s-muted: #4b6570;
+  --s-paper: #f2faf8;
+  --s-paper-2: #eef2ff;
+  --s-accent: #087f78;
+  --s-line: #cfe3e1;
+}
+:global(html[data-theme="light"]) .sticky { background: radial-gradient(120% 90% at 70% 40%, #d9f6f0 0%, transparent 60%), linear-gradient(160deg, var(--s-paper), var(--s-paper-2)); }
+:global(html[data-theme="light"]) .backdrop span { opacity: .3; }
+:global(html[data-theme="light"]) .backdrop::after { background-image: radial-gradient(rgb(8 127 120 / .5) 1px, transparent 1.4px); opacity: .14; }
+:global(html[data-theme="light"]) .grid { background-image: linear-gradient(rgb(8 127 120 / .35) 1px, transparent 1px), linear-gradient(90deg, rgb(8 127 120 / .35) 1px, transparent 1px); opacity: .55; }
+:global(html[data-theme="light"]) .halo { opacity: .7; }
+:global(html[data-theme="light"]) .pick { border-color: rgb(8 127 120 / .28); background: rgb(255 255 255 / .7); }
+:global(html[data-theme="light"]) .pick:hover { color: var(--s-ink); }
+:global(html[data-theme="light"]) .pick:has(input:focus-visible) { outline-color: #087f78; }
+:global(html[data-theme="light"]) .holo { border-color: rgb(8 127 120 / .35); color: #0b4f49; background: rgb(255 255 255 / .78); box-shadow: 0 14px 34px rgb(15 40 47 / .14), 0 0 0 1px rgb(47 225 195 / .25); }
+:global(html[data-theme="light"]) .holo::after { display: none; }
+:global(html[data-theme="light"]) .productArt { filter: drop-shadow(0 26px 30px rgb(15 40 47 / .3)) drop-shadow(0 0 30px color-mix(in srgb, var(--story-accent, #2fe1c3) 30%, transparent)); }
+:global(html[data-theme="light"]) .phone { box-shadow: 0 40px 80px rgb(15 40 47 / .32), 0 0 0 1.5px rgb(255 255 255 / .2) inset, 0 0 60px rgb(47 225 195 / .25); }
+:global(html[data-theme="light"]) .credit { color: #4b6570; }
+:global(html[data-theme="light"]) .rail { background: #cfe3e1; }
+:global(html[data-theme="light"]) .beam path { stroke: #0b9b8f; }
