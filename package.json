@@ -73,9 +73,9 @@
     "sharp": "$sharp",
     "three": "0.184.0",
     "next": {
+      ".": "16.4.6",
       "postcss": "$postcss",
-      "sharp": "$sharp",
-      ".": "16.4.3"
+      "sharp": "$sharp"
     },
     "nanoid": "3.3.18",
     "adm-zip": "0.6.1",

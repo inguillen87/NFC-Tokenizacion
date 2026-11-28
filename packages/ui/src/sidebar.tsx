@@ -128,7 +128,7 @@ export function Sidebar({ items, title }: { title: string; items: Array<{ href: 
       >
         <span className="flex items-center gap-2">
           <BarChart3 className="h-3.5 w-3.5" />
-          <span>Realtime: estado en Analytics</span>
+          <span>Tiempo real: estado en Analítica</span>
         </span>
         <span aria-hidden="true" className="text-[11px]">&rarr;</span>
       </Link>

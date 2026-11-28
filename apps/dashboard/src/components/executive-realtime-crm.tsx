@@ -414,14 +414,18 @@ function MetricCard({
         </div>
         <span data-testid="crm-metric-delta" className={`max-w-full break-words rounded-full px-2 py-0.5 text-[10px] font-bold ${tone === "red" ? "bg-red-400/10 text-red-300" : "bg-emerald-400/10 text-emerald-300"}`}>{delta}</span>
       </div>
-      <div className="mt-2 flex items-end justify-between gap-3">
-        <p className="text-[26px] font-black leading-none tracking-[-0.035em] text-white">{value}</p>
-        <p className="pb-0.5 text-[10px] font-medium text-slate-500">ventana activa</p>
+      <div className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] items-end gap-3" title="Valor de la ventana activa">
+        <p className="nexid-crm-metric-value text-[30px] font-black leading-none tracking-[-0.04em] text-white tabular-nums">{value}</p>
+        <div className="min-w-0 opacity-90">
+          <MiniSparkline data={data} color={color} dataKey={dataKey} />
+        </div>
       </div>
-      <p className="mt-1.5 min-h-[32px] text-[10.5px] leading-4 text-slate-400">{help}</p>
-      <div className="mt-1">
-        <MiniSparkline data={data} color={color} dataKey={dataKey} />
-      </div>
+      <details className="nexid-crm-metric-help mt-2 text-[10.5px] leading-4 text-slate-400">
+        <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-md px-1 font-bold text-slate-400 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300">
+          <span aria-hidden="true" className="grid h-4 w-4 place-items-center rounded-full border border-current text-[9px]">i</span>¿Qué mide?
+        </summary>
+        <p className="mt-1">{help}</p>
+      </details>
     </div>
   );
 }
@@ -617,10 +621,13 @@ export function ExecutiveRealtimeCrm({
     }
   }, [canReadIncidents, queryTenant]);
 
+  // Only the full-screen control room hides the dashboard shell; the workspace CRM
+  // lives inside it (sidebar, shell header and mobile dock stay available).
   useEffect(() => {
+    if (!controlRoom.enabled) return;
     document.body.classList.add("nexid-crm-overlay-active");
     return () => document.body.classList.remove("nexid-crm-overlay-active");
-  }, []);
+  }, [controlRoom.enabled]);
 
   const selectActiveView = useCallback((nextView: ExecutiveCrmView) => {
     setActiveView(nextView);
@@ -1121,8 +1128,8 @@ export function ExecutiveRealtimeCrm({
   ];
 
   return (
-    <div ref={controlRoom.rootRef} data-display-mode={controlRoom.enabled ? "room" : "workspace"} className={`${room.roomShell} nexid-crm-shell fixed inset-0 z-[120] overflow-y-auto overflow-x-hidden bg-[#030a16] text-slate-100 lg:overflow-hidden`}>
-      <div className="nexid-crm-backdrop pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_72%_10%,rgba(14,165,233,.16),transparent_32%),linear-gradient(180deg,#05101f,#030713_55%,#030713)]" />
+    <div ref={controlRoom.rootRef} data-display-mode={controlRoom.enabled ? "room" : "workspace"} className={`${room.roomShell} nexid-crm-shell ${controlRoom.enabled ? "fixed inset-0 z-[120]" : "relative z-0"} overflow-y-auto overflow-x-hidden bg-[#030a16] text-slate-100 lg:overflow-hidden`}>
+      <div className={`nexid-crm-backdrop pointer-events-none ${controlRoom.enabled ? "fixed" : "absolute"} inset-0 bg-[radial-gradient(circle_at_72%_10%,rgba(14,165,233,.16),transparent_32%),linear-gradient(180deg,#05101f,#030713_55%,#030713)]`} />
       <header data-testid="crm-responsive-header" className="nexid-crm-header relative z-[640] flex min-h-[70px] flex-wrap items-center gap-3 border-b border-cyan-200/10 bg-[#06101d]/90 px-3 py-3 shadow-[0_1px_0_rgba(255,255,255,.04)] lg:px-4">
         <div className="nexid-crm-identity order-1 flex min-w-0 flex-1 items-center gap-4 lg:gap-5">
           <div className="pr-4 text-[24px] font-black tracking-[-0.04em] text-white lg:pr-6 lg:text-[28px]">
@@ -1348,7 +1355,12 @@ export function ExecutiveRealtimeCrm({
                     ? ["Esperar la respuesta del scope seleccionado", "No usar los indicadores hasta completar la sincronización"]
                     : streamDataUnconfirmed
                       ? ["Esperar reconexión o revisar la fuente antes de decidir", `Última actualización: ${timeAgo(lastUpdateAt)}`]
-                      : ["Ampliar el rango temporal", "Cambiar tenant o realizar un tap NFC de control"]}
+                      : [timeRange === "24h" ? "Revisar el historial completo de lecturas" : "Ampliar el rango temporal", "Cambiar tenant o realizar un tap NFC de control"]}
+                  action={!requestTransitionPending && !streamDataUnconfirmed ? (
+                    <button type="button" data-testid="crm-empty-history-action" title="Abrir el historial completo de eventos del tenant" onClick={() => { if (timeRange !== "24h") { selectTimeRange("24h"); return; } router.push(DASHBOARD_DESTINATIONS.events.href); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-4 text-sm font-bold text-cyan-100 hover:bg-cyan-400/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">
+                      {timeRange === "24h" ? "Ver historial de lecturas" : "Ver últimas 24h"}
+                    </button>
+                  ) : undefined}
                   testId="crm-realtime-data-state"
                 />}
               </div>

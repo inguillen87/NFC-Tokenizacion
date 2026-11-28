@@ -1764,6 +1764,32 @@ html.theme-light .admin-notification-bell__badge {
   }
 }
 
+/* Phones and tablets: the status row takes the full width and starts at the left,
+   so source, room mode, theme and account never overflow off-screen. */
+@media (max-width: 1023px) {
+  .nexid-crm-shell .nexid-crm-header-status {
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .nexid-crm-shell .nexid-crm-header-status [data-testid="control-room-toggle"] {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 639px) {
+  /* The footer already reports the stream state. */
+  .nexid-crm-header-status > span:first-child {
+    display: none;
+  }
+
+  .nexid-crm-shell .nexid-crm-header-status > .nexid-crm-account-menu {
+    flex: 1 1 100%;
+  }
+}
+
 .nexid-crm-kpi-column,
 .nexid-crm-workspace {
   scrollbar-gutter: stable;
@@ -2466,7 +2492,7 @@ body.nexid-crm-overlay-active .dashboard-main {
   overflow-x: hidden;
 }
 
-.dashboard-shell-root:has(.nexid-crm-shell) .dashboard-header .dashboard-shell-account-menu {
+.dashboard-shell-root:has(.nexid-crm-shell[data-display-mode="room"]) .dashboard-header .dashboard-shell-account-menu {
   display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;
@@ -2951,4 +2977,76 @@ body.nexid-account-menu-open .nexid-account-layer * {
   .nexid-account-layer .tenant-account-panel__footer {
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom)) !important;
   }
+}
+
+/* CRM metric titles: icon above, sentence case, so long Spanish words (Autenticación, Consentimiento) fit whole
+   inside narrow cards without hyphenation or clipping. */
+[data-testid="crm-metric-label"] {
+  flex-direction: column;
+  gap: 0.35rem !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-size: 12.5px !important;
+  line-height: 1.25 !important;
+}
+[data-testid="crm-metric-label"] > span:last-child {
+  hyphens: manual;
+  overflow-wrap: break-word;
+}
+
+/* Workspace mode: the live CRM lives inside the dashboard shell (sidebar + shell
+   header) instead of covering it. Room mode keeps the full-screen control room. */
+.nexid-crm-shell[data-display-mode="workspace"] .nexid-crm-identity,
+.nexid-crm-shell[data-display-mode="workspace"] .nexid-crm-theme-control,
+.nexid-crm-shell[data-display-mode="workspace"] .nexid-crm-account-menu {
+  display: none !important;
+}
+
+.nexid-crm-shell[data-display-mode="workspace"] {
+  isolation: isolate;
+}
+
+@media (min-width: 1024px) {
+  .nexid-crm-shell[data-display-mode="workspace"] {
+    height: calc(100dvh - 4.25rem);
+    min-height: 36rem;
+  }
+
+  .nexid-crm-shell[data-display-mode="workspace"] .nexid-crm-header {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    min-height: 0 !important;
+    padding-block: 0.5rem !important;
+  }
+
+  .nexid-crm-shell[data-display-mode="workspace"] .nexid-crm-header .nexid-crm-nav {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: auto !important;
+    min-width: 0;
+  }
+
+  .nexid-crm-shell[data-display-mode="workspace"] .nexid-crm-header-status {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+  }
+}
+
+/* Light theme: the sidebar lockup is rendered with dark-theme colors; give the
+   wordmark ink that reads on white instead of washed-out light grey. */
+html.theme-light .brand-surface-sidebar,
+html[data-theme="light"] .brand-surface-sidebar {
+  --brand-wordmark-main: #0f172a;
+  --brand-wordmark-accent: #0891b2;
+  --brand-wordmark-orbit: rgba(8, 145, 178, 0.45);
+  --brand-wordmark-main-hi: #334155;
+  --brand-wordmark-main-lo: #0f172a;
+  --brand-wordmark-accent-hi: #0e7490;
+  --brand-wordmark-accent-lo: #0891b2;
+}
+
+/* Light theme: the blanket white header/aside fill is for shell chrome. Section
+   headers inside a page sit on the page background, aligned with its cards. */
+html.theme-light main header:not(.dashboard-header):not(.nexid-crm-header),
+html[data-theme="light"] main header:not(.dashboard-header):not(.nexid-crm-header) {
+  background: transparent !important;
 }

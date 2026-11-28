@@ -106,12 +106,21 @@ function fmtDate(value: string | null) {
 }
 
 function DeviceBucket({ title, items }: { title: string; items: Array<{ label: string; count: number }> }) {
+  const rows = items.slice(0, 5);
+  const max = Math.max(1, ...rows.map((item) => item.count));
   return (
     <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-300">
-      <p className="font-semibold text-slate-100">{title}</p>
-      <div className="mt-2 space-y-1">
-        {(items.length ? items : [{ label: "Unknown", count: 0 }]).slice(0, 5).map((item) => <p key={item.label}>{item.label}: <b>{item.count}</b></p>)}
-      </div>
+      <p className="font-semibold text-slate-200">{title}</p>
+      {!rows.length ? <p className="mt-2 text-slate-400">Sin datos en el período</p> : (
+        <ul className="mt-2 space-y-2">
+          {rows.map((item) => (
+            <li key={item.label}>
+              <div className="flex items-baseline justify-between gap-2"><span className="truncate">{item.label}</span><b className="tabular-nums text-slate-200">{item.count.toLocaleString("es-AR")}</b></div>
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-700/30" aria-hidden><div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-indigo-400" style={{ width: `${Math.max(3, Math.round((item.count / max) * 100))}%` }} /></div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -237,9 +246,9 @@ function buildAnalyticsExcel(data: AnalyticsPanelsProps["data"]) {
 function AnalyticsExportActions({ data }: { data?: AnalyticsPanelsProps["data"] }) {
   return (
     <div className="flex flex-wrap gap-2">
-      <button suppressHydrationWarning type="button" onClick={() => downloadBlob("nexid-analytics.csv", "text/csv;charset=utf-8", buildAnalyticsCsv(data))} className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/20">Export CSV</button>
-      <button suppressHydrationWarning type="button" onClick={() => downloadBlob("nexid-analytics.xls", "application/vnd.ms-excel;charset=utf-8", buildAnalyticsExcel(data))} className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/20">Export Excel</button>
-      <button suppressHydrationWarning type="button" onClick={() => window.print()} className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 hover:bg-violet-500/20">Export PDF</button>
+      <button suppressHydrationWarning type="button" onClick={() => downloadBlob("nexid-analytics.csv", "text/csv;charset=utf-8", buildAnalyticsCsv(data))} className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/20">Exportar CSV</button>
+      <button suppressHydrationWarning type="button" onClick={() => downloadBlob("nexid-analytics.xls", "application/vnd.ms-excel;charset=utf-8", buildAnalyticsExcel(data))} className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/20">Exportar Excel</button>
+      <button suppressHydrationWarning type="button" onClick={() => window.print()} className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 hover:bg-violet-500/20">Exportar PDF</button>
     </div>
   );
 }
@@ -603,7 +612,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
           <StatCard label={extra.activeBatches} value={String(api.activeBatches ?? 0)} delta={extra.activeBatchesDelta} tone="good" />
           <StatCard label={extra.activeTenants} value={String(api.activeTenants ?? 0)} delta={extra.activeTenantsDelta} tone="good" />
           <StatCard label={extra.resellerPerformance} value={resellerRevenueDisplay} delta={resellerRevenueDetail} />
-          <StatCard label={extra.geoDistribution} value={`${api.geoRegions ?? 0} regions`} delta={extra.geoDistributionDelta} />
+          <StatCard label={extra.geoDistribution} value={`${api.geoRegions ?? 0} regiones`} delta={extra.geoDistributionDelta} />
         </div>
 
         <details className="rounded-xl border border-white/10 p-3"><summary className="min-h-9 cursor-pointer text-sm font-bold">Definiciones y denominadores de los indicadores</summary><OpsPanel title="Control operativo" subtitle="KPIs del scope activo. Sin datos reales, no se inventa actividad.">
@@ -670,7 +679,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
         <StatCard label={extra.activeBatches} value={String(api.activeBatches ?? 0)} delta={extra.activeBatchesDelta} tone="good" />
         <StatCard label={extra.activeTenants} value={String(api.activeTenants ?? 0)} delta={extra.activeTenantsDelta} tone="good" />
         <StatCard label={extra.resellerPerformance} value={resellerRevenueDisplay} delta={resellerRevenueDetail} />
-        <StatCard label={extra.geoDistribution} value={`${api.geoRegions ?? 0} regions`} delta={extra.geoDistributionDelta} />
+        <StatCard label={extra.geoDistribution} value={`${api.geoRegions ?? 0} regiones`} delta={extra.geoDistributionDelta} />
       </div>
 
       <details className="rounded-xl border border-white/10 p-3"><summary className="min-h-9 cursor-pointer text-sm font-bold">Definiciones y denominadores de los indicadores</summary><OpsPanel title="Control operativo" subtitle={`Resumen calculado exclusivamente sobre ${sourceLabel.toLowerCase()}.`}>
@@ -731,17 +740,17 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
         <OpsPanel title="Mensajes y señales de riesgo" subtitle="Etapas calculadas sólo con taps y tasa válida del API. Claim, garantía y marketplace quedan N/D hasta tener eventos propios.">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
-              <p className="text-xs text-slate-400">Valid rate</p>
+              <p className="text-xs text-slate-400">Lecturas válidas</p>
               <p className="text-2xl font-semibold text-emerald-300">{validRate == null ? "N/D" : `${validRate.toFixed(1)}%`}</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
-              <p className="text-xs text-slate-400">Risk signals</p>
+              <p className="text-xs text-slate-400">Señales de riesgo</p>
               <p className="text-2xl font-semibold text-amber-200">{(api.duplicates ?? 0) + (api.tamper ?? 0)}</p>
             </div>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <StatusChip label={`Duplicates ${api.duplicates ?? 0}`} tone="warn" />
-            <StatusChip label={`Tamper ${api.tamper ?? 0}`} tone="risk" />
+            <StatusChip label={`Duplicadas ${api.duplicates ?? 0}`} tone="warn" />
+            <StatusChip label={`Manipulación ${api.tamper ?? 0}`} tone="risk" />
           </div>
           <div className="mt-4">
             <TrustFunnelChart data={trustFunnel} />
@@ -753,7 +762,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
         <OpsPanel title="Distribución geográfica declarada" subtitle="Agregados por red/IP o teléfono: no prueban presencia física en cada ciudad.">
           <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-300">
-              {(countries.length ? countries : [{ country: "--", scans: 0, risk: 0 }]).slice(0, 6).map((c) => <p key={c.country}>{c.country}: <b>{c.scans}</b> · risk <b>{c.risk}</b></p>)}
+              {(countries.length ? countries : [{ country: "--", scans: 0, risk: 0 }]).slice(0, 6).map((c) => <p key={c.country}>{c.country}: <b>{c.scans}</b> · riesgo <b>{c.risk}</b></p>)}
             </div>
             <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-300">
               {(cities.length ? cities : [{ city: "Unknown", country: "--", scans: 0, risk: 0, lastSeen: null }]).slice(0, 6).map((c) => <p key={`${c.city}-${c.country}`}>{c.city}, {c.country}: <b>{c.scans}</b> · {fmtDate(c.lastSeen)}</p>)}
@@ -761,12 +770,12 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
           </div>
         </OpsPanel>
 
-        <OpsPanel title="Device breakdown" subtitle={`OS, browser, dispositivo y timezone sobre ${sourceLabel.toLowerCase()}.`}>
+        <OpsPanel title="Dispositivos" subtitle={`Sistema, navegador, equipo y zona horaria sobre ${sourceLabel.toLowerCase()}.`}>
           <div className="grid gap-3 md:grid-cols-2">
-            <DeviceBucket title="OS" items={devices?.os || []} />
-            <DeviceBucket title="Browser" items={devices?.browser || []} />
-            <DeviceBucket title="Device type" items={devices?.deviceType || []} />
-            <DeviceBucket title="Timezone" items={devices?.timezones || []} />
+            <DeviceBucket title="Sistema" items={devices?.os || []} />
+            <DeviceBucket title="Navegador" items={devices?.browser || []} />
+            <DeviceBucket title="Tipo de equipo" items={devices?.deviceType || []} />
+            <DeviceBucket title="Zona horaria" items={devices?.timezones || []} />
           </div>
           <p className="mt-2 text-xs text-slate-300">Mobile share: <b>{formatAnalyticsPercentage(mobileSharePercent)}</b></p>
           <div className="mt-3">
@@ -787,16 +796,16 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
               <p className="mt-1 text-xs text-slate-400">taps persistidos</p>
             </div>
             <div className="rounded-2xl border border-emerald-300/15 bg-emerald-500/10 p-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-100/70">Contexto ampliado</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Contexto ampliado</p>
               <p className="mt-1 text-2xl font-black text-emerald-100">
                 {formatAnalyticsPercentage((commercialSignals?.coverage.extendedConsent.share || 0) * 100)}
               </p>
-              <p className="mt-1 text-xs text-emerald-50/65">con aceptación explícita</p>
+              <p className="mt-1 text-xs text-slate-400">con aceptación explícita</p>
             </div>
             <div className="rounded-2xl border border-cyan-300/15 bg-cyan-500/10 p-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-100/70">Confianza de cobertura</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Confianza de cobertura</p>
               <p className="mt-1 text-2xl font-black text-cyan-100">{friendlyConfidence(commercialSignals?.confidence || "none")}</p>
-              <p className="mt-1 text-xs text-cyan-50/65">depende de la muestra, no valida el modelo informado</p>
+              <p className="mt-1 text-xs text-slate-400">depende de la muestra, no valida el modelo informado</p>
             </div>
           </div>
 
@@ -853,18 +862,18 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
           </div>
         </OpsPanel>
 
-        <OpsPanel title="Top tags / products" subtitle="Activos con más lecturas, última ubicación reportada y tokenización.">
+        <OpsPanel title="Productos más leídos" subtitle="Activos con más lecturas, última ubicación reportada y tokenización.">
           <TopProductsTable items={products} />
         </OpsPanel>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <OpsPanel title="Risk radar (operational)" subtitle="Semáforo rápido por dimensión crítica del tenant.">
+        <OpsPanel title="Radar de riesgo" subtitle="Semáforo rápido por dimensión crítica del tenant.">
           <RiskRadarChart data={riskRadar} onSelectCategory={(label) => setRiskCategoryFilter(label)} />
           <p className="mt-2 text-xs text-cyan-200">Drill-down risk: {riskCategoryFilter}</p>
         </OpsPanel>
 
-        <OpsPanel title="Device intelligence" subtitle="Modelos y combinaciones con mayor riesgo relativo.">
+        <OpsPanel title="Modelos con más riesgo" subtitle="Modelos y combinaciones con mayor riesgo relativo.">
           <div className="space-y-2">
             {deviceSignals.map((device) => (
               <div key={device.device} className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs text-slate-200">
@@ -876,7 +885,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
           </div>
         </OpsPanel>
 
-        <OpsPanel title="Tag journey" subtitle="Distingue origen declarado de primer tap reportado; no reconstruye un recorrido fisico.">
+        <OpsPanel title="Recorrido del tag" subtitle="Distingue origen declarado de primer tap reportado; no reconstruye un recorrido fisico.">
           <div className="space-y-2">
             {tagJourney.map((item) => {
               const product = productByUid.get(String(item.uid || "").toUpperCase());
@@ -905,7 +914,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
         </OpsPanel>
       </div>
 
-      <OpsPanel title="Traceability lane by UID" subtitle="Comparacion de puntos reportados por activo; solo un origen de pasaporte se etiqueta como declarado.">
+      <OpsPanel title="Puntos reportados por UID" subtitle="Comparacion de puntos reportados por activo; solo un origen de pasaporte se etiqueta como declarado.">
         <div className="space-y-3">
           {tagJourney.slice(0, 8).map((item) => {
             const declaredOrigin = isDeclaredProductOrigin(item.originSource);
