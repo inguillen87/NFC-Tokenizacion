@@ -19,7 +19,7 @@ import { TenantAccountMenu } from "./tenant-account-menu";
 import { SecureDashboardLogoutButton } from "./secure-dashboard-logout-button";
 import { motion, useReducedMotion } from "framer-motion";
 import headerStyles from "./dashboard-shell-header.module.css";
-import { dashboardTaskCopy, groupTaskNavigation, taskDestinationLabel } from "../lib/dashboard-task-navigation";
+import { dashboardTaskCopy, groupTaskNavigation, pickFrequentDestinations, readNavUsage, recordNavUsage, taskDestinationLabel } from "../lib/dashboard-task-navigation";
 import { useMobileNavigation } from "./use-mobile-navigation";
 import { ReleaseNotesLink } from "./release-notes-link";
 import { SupplierOperatorShell } from "./supplier-operator-shell";
@@ -189,6 +189,12 @@ export function DashboardShellInner({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setIsMobileSidebarOpen(true);
+        searchRef.current?.focus();
+        return;
+      }
       if (e.key === "/" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
         e.preventDefault();
         searchRef.current?.focus();
@@ -394,6 +400,19 @@ export function DashboardShellInner({
     ...settingsItems.filter((item) => canOpenDestination(item.destination)),
   ], locale);
 
+  const authorizedTaskItems = taskGroups.flatMap((group) => group.items);
+  const [frequentItems, setFrequentItems] = useState<typeof authorizedTaskItems>([]);
+  const authorizedTaskSignature = authorizedTaskItems.map((item) => item.href).join("|");
+  useEffect(() => {
+    let storage: Storage | null = null;
+    try { storage = window.localStorage; } catch { storage = null; }
+    const current = authorizedTaskItems.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+    if (current) recordNavUsage(storage, current.href);
+    setFrequentItems(pickFrequentDestinations(authorizedTaskItems, readNavUsage(storage)));
+    // authorizedTaskSignature captures the authorized set; items are rebuilt each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, authorizedTaskSignature]);
+
   const renderNavLink = (item: { href: string; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string }) => {
     const isActive = isActiveRoute(item.href);
     const IconComponent = item.icon;
@@ -547,6 +566,15 @@ export function DashboardShellInner({
         </div>
 
         <nav className="mt-6 space-y-3" aria-label={taskCopy.navigation} data-testid="dashboard-task-navigation">
+          {frequentItems.length ? (
+            <section data-task-group="frequent" aria-labelledby="dashboard-frequent-heading" className="rounded-xl border border-cyan-400/25 bg-cyan-500/[0.06] shadow-[0_0_30px_rgba(47,225,195,0.08)]">
+              <div className="flex min-h-11 items-center justify-between gap-3 px-3 pt-3">
+                <h2 id="dashboard-frequent-heading" className="text-[11px] font-black uppercase tracking-[0.1em] text-cyan-200">{taskCopy.frequent}</h2>
+                <span className="text-[10px] font-semibold text-slate-400">{taskCopy.frequentHint}</span>
+              </div>
+              <div className="space-y-0.5 px-1 pb-2">{frequentItems.map((item) => renderNavLink({ ...item, href: item.href }))}</div>
+            </section>
+          ) : null}
           {taskGroups.map((group) => (
             <details key={group.id} open={group.id !== "resources" || group.items.some((item) => isActiveRoute(item.href))} data-task-group={group.id} className="rounded-xl border border-white/5">
               <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3 py-3 text-[11px] font-black uppercase tracking-[0.1em] text-slate-400 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300">
