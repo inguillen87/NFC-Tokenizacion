@@ -396,7 +396,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
     closeMobileMenu("navigate");
     openMenuSourceRef.current = null;
     setOpenMenu(null);
-    if (pathname === "/") return focusInitialPassportFragment();
+    if (pathname === "/" || pathname === "/platform") return focusInitialPassportFragment();
   }, [pathname]);
 
   useEffect(() => () => {

@@ -2,8 +2,10 @@
 export function focusInitialPassportFragment(browser: Window = window) {
   const document = browser.document;
   const hash = "#pasaporte-digital";
+  // The section lives on /platform; the home forwards saved links there.
+  const pages = ["/", "/platform"];
   const navigation = browser.performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
-  if (browser.location.pathname !== "/" || browser.location.hash !== hash || navigation?.type === "back_forward") {
+  if (!pages.includes(browser.location.pathname) || browser.location.hash !== hash || navigation?.type === "back_forward") {
     return () => {};
   }
 
@@ -24,7 +26,7 @@ export function focusInitialPassportFragment(browser: Window = window) {
     const section = document.getElementById("pasaporte-digital");
     const heading = section?.querySelector<HTMLElement>("h1, h2, h3") ?? section;
     const active = document.activeElement;
-    const eligible = browser.location.pathname === "/" && browser.location.hash === hash
+    const eligible = pages.includes(browser.location.pathname) && browser.location.hash === hash
       && heading?.isConnected && heading.getClientRects().length > 0 && !heading.closest("[hidden], [inert]")
       && (!active || active === document.body || active === document.documentElement || active === section || active === heading);
     cleanup();

@@ -33,6 +33,7 @@ import {
   Wifi,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useId, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { STORY_PRODUCTS, StoryProduct, type StoryProductKey } from "./story-products";
 import styles from "./scroll-story.module.css";
@@ -75,6 +76,8 @@ const COPY: Record<StoryLocale, {
   servicesTitle: string;
   tabs: [string, string, string, string];
   scope: string;
+  about: string;
+  platform: string;
   products: Record<StoryProductKey, ProductCopy>;
 }> = {
   "es-AR": {
@@ -105,6 +108,8 @@ const COPY: Record<StoryLocale, {
     servicesTitle: "Servicios habilitados por la marca",
     tabs: ["Resumen", "Origen", "Estado", "Servicios"],
     scope: "Productos ilustrativos · datos de ejemplo",
+    about: "Conocé NexID",
+    platform: "Cómo funciona en detalle",
     products: {
       wine: { chip: "Vino", brand: "Bodega de muestra", name: "Reserva Andina", detail: "Malbec · Valle de Uco, Mendoza", rows: [["Lote", "RA-2407"], ["Origen declarado", "Mendoza, AR"]], services: ["Historia", "Club", "Contacto"] },
       seeds: { chip: "Semillas", brand: "Semillero de muestra", name: "Semilla Norte", detail: "Bolsa de semillas · híbrido de muestra", rows: [["Lote", "SN-0318"], ["Tratamiento", "Declarado"]], services: ["Ficha técnica", "Siembra", "Asesor"] },
@@ -141,6 +146,8 @@ const COPY: Record<StoryLocale, {
     servicesTitle: "Services enabled by the brand",
     tabs: ["Summary", "Origin", "Status", "Services"],
     scope: "Illustrative products · sample data",
+    about: "About NexID",
+    platform: "How it works in detail",
     products: {
       wine: { chip: "Wine", brand: "Sample winery", name: "Reserva Andina", detail: "Malbec · Uco Valley, Mendoza", rows: [["Batch", "RA-2407"], ["Declared origin", "Mendoza, AR"]], services: ["Story", "Club", "Contact"] },
       seeds: { chip: "Seeds", brand: "Sample seed company", name: "Semilla Norte", detail: "Seed bag · sample hybrid", rows: [["Batch", "SN-0318"], ["Treatment", "Declared"]], services: ["Data sheet", "Sowing", "Advisor"] },
@@ -177,6 +184,8 @@ const COPY: Record<StoryLocale, {
     servicesTitle: "Serviços habilitados pela marca",
     tabs: ["Resumo", "Origem", "Estado", "Serviços"],
     scope: "Produtos ilustrativos · dados de exemplo",
+    about: "Conheça a NexID",
+    platform: "Como funciona em detalhe",
     products: {
       wine: { chip: "Vinho", brand: "Vinícola de amostra", name: "Reserva Andina", detail: "Malbec · Vale de Uco, Mendoza", rows: [["Lote", "RA-2407"], ["Origem declarada", "Mendoza, AR"]], services: ["História", "Clube", "Contato"] },
       seeds: { chip: "Sementes", brand: "Sementeira de amostra", name: "Semilla Norte", detail: "Saco de sementes · híbrido de amostra", rows: [["Lote", "SN-0318"], ["Tratamento", "Declarado"]], services: ["Ficha técnica", "Plantio", "Consultor"] },
@@ -322,6 +331,10 @@ export function ScrollStory({ locale }: { locale: string }) {
             </ol>
             <div className={styles.rail} aria-hidden="true"><motion.span style={{ scaleX: railScale }} /></div>
             <p className={styles.credit}>{copy.scope}</p>
+            <p className={styles.links}>
+              <Link href="/platform" prefetch={false}>{copy.platform}</Link>
+              <Link href="/about" prefetch={false}>{copy.about}</Link>
+            </p>
           </div>
 
           <div className={styles.stage} onPointerMove={onPointerMove} onPointerLeave={onPointerLeave} aria-hidden="true">

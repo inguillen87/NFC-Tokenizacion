@@ -56,7 +56,7 @@ export function HeroSection({ content, locale }: { content: Content; locale: str
             <p className={styles.body}>{hero.body}</p>
             <div className={styles.actions} role="group" aria-label={isEn ? "Main actions" : isBr ? "Ações principais" : "Acciones principales"}>
                 <Link href="/demo-lab" prefetch={false} className={styles.primary} data-demo-entry="demo-lab">
-                  {isEn ? "Try the demo" : isBr ? "Testar a demo" : "Probar la demo"}<ArrowRight size={18} aria-hidden="true" />
+                  {isEn ? "Try the demo" : isBr ? "Testar a demo" : "Probar demo"}<ArrowRight size={18} aria-hidden="true" />
                 </Link>
                 <Link href="/?contact=demo#contact-modal" prefetch={false} className={styles.secondary}>{hero.secondary}</Link>
             </div>
