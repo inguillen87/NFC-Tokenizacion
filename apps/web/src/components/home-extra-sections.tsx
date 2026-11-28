@@ -1,12 +1,9 @@
 import type { CSSProperties } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, Building2, CircleHelp, LockOpen, UserRound } from "lucide-react";
 import { sunDemoScenarioHref } from "../lib/sun-demo-links";
 import { BrandControlCenterPreview } from "./brand-control-center-preview";
-import wineShot from "../../public/landing/connected-journey/wine-journey-02.webp";
-import agroShot from "../../public/landing/connected-journey/agro-journey-02.webp";
-import packagingShot from "../../public/landing/connected-journey/packaging-journey-02.webp";
+import { STORY_PRODUCTS, StoryProduct, type StoryProductKey } from "./story-products";
 import fx from "./home-enhancements.module.css";
 
 export function ReadingOutcomesSection({ locale }: { locale: string }) {
@@ -183,7 +180,7 @@ export function DemoLauncherSection({ locale }: { locale: string }) {
             { key: "packaging", name: "Packaging y productos premium", body: "Información del producto y beneficios desde el envase." },
           ],
         };
-  const media = { wine: wineShot, agro: agroShot, packaging: packagingShot } as const;
+  const media: Record<"wine" | "agro" | "packaging", StoryProductKey> = { wine: "wine", agro: "jerrycan", packaging: "perfume" };
   const hrefs = {
     wine: "/demo-lab?vertical=wine",
     agro: sunDemoScenarioHref("agrochem", "closed"),
@@ -203,8 +200,13 @@ export function DemoLauncherSection({ locale }: { locale: string }) {
           return (
             <li key={demo.key} className={fx.reveal} data-reveal style={{ "--reveal-i": index } as CSSProperties}>
               <Link href={hrefs[key]} prefetch={false} className={fx.launcherCard} data-spotlight data-demo-entry={demo.key}>
-                <span className={fx.launcherMedia}>
-                  <Image src={media[key]} alt="" fill sizes="(min-width: 860px) 30vw, 92vw" />
+                <span
+                  className={fx.launcherMedia}
+                  aria-hidden="true"
+                  style={{ "--launcher-accent": STORY_PRODUCTS.find((item) => item.key === media[key])?.accent } as CSSProperties}
+                >
+                  <span className={fx.launcherProduct}><StoryProduct product={media[key]} idPrefix={`launcher-${demo.key}-`} /></span>
+                  <span className={fx.launcherPhone}><i /></span>
                 </span>
                 <span className={fx.launcherBody}>
                   <strong>{demo.name}</strong>
