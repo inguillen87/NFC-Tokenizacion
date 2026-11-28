@@ -63,7 +63,11 @@ export function PwaInstallPrompt({ locale = "es-AR" }: { locale?: string }) {
   const [ready, setReady] = useState(false);
   const [engaged, setEngaged] = useState(false);
   const copy = useMemo(() => promptCopy[normalizeLocale(locale)], [locale]);
+  // Marketing pages read by buyers stay free of install prompts.
   const criticalJourney = pathname === "/"
+    || pathname === "/platform"
+    || pathname === "/compare"
+    || pathname === "/pricing"
     || pathname.startsWith("/demo-lab")
     || pathname === "/sun"
     || pathname.startsWith("/s/")

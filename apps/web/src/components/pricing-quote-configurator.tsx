@@ -297,7 +297,7 @@ export function PricingQuoteConfigurator({ locale }: { locale: PricingLocale }) 
   return (
     <section id="configurator" className="my-6 grid scroll-mt-24 gap-8" aria-labelledby="quote-configurator-title">
       <div className="overflow-hidden rounded-[2rem] border border-cyan-200 bg-white shadow-2xl shadow-cyan-100/70">
-        <header className="grid gap-4 border-b border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 p-6 text-white md:p-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <header className="nexid-quote-hero grid gap-4 border-b border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 p-6 text-white md:p-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div className="max-w-3xl">
             <span className="text-xs font-black uppercase tracking-[0.18em] text-cyan-300">{copy.eyebrow}</span>
             <h2 id="quote-configurator-title" className="mt-3 text-3xl font-black leading-tight md:text-4xl">{copy.title}</h2>
@@ -352,7 +352,7 @@ export function PricingQuoteConfigurator({ locale }: { locale: PricingLocale }) 
             </fieldset>
           </form>
 
-          <aside className="grid content-start gap-5 border-t border-slate-200 bg-slate-950 p-5 text-white md:p-8 xl:border-l xl:border-t-0" aria-labelledby="quote-recommendation-title">
+          <aside className="nexid-quote-result grid content-start gap-5 border-t border-slate-200 bg-slate-950 p-5 text-white md:p-8 xl:border-l xl:border-t-0" aria-labelledby="quote-recommendation-title">
             <p className="sr-only" role="status" aria-live="polite">
               {recommendation.packageName}. {copy.hardware}: {range(recommendation.hardware)}. {copy.setup}: {range(recommendation.setup)}. {copy.saas}: {range(recommendation.monthlySaas)}.
             </p>

@@ -2,32 +2,59 @@ import assert from "node:assert/strict";
 import { readFile, stat } from "node:fs/promises";
 import test from "node:test";
 
-const home = await readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8");
-const hero = home.slice(home.indexOf("export function HeroSection"), home.indexOf("export function SimpleTrustFlowSection"));
-const styles = await readFile(new URL("../src/components/home-sections.module.css", import.meta.url), "utf8");
+const [home, signal, css, asset] = await Promise.all([
+  readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/components/hero-immersive-signal.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
+  stat(new URL("../public/landing/nexid-dpp-hero-v3.webp", import.meta.url)),
+]);
 
-test("one local, responsive delivery photograph is prioritised on the landing", async () => {
-  const asset = await stat(new URL("../public/landing/parcel-in-hand.webp", import.meta.url));
-  assert.ok(asset.size < 90_000);
-  assert.equal((hero.match(/<Image/g) ?? []).length, 1);
-  assert.match(hero, /src=\{parcelInHand\}/);
-  assert.match(hero, /\bfill\b/);
-  assert.match(hero, /\bpriority\b/);
-  assert.match(hero, /sizes="\(min-width: 768px\) 52vw, 100vw"/);
-  assert.match(hero, /alt=\{isEn/);
-  assert.doesNotMatch(hero, /aria-hidden="true"[^>]*>\s*<Image/);
+test("the hero uses the approved NFC artwork without loading an interactive explainer", () => {
+  assert.match(home, /import Image from "next\/image"/);
+  assert.match(home, /import nexIdDppHero from "\.\.\/\.\.\/public\/landing\/nexid-dpp-hero-v3\.webp"/);
+  const heroImages = [...home.matchAll(/<Image\b[^>]*src=\{nexIdDppHero\}[^>]*\/>/g)].map(([image]) => image);
+  assert.equal(heroImages.length, 1, "the immersive scene must preload one approved artwork");
+  const image = heroImages[0];
+  assert.match(image, /\bfill\b/);
+  assert.match(image, /\bpriority\b/);
+  assert.match(image, /placeholder="blur"/);
+  assert.match(image, /sizes="100vw"/);
+  assert.match(image, /alt=""/);
+  assert.match(image, /className="hero-immersive-image"/);
+  assert.doesNotMatch(image, /loading="lazy"/);
+  assert.match(home, /<HeroImmersiveSignal locale=\{locale\} \/>/);
+  assert.match(home, /aria-hidden="true"/);
+  assert.doesNotMatch(home, /HeroValueLoop|framer-motion|setInterval|IntersectionObserver/);
+  assert.ok(asset.size < 90_000, "hero artwork should stay lightweight after visual review");
 });
 
-test("hero content is complete at first paint without an animated client overlay", () => {
-  assert.doesNotMatch(hero, /HeroImmersiveSignal|HeroValueLoop|framer-motion|setInterval|IntersectionObserver/);
-  assert.doesNotMatch(styles, /sceneBreathe|animation-play-state|\binfinite\b/);
-  assert.match(styles, /\.media\s*\{[^}]*min-height: 200px/);
-  assert.match(styles, /\.hero a:focus-visible/);
+test("the immersive hero motion is short, decorative and reduced-motion safe", () => {
+  const start = css.indexOf(".hero-immersive-media");
+  const end = css.indexOf("/* Calm three-step landing narrative", start);
+  const heroStyles = css.slice(start, end);
+
+  assert.ok(start > -1 && end > start, "immersive hero styles must be present");
+  assert.match(heroStyles, /animation:\s*hero-immersive-enter 1\.15s/);
+  assert.match(heroStyles, /html:is\(\.theme-dark, \[data-theme="dark"\]\) \.hero-immersive-image \{[\s\S]{0,220}opacity:\s*0\.72[\s\S]{0,160}contrast\(1\.4\)/);
+  assert.match(heroStyles, /animation:\s*hero-immersive-pulse 1\.35s ease-out 2 both/);
+  assert.match(heroStyles, /hero-immersive-breathe 9s ease-in-out 1\.15s infinite alternate/);
+  assert.match(heroStyles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.hero-immersive-ring[\s\S]*animation:\s*none !important/);
+  assert.match(heroStyles, /\.hero-immersive-ring \{[\s\S]*display:\s*none/);
+  assert.match(signal, /IntersectionObserver/);
+  assert.match(signal, /visibilitychange/);
+  assert.match(signal, /prefers-reduced-motion: reduce/);
+  assert.match(signal, /hero-immersive-packet--return/);
+  assert.match(signal, /Etiqueta vinculada/);
+  assert.match(signal, /Pasaporte disponible/);
+  assert.match(heroStyles, /@keyframes hero-signal-packet-return/);
+  assert.match(heroStyles, /@keyframes hero-signal-packet-return-live/);
+  assert.match(heroStyles, /data-motion-active="true"/);
 });
 
-test("the first decision offers the general demo and the commercial enquiry", () => {
-  assert.equal((hero.match(/<Link\s/g) ?? []).length, 2);
-  assert.match(hero, /className=\{styles\.actions\} role="group" aria-label=/);
-  assert.match(hero, /href="\/demo-lab"/);
-  assert.match(hero, /href="\/\?contact=demo#contact-modal"/);
+test("the hero keeps a concise DPP journey and two clear actions", () => {
+  assert.match(home, /Identidad por modelo, lote o unidad/);
+  assert.match(home, /Información e historia disponibles/);
+  assert.match(home, /NFC \+ QR, sin app/);
+  assert.doesNotMatch(home, /InstitutionalVideoPanel/);
+  assert.match(home, /role="group" aria-label=/);
 });

@@ -6,6 +6,8 @@ import { JsonLd } from "../../components/json-ld";
 import { PricingRoiCalculator } from "../../components/pricing-roi-calculator";
 import { PricingQuoteConfigurator } from "../../components/pricing-quote-configurator";
 import { PublicSiteHeader } from "../../components/public-site-header";
+import "./pricing-light-theme.css";
+import "../../styles/pro-motion.css";
 
 export const metadata: Metadata = {
   title: "Pricing | nexID enterprise product identity",
@@ -136,10 +138,10 @@ const copyByLocale = {
   },
   "es-AR": {
     back: "Volver a plataforma",
-    title: "Pricing para pilotos que pueden escalar.",
-    body: "nexID no es una suscripcion generica de etiquetas. Empeza con un piloto controlado de identidad de producto y escala a NFC seguro, DPP, analytics, APIs y operacion enterprise cuando la evidencia lo justifique.",
-    note: "Todos los planes incluyen cloud segura, roles, audit logs y minimizacion de datos. Hardware, encoding y servicios de rollout se cotizan por volumen.",
-    popular: "Mas elegido",
+    title: "Precios para pilotos que pueden escalar.",
+    body: "nexID no es una suscripción genérica de etiquetas. Empezá con un piloto controlado de identidad de producto y escalá a NFC seguro, DPP, analytics, APIs y operación enterprise cuando la evidencia lo justifique.",
+    note: "Todos los planes incluyen cloud segura, roles, audit logs y minimización de datos. Hardware, encoding y servicios de rollout se cotizan por volumen.",
+    popular: "Más elegido",
     enterprise: "Enterprise destacado",
     tiers: [
       {
@@ -147,40 +149,40 @@ const copyByLocale = {
         label: "Piloto QR / NFC",
         price: "Banda de piloto en el configurador",
         recurring: "Cotizado por unidades, carrier y alcance",
-        body: "Para una linea de producto, lotes limitados y validacion rapida.",
+        body: "Para una línea de producto, lotes limitados y validación rápida.",
         cta: "Solicitar piloto",
         href: "/?contact=quote&intent=pricing_starter#contact-modal",
-        bullets: ["Flujo piloto QR o NTAG", "Pasaporte y pagina de verificacion", "Analytics basico y export de scans", "Demo Lab para ventas"],
+        bullets: ["Flujo piloto QR o NTAG", "Pasaporte y página de verificación", "Analytics básico y export de scans", "Demo Lab para ventas"],
       },
       {
         name: "Pro",
         label: "Rollout seguro",
-        price: "Banda de rollout construida por alcance tecnico",
-        recurring: "SaaS, operacion y uso cotizados por separado",
-        body: "Para marcas que necesitan NFC criptografico, tamper y acciones postventa.",
+        price: "Banda de rollout construida por alcance técnico",
+        recurring: "SaaS, operación y uso cotizados por separado",
+        body: "Para marcas que necesitan NFC criptográfico, tamper y acciones postventa.",
         cta: "Planear rollout",
         href: "/?contact=quote&intent=pricing_pro#contact-modal",
         popular: true,
-        bullets: ["Opcion NTAG 424 DNA / TagTamper", "Garantia, club y ofertas", "Alertas de replay/riesgo y CRM", "Soporte prioritario"],
+        bullets: ["Opción NTAG 424 DNA / TagTamper", "Garantía, club y ofertas", "Alertas de replay/riesgo y CRM", "Soporte prioritario"],
       },
       {
         name: "Enterprise",
         label: "Plataforma multi-marca",
-        price: "Implementacion cotizada por separado",
-        recurring: "SaaS, soporte y uso segun alcance aprobado",
-        body: "Para operaciones reguladas, multi-pais o reseller con integraciones y gobierno.",
+        price: "Implementación cotizada por separado",
+        recurring: "SaaS, soporte y uso según alcance aprobado",
+        body: "Para operaciones reguladas, multipaís o reseller con integraciones y gobierno.",
         cta: "Hablar con enterprise",
         href: "/?contact=sales&intent=pricing_enterprise#contact-modal",
         featured: true,
-        bullets: ["Tenant Vault, API y webhooks", "Modelo DPP y exports de auditoria", "Offline verifier y supplier ops", "Deploy/SLA sujeto a readiness review"],
+        bullets: ["Tenant Vault, API y webhooks", "Modelo DPP y exports de auditoría", "Offline verifier y supplier ops", "Deploy/SLA sujeto a readiness review"],
       },
     ] satisfies Tier[],
     compare: [
       ["Identidad", "Piloto QR/NFC", "NFC seguro + pasaporte", "Grafo multi-marca"],
-      ["Evidencia del mensaje", "Checks basicos del resolver", "SUN/SDM y replay", "Politica, alertas y auditoria; sin prueba fisica autonoma"],
-      ["Lifecycle", "Captura de lead", "Garantia, loyalty, ofertas", "Ownership, resale e integraciones"],
+      ["Evidencia del mensaje", "Checks básicos del resolver", "SUN/SDM y replay", "Política, alertas y auditoría; sin prueba física autonoma"],
+      ["Lifecycle", "Captura de lead", "Garantía, loyalty, ofertas", "Ownership, resale e integraciones"],
       ["Compliance", "Eventos exportables", "Campos DPP-ready", "Gobierno DPP/audit"],
-      ["Operacion", "Setup guiado", "Rollout prioritario", "Success dedicado; SLA luego de readiness review"],
+      ["Operación", "Setup guiado", "Rollout prioritario", "Success dedicado; SLA luego de readiness review"],
     ],
   },
 };

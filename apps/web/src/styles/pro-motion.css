@@ -1,0 +1,40 @@
+/*
+ * Native "pro" motion layer for the marketing site (no extra JS):
+ * cross-document View Transitions + CSS scroll-driven reveals.
+ * Everything is progressive: unsupported browsers simply navigate/scroll normally,
+ * and reduced-motion users get no transition at all.
+ * Reveals animate transform only (never opacity), so contrast checks stay valid.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+
+  ::view-transition-old(root) { animation: nexidPageOut 200ms cubic-bezier(.4, 0, 1, 1) both; }
+  ::view-transition-new(root) { animation: nexidPageIn 420ms cubic-bezier(.2, .8, .2, 1) both; }
+
+  @supports (animation-timeline: view()) {
+    :is(.nexid-pricing-card, .nexid-pricing-compare, [data-scroll-rise]) {
+      animation: nexidScrollRise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 24%;
+    }
+  }
+}
+
+@keyframes nexidPageOut { to { transform: translateY(-6px) scale(.995); filter: blur(2px); } }
+@keyframes nexidPageIn { from { transform: translateY(14px); filter: blur(3px); } }
+@keyframes nexidScrollRise { from { transform: translateY(36px) scale(.97); } to { transform: none; } }
+
+/* Lenis (inertial scroll on fine pointers; see components/smooth-scroll.tsx) */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: clip;
+}

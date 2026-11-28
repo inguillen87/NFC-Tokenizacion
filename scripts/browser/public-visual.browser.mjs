@@ -196,6 +196,8 @@ try {
       check(targets.every(e=>e.width>=44&&e.height>=44),'Primary header and hero targets are at least 44px '+name,targets);
       if(path==='/') {
         const galleryReached=await menu(page,name,destination=>{allowedSunDestination=destination;});
+        // Saved #pasaporte-digital links now land on /platform; return home for the hero checks.
+        if(new URL(page.url()).pathname!=='/'){await page.goto(origin+'/',{waitUntil:'networkidle',timeout:45000});await stable(page);}
         const actions=main.getByRole('group',{name:'Acciones principales'});
         const primary=actions.locator('a').first();
         check(await primary.getAttribute('href')==='/demo-lab'&&await primary.innerText()==='Probar demo','Hero offers Demo Lab on first entry '+name);

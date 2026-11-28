@@ -22,7 +22,7 @@ test("Demo Lab leads with one guided product journey and progressively discloses
   ]);
 
   assert.match(journey, /^"use client";/);
-  assert.match(journey, /import Image from "next\/image"/);
+  assert.match(journey, /import \{ DemoLabScene \} from "\.\/demo-lab-scene"/);
   assert.match(journey, /data-demo-featured-journey/);
   assert.match(journey, /role="progressbar"/);
   assert.match(journey, /aria-current=\{isCurrent \? "step"/);

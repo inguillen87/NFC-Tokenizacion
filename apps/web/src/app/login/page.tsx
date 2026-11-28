@@ -4,7 +4,7 @@ import { productUrls } from "@product/config";
 import { normalizeSafeReturnPath } from "@product/config/safe-return-path";
 import { Card, ThemeToggle } from "@product/ui";
 import { THEME_PREFERENCE_VERSION_COOKIE, resolveThemePreference } from "@product/ui/theme-preference";
-import { ArrowRight, Building2, Fingerprint, ShieldCheck } from "lucide-react";
+import { ArrowRight, BadgeCheck, Building2, Fingerprint, Gift, ShieldCheck } from "lucide-react";
 import { BackLink } from "../../components/back-link";
 import { BrandHomeLink } from "../../components/brand-home-link";
 import { getWebI18n } from "../../lib/locale";
@@ -46,7 +46,7 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
         <Card className="auth-card web-auth-card w-full border border-white/10 bg-slate-900/70 p-4 sm:p-7">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2">
-              <BrandHomeLink locale={locale} markOnly size={34} />
+              <BrandHomeLink locale={locale} markOnly size={44} variant="pulse" />
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Acceso nexID</p>
                 <p className="text-sm font-black text-white">{isConsumerAccess ? "Mi cuenta" : "Elegí tu espacio"}</p>
@@ -71,6 +71,23 @@ export default async function WebLoginPage({ searchParams }: { searchParams?: Pr
               </section>
 
               <aside className={`auth-info-panel rounded-2xl border border-white/10 bg-slate-900/55 ${styles.consumerDetails}`}>
+                <figure className={styles.preview}>
+                  <figcaption className={styles.previewCaption}>Así se ve tu espacio <span>Ejemplo ilustrativo</span></figcaption>
+                  <ul className={styles.previewStack}>
+                    <li className={styles.previewCard} data-tone="passport">
+                      <span className={styles.previewIcon} aria-hidden="true"><Fingerprint className="h-4 w-4" /></span>
+                      <span><small>Pasaporte del producto</small><strong>Vino tinto · lote de muestra</strong><em>Sello cerrado al leerlo</em></span>
+                    </li>
+                    <li className={styles.previewCard} data-tone="warranty">
+                      <span className={styles.previewIcon} aria-hidden="true"><BadgeCheck className="h-4 w-4" /></span>
+                      <span><small>Garantía</small><strong>Registrada por la marca</strong><em>Condiciones y contacto a mano</em></span>
+                    </li>
+                    <li className={styles.previewCard} data-tone="benefit">
+                      <span className={styles.previewIcon} aria-hidden="true"><Gift className="h-4 w-4" /></span>
+                      <span><small>Beneficio de la marca</small><strong>Experiencia o descuento</strong><em>Solo si la marca lo habilita</em></span>
+                    </li>
+                  </ul>
+                </figure>
                 <details>
                   <summary>¿Qué puedo consultar?</summary>
                   <ul className="grid gap-3 text-sm leading-5 text-slate-300">

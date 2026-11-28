@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import {
   Activity,
@@ -18,13 +17,21 @@ import {
   Map,
   Radio,
   RotateCcw,
+  Rotate3d,
   ShieldCheck,
   Sparkles,
   Smartphone,
   Tag,
   Wine,
 } from "lucide-react";
+import { DemoLabScene } from "./demo-lab-scene";
 import { useState } from "react";
+
+const VIEW_3D_COPY = {
+  es: { on: "Explorar en 3D", off: "Vista guiada", hint: "Arrastrá para girar la escena" },
+  en: { on: "Explore in 3D", off: "Guided view", hint: "Drag to rotate the scene" },
+  pt: { on: "Explorar em 3D", off: "Vista guiada", hint: "Arraste para girar a cena" },
+} as const;
 import type { AppLocale } from "@product/config";
 import {
   DEMO_PRODUCT_PROFILES,
@@ -480,6 +487,7 @@ export function DemoLabFeaturedJourney({
   const [furthestStep, setFurthestStep] = useState<JourneyStep>(0);
   const [selectedAction, setSelectedAction] = useState<JourneyAction>("warranty");
   const [productKey, setProductKey] = useState<DemoProductProfileKey>(initialProfile);
+  const [view3d, setView3d] = useState(false);
   const product = DEMO_PRODUCT_PROFILES[productKey];
   const current = copy.steps[step];
   const actionSignal = copy.actionSignals[selectedAction];
@@ -600,26 +608,21 @@ export function DemoLabFeaturedJourney({
       </nav>
 
       <div className={styles.stage}>
-        <div className={styles.visual} role="group" aria-label={copy.visualLabels[step]}>
-          <Image
-            key={`${productKey}-${product.images[step]}`}
-            src={product.images[step]}
-            alt={copy.visualLabels[step]}
-            fill
-            priority={step === 0}
-            sizes="(max-width: 760px) 100vw, 58vw"
-            className={styles.sceneImage}
-          />
-          <div className={styles.sceneShade} aria-hidden="true" />
+        <div className={styles.visual} role="group" aria-label={copy.visualLabels[step]} data-view3d={view3d ? "true" : undefined}>
+          <DemoLabScene profile={productKey} step={step} locale={locale} orbit={view3d} />
+          {view3d ? <span className="demo-lab-3d-hint" data-testid="demo-lab-3d">{VIEW_3D_COPY[localeKey(locale)].hint}</span> : null}
+          <button
+            type="button"
+            className="demo-lab-3d-toggle"
+            aria-pressed={view3d}
+            onClick={() => setView3d((value) => !value)}
+            data-testid="demo-lab-3d-toggle"
+          >
+            <Rotate3d aria-hidden="true" />
+            {view3d ? VIEW_3D_COPY[localeKey(locale)].off : VIEW_3D_COPY[localeKey(locale)].on}
+          </button>
 
-          <span className={styles.demoChip}><Wine aria-hidden="true" />{product.name}</span>
-          <span className={styles.nfcChip}><Tag aria-hidden="true" />NFC</span>
-
-          {step === 0 ? (
-            <div className={styles.radioSignal} aria-hidden="true">
-              <i /><i /><i />
-            </div>
-          ) : null}
+          <span className={styles.demoChip}><Tag aria-hidden="true" />{product.name}</span>
 
           <div className={styles.visualBubble} data-step={step} role="status" aria-live="polite">
             {step === 0 ? (

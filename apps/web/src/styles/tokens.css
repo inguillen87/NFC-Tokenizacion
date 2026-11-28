@@ -99,3 +99,8 @@
     --nexid-duration-enter: 0ms;
   }
 }
+
+/* Header identity on light backgrounds (kept global so the header module stays theme-agnostic). */
+html[data-theme="light"] [data-nexid-brand]::before { opacity: .32; }
+html[data-theme="light"] [data-nexid-brand="wide"] svg { filter: saturate(1.6) contrast(1.25) drop-shadow(0 3px 8px rgb(8 127 120 / .3)); }
+html[data-theme="light"] [data-nexid-brand="compact"] svg { filter: drop-shadow(0 4px 12px rgb(8 127 120 / .35)); }

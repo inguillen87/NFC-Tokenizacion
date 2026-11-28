@@ -3,9 +3,11 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import {
   HeroSection,
-  SimpleTrustFlowSection,
-  CommercialValueSection,
 } from "../components/home-sections";
+import { AudienceSection, DemoLauncherSection } from "../components/home-extra-sections";
+import { LandingMotion, LandingScrollProgress } from "../components/landing-motion";
+import { ScrollStory } from "../components/scroll-story";
+import { MovedFragmentRedirect } from "../components/moved-fragment-redirect";
 import { BrandHomeLink } from "../components/brand-home-link";
 import { MarketingHeaderBrand } from "../components/marketing-header-brand";
 import headerStyles from "../components/public-site-header.module.css";
@@ -14,10 +16,10 @@ import { MarketingMegaNav } from "../components/marketing-mega-nav";
 import { landingContent } from "../lib/landing-content";
 import { getWebI18n } from "../lib/locale";
 import { CommercialContactModal } from "../components/commercial-contact-modal";
-import { ConnectedProductIndustryProvider } from "../components/connected-product-industry-context";
 import { productUrls, schedulingUrls } from "@product/config";
 import { resolveThemePreference, THEME_PREFERENCE_VERSION_COOKIE } from "@product/ui/theme-preference";
 import { Building2, Facebook, Globe2, Instagram, Linkedin } from "lucide-react";
+import "../styles/pro-motion.css";
 
 export default async function HomePage() {
   const { locale, locales } = await getWebI18n();
@@ -108,11 +110,14 @@ export default async function HomePage() {
 
   return (
     <div className={`landing-root ${homeStyles.landing}`}>
+      <LandingScrollProgress />
+      <LandingMotion />
+      <MovedFragmentRedirect />
       <link rel="preload" as="font" type="font/woff2" crossOrigin="anonymous" href="/fonts/fraunces/fraunces-latin-500.c51a8809.woff2" />
       <a href="#main-content" className={headerStyles.skipLink}>{skipLabel}</a>
       <header className={headerStyles.header}>
         <div className={headerStyles.row}>
-          <MarketingHeaderBrand locale={locale} />
+          <MarketingHeaderBrand locale={locale} theme={initialTheme} />
           <MarketingMegaNav
             locale={locale}
             locales={locales}
@@ -125,11 +130,10 @@ export default async function HomePage() {
 
       <main id="main-content" tabIndex={-1} data-nav-inert>
         <HeroSection content={content} locale={locale} />
+        <ScrollStory locale={locale} />
 
-        <ConnectedProductIndustryProvider>
-          <SimpleTrustFlowSection locale={locale} />
-          <CommercialValueSection locale={locale} />
-        </ConnectedProductIndustryProvider>
+        <DemoLauncherSection locale={locale} />
+        <AudienceSection locale={locale} loginHref={loginHref} />
         <CommercialContactModal initialLocale={locale} />
       </main>
 

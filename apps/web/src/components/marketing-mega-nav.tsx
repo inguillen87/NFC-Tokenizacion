@@ -100,6 +100,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
             { label: "Verify public evidence", description: "Check public evidence without exposing private data.", href: "/proof/verify" },
             { label: "NFC passport demos", description: "Explore sample experiences for different industries.", href: SUN_DEMO_GALLERY_HREF },
             { label: "Offline field mode", description: "Review the controlled workflow for low-connectivity sites.", href: "/offline" },
+            { label: "How it works and security", description: "The complete journey and security explained simply or technically.", href: "/platform" },
             { label: "Consumer portal", description: "Access passports, certificates, rewards and ownership.", href: "/me" },
             { label: "SDK and APIs", description: "Integrate the platform when your technical team is ready.", href: "/sdk" },
           ],
@@ -115,6 +116,8 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
             { label: "Documentation", description: "Guides, operating concepts and frequently asked questions.", href: "/docs" },
             { label: "Architecture", description: "Understand the platform layers and technology choices.", href: "/stack" },
             { label: "Glossary", description: "Plain-language definitions for physical and digital concepts.", href: "/glossary" },
+            { label: "Compare approaches", description: "Plain QR, brand app, physical label and nexID, side by side.", href: "/compare" },
+            { label: "Standards and regulations", description: "Secure NFC, GS1, EU passport, pharma and privacy, with their real status.", href: "/normas" },
             { label: "By audience", description: "A focused view for brands, resellers and institutions.", href: "/audiences" },
             { label: "Reseller program", description: "Explore the partner model and regional rollout.", href: "/resellers" },
           ],
@@ -174,6 +177,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
             { label: "Verificar evidência pública", description: "Confira evidência pública sem expor dados privados.", href: "/proof/verify" },
             { label: "Demos do passaporte NFC", description: "Explore experiências de exemplo para diferentes setores.", href: SUN_DEMO_GALLERY_HREF },
             { label: "Modo de campo offline", description: "Revise o fluxo controlado para locais sem conectividade.", href: "/offline" },
+            { label: "Como funciona e segurança", description: "O percurso completo e a segurança explicada de forma simples ou técnica.", href: "/platform" },
             { label: "Portal do consumidor", description: "Acesse passaportes, certificados, benefícios e ownership.", href: "/me" },
             { label: "SDK e APIs", description: "Integre a plataforma quando sua equipe técnica estiver pronta.", href: "/sdk" },
           ],
@@ -189,6 +193,8 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
             { label: "Documentação", description: "Guias, conceitos operacionais e perguntas frequentes.", href: "/docs" },
             { label: "Arquitetura", description: "Entenda as camadas e escolhas tecnológicas da plataforma.", href: "/stack" },
             { label: "Glossário", description: "Definições claras para conceitos físicos e digitais.", href: "/glossary" },
+            { label: "Comparar abordagens", description: "QR comum, app próprio, etiqueta física e nexID, lado a lado.", href: "/compare" },
+            { label: "Normas e padrões", description: "NFC seguro, GS1, passaporte da UE, farma e privacidade, com estado real.", href: "/normas" },
             { label: "Por audiência", description: "Uma visão focada para marcas, revendas e instituições.", href: "/audiences" },
             { label: "Programa reseller", description: "Explore o modelo de parceiros e rollout regional.", href: "/resellers" },
           ],
@@ -247,6 +253,7 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
           { label: "Verificar evidencia pública", description: "Comprobá evidencia pública sin exponer datos privados.", href: "/proof/verify" },
           { label: "Demos del pasaporte NFC", description: "Explorá experiencias de muestra para distintos rubros.", href: SUN_DEMO_GALLERY_HREF },
           { label: "Modo de campo offline", description: "Revisá el flujo controlado para lugares sin conectividad.", href: "/offline" },
+          { label: "Cómo funciona y seguridad", description: "El recorrido completo y la seguridad explicada en simple o en técnico.", href: "/platform" },
           { label: "Portal del consumidor", description: "Accedé a pasaportes, certificados, beneficios y propiedad.", href: "/me" },
           { label: "SDK y APIs", description: "Integrá la plataforma cuando tu equipo técnico esté listo.", href: "/sdk" },
         ],
@@ -262,6 +269,8 @@ function getNavigationCopy(locale: AppLocale, meetingHref: string): NavigationCo
           { label: "Documentación", description: "Guías, conceptos operativos y preguntas frecuentes.", href: "/docs" },
           { label: "Arquitectura", description: "Entendé las capas y decisiones tecnológicas de la plataforma.", href: "/stack" },
           { label: "Glosario", description: "Definiciones claras para conceptos físicos y digitales.", href: "/glossary" },
+          { label: "Comparar enfoques", description: "QR común, app propia, etiqueta física y nexID, lado a lado.", href: "/compare" },
+            { label: "Normas y estándares", description: "NFC seguro, GS1, pasaporte de la UE, farma y privacidad, con su estado real.", href: "/normas" },
           { label: "Por audiencia", description: "Una vista enfocada para marcas, resellers e instituciones.", href: "/audiences" },
           { label: "Programa reseller", description: "Explorá el modelo de partners y despliegue regional.", href: "/resellers" },
         ],
@@ -390,7 +399,7 @@ export function MarketingMegaNav({ locale, locales, initialTheme, loginHref, mee
     closeMobileMenu("navigate");
     openMenuSourceRef.current = null;
     setOpenMenu(null);
-    if (pathname === "/") return focusInitialPassportFragment();
+    if (pathname === "/" || pathname === "/platform") return focusInitialPassportFragment();
   }, [pathname]);
 
   useEffect(() => () => {

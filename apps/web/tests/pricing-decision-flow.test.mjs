@@ -75,9 +75,9 @@ test("pricing exposes an editable, bounded and truthful decision model", async (
   assert.match(calculator, /demoScenario: "nfc-424"/);
   assert.match(calculator, /demoScenario: "sensor-evidence"/);
   assert.match(calculator, /NFC verification is not a blockchain transaction/);
-  assert.match(calculator, /Validar un NFC no es hacer una transaccion blockchain/);
+  assert.match(calculator, /Validar un NFC no es hacer una transacción blockchain/);
   assert.match(calculator, /Planning aid only/);
-  assert.match(calculator, /Herramienta de planificacion/);
+  assert.match(calculator, /Herramienta de planificación/);
   assert.match(calculator, /modelPricingScenario\(inputs\)/);
   assert.match(model, /const encodedCarrierCost = annualUnits \* inputs\.tagUnitCost/);
   assert.match(model, /const totalFirstYearInvestment = encodedCarrierCost \+ inputs\.platformBudget/);
@@ -90,7 +90,7 @@ test("pricing exposes an editable, bounded and truthful decision model", async (
   assert.match(model, /const paybackMonths = netModeledValue >= 0/);
   assert.match(calculator, /Not reached in modeled year 1/);
   assert.match(calculator, /Operational events and public proofs are separate/);
-  assert.match(calculator, /Los eventos operativos y las pruebas publicas se separan/);
+  assert.match(calculator, /Los eventos operativos y las pruebas públicas se separan/);
   assert.match(calculator, /Preset ilustrativo y editable/);
   assert.match(calculator, /key: "iotaAnchorEvery", min: 0/);
   assert.match(model, /INTEGER_INPUTS = new Set<keyof PricingScenarioInputs>\(\["annualUnits", "iotaAnchorEvery"\]\)/);
@@ -161,7 +161,7 @@ test("public and admin pricing separate recurring software from pilot and SLA sc
   assert.match(publicPricing, /SLA after readiness review/);
   assert.match(publicPricing, /Banda de piloto en el configurador/);
   assert.match(publicPricing, /Cotizado por unidades, carrier y alcance/);
-  assert.match(publicPricing, /SaaS, operacion y uso cotizados por separado/);
+  assert.match(publicPricing, /SaaS, operación y uso cotizados por separado/);
   assert.doesNotMatch(publicPricing, /Software (?:from|desde) (?:US)?\$/);
   assert.match(planConfig, /Software desde USD 99 \/ mes/);
   assert.match(planConfig, /Software desde USD 249 \/ mes/);

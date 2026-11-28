@@ -677,3 +677,18 @@
 @media (prefers-reduced-motion: reduce) {
   .navigation *, .navigation *::before, .navigation *::after { transition: none; animation: none; }
 }
+
+/* ---------- Living header actions ---------- */
+.headerCta { position: relative; overflow: hidden; isolation: isolate; box-shadow: 0 8px 22px rgb(8 127 120 / .28); }
+.headerCta::before { content: ""; position: absolute; z-index: -1; inset: -40% auto -40% -60%; width: 45%; rotate: 18deg; background: linear-gradient(90deg, transparent, rgb(255 255 255 / .55), transparent); animation: navShine 3.6s cubic-bezier(.2, 0, 0, 1) infinite; }
+.headerCta:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgb(47 225 195 / .42); }
+@keyframes navShine { 0%, 55% { translate: 0 0; } 100% { translate: 520% 0; } }
+.accountLink, .loginLink { position: relative; }
+.accountLink:hover, .loginLink:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgb(47 225 195 / .22), 0 0 0 1px rgb(47 225 195 / .45); }
+.accountLink::after { content: ""; position: absolute; top: .42rem; right: .42rem; width: .4rem; height: .4rem; border-radius: 50%; background: #2fe1c3; box-shadow: 0 0 0 0 rgb(47 225 195 / .6); animation: navBeacon 2.4s ease-out infinite; }
+@keyframes navBeacon { 0% { box-shadow: 0 0 0 0 rgb(47 225 195 / .6); } 70%, 100% { box-shadow: 0 0 0 .5rem rgb(47 225 195 / 0); } }
+@media (prefers-reduced-motion: reduce) {
+  .headerCta::before, .accountLink::after { animation: none; }
+  .headerCta::before { display: none; }
+  .headerCta:hover, .accountLink:hover, .loginLink:hover { transform: none; }
+}

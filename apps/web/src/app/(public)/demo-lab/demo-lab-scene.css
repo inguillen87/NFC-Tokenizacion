@@ -1,0 +1,415 @@
+/* Demo Lab illustrated scene: phone approaches an unbranded product and reads its NFC tag. */
+.demo-lab-scene {
+  --scene-accent: #2fe1c3;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  perspective: 1100px;
+  background:
+    radial-gradient(60% 55% at 34% 46%, color-mix(in srgb, var(--scene-accent) 22%, transparent), transparent 70%),
+    radial-gradient(40% 40% at 78% 18%, rgb(56 189 248 / 0.18), transparent 70%),
+    linear-gradient(160deg, #eef8fb 0%, #dcecf2 55%, #cfe3ea 100%);
+}
+
+.demo-lab-scene__floor {
+  position: absolute;
+  inset: auto -20% -8% -20%;
+  height: 46%;
+  transform: rotateX(68deg);
+  transform-origin: 50% 100%;
+  background-image:
+    linear-gradient(rgb(14 116 144 / 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(14 116 144 / 0.16) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(to top, #000 10%, transparent 92%);
+}
+
+.demo-lab-scene__product {
+  position: absolute;
+  left: 14%;
+  bottom: 12%;
+  width: 24%;
+  height: 72%;
+  filter: drop-shadow(0 24px 26px rgb(15 50 70 / 0.28));
+}
+
+.demo-lab-scene__product svg {
+  width: 100%;
+  height: 100%;
+}
+
+.demo-lab-scene__tag {
+  position: absolute;
+  top: var(--tag-top);
+  left: var(--tag-left);
+  width: 22%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+
+.demo-lab-scene__tag i {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--scene-accent);
+  border-radius: 50%;
+  opacity: 0;
+}
+
+.demo-lab-scene__beam {
+  position: absolute;
+  left: 30%;
+  top: 44%;
+  width: 22%;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--scene-accent), #67e8f9, transparent);
+  box-shadow: 0 0 18px var(--scene-accent);
+  opacity: 0;
+  transform-origin: 0 50%;
+}
+
+.demo-lab-scene__phone {
+  position: absolute;
+  left: 50%;
+  top: 26%;
+  width: 17%;
+  min-width: 7.5rem;
+  max-width: 11rem;
+  aspect-ratio: 9 / 18.5;
+  border-radius: 1.6rem;
+  padding: 0.42rem;
+  background: linear-gradient(145deg, #1e293b, #0b1220 60%, #1e293b);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.12),
+    0 30px 50px -18px rgb(8 30 48 / 0.55),
+    0 8px 18px -10px rgb(8 30 48 / 0.4);
+  transform: translate3d(0, 0, 0) rotateY(-18deg) rotateZ(4deg);
+  transform-style: preserve-3d;
+  transition: transform 900ms cubic-bezier(0.22, 1, 0.36, 1), left 900ms cubic-bezier(0.22, 1, 0.36, 1), top 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.demo-lab-scene__screen {
+  position: relative;
+  display: grid;
+  height: 100%;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background:
+    radial-gradient(120% 60% at 50% 0%, color-mix(in srgb, var(--scene-accent) 30%, transparent), transparent 70%),
+    linear-gradient(180deg, #0f2233, #08131f);
+  color: #e8f6fb;
+}
+
+.demo-lab-scene__notch {
+  position: absolute;
+  top: 0.45rem;
+  left: 50%;
+  width: 32%;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #020617;
+  transform: translateX(-50%);
+}
+
+.demo-lab-scene__view {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  padding: 0 0.6rem;
+  text-align: center;
+  animation: demoLabSceneView 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.demo-lab-scene__view b {
+  font-size: clamp(0.62rem, 1.1vw, 0.82rem);
+  line-height: 1.15;
+}
+
+.demo-lab-scene__view small {
+  color: #9fc3d1;
+  font-size: clamp(0.5rem, 0.85vw, 0.64rem);
+  line-height: 1.2;
+}
+
+.demo-lab-scene__view--list {
+  width: 100%;
+  gap: 0.4rem;
+  padding: 0 0.5rem;
+}
+
+.demo-lab-scene__row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.38rem 0.45rem;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 0.6rem;
+  background: rgb(255 255 255 / 0.06);
+  font-size: clamp(0.55rem, 0.95vw, 0.7rem);
+  font-weight: 700;
+}
+
+.demo-lab-scene__row svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  color: var(--scene-accent);
+  flex: none;
+}
+
+.demo-lab-scene__icon,
+.demo-lab-scene__seal {
+  display: grid;
+  width: 2.6rem;
+  height: 2.6rem;
+  place-items: center;
+  border-radius: 50%;
+  color: #04121c;
+  background: var(--scene-accent);
+  box-shadow: 0 0 0 0.35rem color-mix(in srgb, var(--scene-accent) 22%, transparent);
+}
+
+.demo-lab-scene__icon svg,
+.demo-lab-scene__seal svg {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.demo-lab-scene__seal--done {
+  background: #4ade80;
+  box-shadow: 0 0 0 0.35rem rgb(74 222 128 / 0.22);
+}
+
+/* Step 1: the phone touches the tag. */
+.demo-lab-scene[data-step="1"] .demo-lab-scene__phone {
+  left: 34%;
+  top: 22%;
+  transform: translate3d(0, 0, 40px) rotateY(-8deg) rotateZ(-6deg);
+}
+
+.demo-lab-scene[data-step="1"] .demo-lab-scene__beam {
+  opacity: 1;
+  width: 6%;
+}
+
+/* Steps 2-3: the phone comes back, upright, to show what opened. */
+.demo-lab-scene[data-step="2"] .demo-lab-scene__phone,
+.demo-lab-scene[data-step="3"] .demo-lab-scene__phone {
+  left: 48%;
+  top: 18%;
+  transform: translate3d(0, 0, 60px) rotateY(-4deg) rotateZ(0deg) scale(1.08);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .demo-lab-scene[data-step="0"] .demo-lab-scene__tag i,
+  .demo-lab-scene[data-step="1"] .demo-lab-scene__tag i {
+    animation: demoLabSceneRipple 2.2s ease-out infinite;
+  }
+
+  .demo-lab-scene__tag i:nth-child(2) { animation-delay: 0.7s !important; }
+  .demo-lab-scene__tag i:nth-child(3) { animation-delay: 1.4s !important; }
+
+  .demo-lab-scene[data-step="0"] .demo-lab-scene__phone {
+    animation: demoLabSceneHover 4.8s ease-in-out infinite;
+  }
+
+  .demo-lab-scene__icon--pulse {
+    animation: demoLabScenePulse 1.8s ease-in-out infinite;
+  }
+
+  .demo-lab-scene[data-step="1"] .demo-lab-scene__beam {
+    animation: demoLabSceneBeam 1.1s ease-in-out infinite alternate;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-lab-scene__phone { transition: none; }
+  .demo-lab-scene__view { animation: none; }
+  .demo-lab-scene__tag i { opacity: 0.5; }
+  .demo-lab-scene__tag i:nth-child(2) { transform: scale(1.5); opacity: 0.3; }
+  .demo-lab-scene__tag i:nth-child(3) { transform: scale(2); opacity: 0.15; }
+}
+
+/* Phones: product and phone sit in the top part; the status bubble covers the bottom. */
+@media (max-width: 640px) {
+  .demo-lab-scene__product { left: 12%; bottom: auto; top: 6%; width: 26%; height: 56%; }
+  .demo-lab-scene__phone { left: 54%; top: 8%; width: 22%; min-width: 5.6rem; border-radius: 1.2rem; padding: 0.3rem; }
+  .demo-lab-scene__screen { border-radius: 0.95rem; }
+  .demo-lab-scene[data-step="1"] .demo-lab-scene__phone { left: 38%; top: 12%; transform: rotateY(-8deg) rotateZ(-6deg) scale(.92); }
+  .demo-lab-scene[data-step="2"] .demo-lab-scene__phone,
+  .demo-lab-scene[data-step="3"] .demo-lab-scene__phone { left: 52%; top: 3%; transform: rotateY(-4deg) scale(1); }
+  .demo-lab-scene__beam { left: 32%; top: 34%; }
+  .demo-lab-scene__floor { height: 36%; bottom: 20%; }
+  .demo-lab-scene__view b { font-size: 0.56rem; }
+  .demo-lab-scene__view small { display: none; }
+  .demo-lab-scene__icon, .demo-lab-scene__seal { width: 1.9rem; height: 1.9rem; }
+  .demo-lab-scene__icon svg, .demo-lab-scene__seal svg { width: 1rem; height: 1rem; }
+  .demo-lab-scene__row { padding: 0.25rem 0.3rem; font-size: 0.5rem; }
+  .demo-lab-scene__row svg { width: 0.65rem; height: 0.65rem; }
+}
+
+@keyframes demoLabSceneRipple {
+  0% { opacity: 0.85; transform: scale(0.4); }
+  100% { opacity: 0; transform: scale(2.4); }
+}
+
+@keyframes demoLabSceneHover {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -8px; }
+}
+
+@keyframes demoLabScenePulse {
+  0%, 100% { box-shadow: 0 0 0 0.35rem color-mix(in srgb, var(--scene-accent) 22%, transparent); }
+  50% { box-shadow: 0 0 0 0.7rem color-mix(in srgb, var(--scene-accent) 6%, transparent); }
+}
+
+@keyframes demoLabSceneBeam {
+  from { opacity: 0.55; }
+  to { opacity: 1; }
+}
+
+@keyframes demoLabSceneView {
+  from { opacity: 0.001; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Explore-in-3D: the same illustrated scene, orbitable by drag (CSS 3D, no WebGL). */
+.demo-lab-scene__stage {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.demo-lab-scene__shadow {
+  position: absolute;
+  left: 10%;
+  bottom: 9%;
+  width: 34%;
+  height: 7%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(8 40 56 / 0.35), transparent);
+  opacity: 0;
+  transition: opacity 400ms ease, transform 700ms ease;
+}
+.demo-lab-scene[data-orbit] {
+  cursor: grab;
+  touch-action: pan-y;
+  perspective: 900px;
+}
+.demo-lab-scene[data-orbit="dragging"] {
+  cursor: grabbing;
+}
+.demo-lab-scene[data-orbit="dragging"] .demo-lab-scene__stage {
+  transition: none;
+}
+.demo-lab-scene[data-orbit] .demo-lab-scene__floor { translate: 0 0 -40px; }
+.demo-lab-scene[data-orbit] .demo-lab-scene__shadow {
+  opacity: 1;
+  transform: translateX(calc(var(--ry) * -0.6px)) scaleX(1.1);
+}
+.demo-lab-scene[data-orbit] .demo-lab-scene__product { translate: 0 0 50px; }
+.demo-lab-scene[data-orbit] .demo-lab-scene__beam { translate: 0 0 80px; }
+.demo-lab-scene[data-orbit] .demo-lab-scene__phone { translate: 0 0 130px; }
+.demo-lab-scene[data-orbit] .demo-lab-scene__product::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent calc(var(--sheen) - 14%), rgb(255 255 255 / 0.42) var(--sheen), transparent calc(var(--sheen) + 14%));
+  mix-blend-mode: soft-light;
+  -webkit-mask: linear-gradient(#000, #000);
+  border-radius: 1rem;
+}
+.demo-lab-scene[data-orbit="idle"] .demo-lab-scene__stage {
+  animation: demoLabOrbitIdle 7s ease-in-out infinite alternate;
+}
+@keyframes demoLabOrbitIdle {
+  from { transform: rotateX(var(--rx)) rotateY(calc(var(--ry) - 4deg)); }
+  to { transform: rotateX(var(--rx)) rotateY(calc(var(--ry) + 4deg)); }
+}
+.demo-lab-3d-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 1rem;
+  z-index: 6;
+  translate: -50% 0;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  background: rgb(7 23 31 / 0.78);
+  color: #e6fffb;
+  font-size: 0.75rem;
+  font-weight: 700;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+  animation: demoLabHintIn 500ms ease-out both;
+}
+@keyframes demoLabHintIn {
+  from { opacity: 0; translate: -50% 6px; }
+  to { opacity: 1; translate: -50% 0; }
+}
+.demo-lab-3d-toggle {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  padding: 0 0.95rem;
+  border: 1px solid rgb(15 118 110 / 0.28);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.86);
+  color: #064e4a;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px -14px rgb(8 47 73 / 0.5);
+  transition: transform 180ms ease, background 180ms ease, color 180ms ease;
+}
+.demo-lab-3d-toggle svg {
+  width: 1rem;
+  height: 1rem;
+}
+.demo-lab-3d-toggle:hover {
+  transform: translateY(-1px);
+}
+.demo-lab-3d-toggle:focus-visible {
+  outline: 3px solid #0e7490;
+  outline-offset: 2px;
+}
+.demo-lab-3d-toggle[aria-pressed="true"] {
+  background: #064e4a;
+  color: #f0fdfa;
+}
+[data-view3d="true"] > [role="status"] {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .demo-lab-scene__stage,
+  .demo-lab-scene__shadow,
+  .demo-lab-3d-toggle { transition: none; }
+  .demo-lab-scene[data-orbit="idle"] .demo-lab-scene__stage,
+  .demo-lab-3d-hint { animation: none; }
+}
+@media (max-width: 640px) {
+  .demo-lab-3d-toggle {
+    top: auto;
+    bottom: 0.75rem;
+    right: 0.75rem;
+    min-height: 2.25rem;
+    padding: 0 0.8rem;
+  }
+  .demo-lab-3d-hint {
+    left: 0.75rem;
+    bottom: 1.05rem;
+    translate: none;
+    white-space: nowrap;
+    font-size: 0.7rem;
+    animation: none;
+  }
+}

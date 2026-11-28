@@ -440,6 +440,32 @@
   .passport :global(.sun-summary-actions) a:active {
     transform: translateY(1px);
   }
+
+  /* One-shot "seal" ripple: the reading result lands like a stamp. */
+  .passport :global(.sun-summary-status__icon) {
+    position: relative;
+  }
+
+  .passport :global(.sun-summary-status__icon)::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 45%, transparent);
+    animation: sealRipple 1100ms cubic-bezier(0.2, 0.8, 0.2, 1) 220ms 2 both;
+  }
+
+  /* One-shot light sweep over the product, like holding it under a lamp. */
+  .passport :global(.sun-summary-product__visual)::after {
+    content: "";
+    position: absolute;
+    inset: -20% -60%;
+    pointer-events: none;
+    background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 0.28) 50%, transparent 62%);
+    transform: translateX(-70%);
+    animation: productSheen 1300ms cubic-bezier(0.4, 0, 0.2, 1) 260ms 1 both;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -461,6 +487,16 @@
 @keyframes productArrival {
   from { opacity: 1; transform: translateY(2px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sealRipple {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 45%, transparent); }
+  100% { box-shadow: 0 0 0 12px color-mix(in srgb, currentColor 0%, transparent); }
+}
+
+@keyframes productSheen {
+  from { transform: translateX(-70%); }
+  to { transform: translateX(70%); }
 }
 
 @keyframes resultArrival {

@@ -68,7 +68,7 @@ test("landing hero uses one commercial CTA and one passport discovery CTA", asyn
   const sections = await readFile(new URL("../src/components/home-sections.tsx", import.meta.url), "utf8");
   const hero = await readFile(new URL("../src/components/hero-scene.tsx", import.meta.url), "utf8");
 
-  assert.match(sections, /href="\/demo-lab"[^>]*className=\{styles\.primary\}/);
+  assert.match(sections, /href="\/demo-lab"[^>]*data-demo-entry="demo-lab"[^>]*>[\s\S]*"Probar demo"/);
   assert.match(sections, /href="\/\?contact=demo#contact-modal"[^>]*>[\s\S]*\{hero\.secondary\}/);
   assert.doesNotMatch(sections, /href="\/docs"[^>]*>[\s\S]{0,100}\{secondaryCta\}/);
   assert.match(hero, /routeTitle: "RUTA DECLARADA · DEMO"/);

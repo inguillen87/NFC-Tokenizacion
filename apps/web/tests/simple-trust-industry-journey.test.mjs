@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
@@ -44,7 +45,7 @@ test("industry selector exposes one keyboard-operable tab panel", () => {
 test("industry choice stays in context for the journey and the role-based passport explorer", () => {
   assert.match(context, /createContext<ConnectedProductIndustryContextValue \| null>/);
   assert.match(context, /useState<SimpleTrustIndustry>\("bottles"\)/);
-  assert.match(home, /<ConnectedProductIndustryProvider>[\s\S]*<SimpleTrustFlowSection locale=\{locale\} \/>[\s\S]*<CommercialValueSection locale=\{locale\} \/>[\s\S]*<\/ConnectedProductIndustryProvider>/);
+  assert.match(readFileSync(new URL("../src/app/platform/page.tsx", import.meta.url), "utf8"), /<ConnectedProductIndustryProvider>[\s\S]*<SimpleTrustFlowSection locale=\{locale\} \/>[\s\S]*<CommercialValueSection locale=\{locale\} \/>[\s\S]*<\/ConnectedProductIndustryProvider>/);
 });
 
 test("selector and shared three-step journey are localized", () => {
