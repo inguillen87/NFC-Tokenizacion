@@ -1,15 +1,15 @@
 .journey {
-  --journey-bg: #14201f;
-  --journey-panel: #14201f;
-  --journey-panel-soft: #1b2c28;
-  --journey-line: #354944;
-  --journey-line-strong: #7dbbb0;
-  --journey-text: #ecf2ef;
-  --journey-muted: #bbc9c3;
-  --journey-accent: #9fd5c8;
-  --journey-accent-strong: #a2d8c9;
-  --journey-primary-text: #16362e;
-  --journey-focus: #a2d8c9;
+  --journey-bg: #0a1f2a;
+  --journey-panel: #0a1f2a;
+  --journey-panel-soft: #10303c;
+  --journey-line: #1f3a44;
+  --journey-line-strong: #2fe1c3;
+  --journey-text: #eef7f6;
+  --journey-muted: #a9bdc4;
+  --journey-accent: #2fe1c3;
+  --journey-accent-strong: #2fe1c3;
+  --journey-primary-text: #06211e;
+  --journey-focus: #2fe1c3;
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -1674,4 +1674,15 @@
   .radioSignal i {
     opacity: 1;
   }
+}
+
+/* ---------- Living layer: glow, lift and light on interaction ---------- */
+.journey { box-shadow: 0 30px 80px rgb(0 0 0 / .35), 0 0 0 1px rgb(47 225 195 / .14), 0 0 60px rgb(47 225 195 / .08); }
+.productSelector button { position: relative; overflow: hidden; border-radius: .8rem; transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 220ms cubic-bezier(.2, 0, 0, 1), box-shadow 220ms ease; }
+.productSelector button:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgb(47 225 195 / .2); }
+.productSelector button[data-active="true"] { box-shadow: 0 0 0 1px var(--journey-accent), 0 12px 30px rgb(47 225 195 / .26); }
+.productSelector button[data-active="true"]::after { content: ""; position: absolute; inset: 0 0 auto; height: 2px; background: linear-gradient(90deg, #2fe1c3, #60a5fa, #8b5cf6); }
+@media (prefers-reduced-motion: reduce) {
+  .productSelector button { transition: none; }
+  .productSelector button:hover { transform: none; }
 }

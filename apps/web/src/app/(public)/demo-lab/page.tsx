@@ -980,7 +980,7 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
       ))}
       {/* Top nav bar */}
       <nav className="demo-lab-hub-nav demo-lab-hub-nav--mobile-safe sticky top-0 z-50 grid min-h-[3.75rem] grid-cols-1 items-start justify-between gap-3 border-b border-white/[0.06] bg-[#03070f]/90 px-4 py-2 backdrop-blur-xl sm:grid-cols-[auto_minmax(0,1fr)] md:flex md:items-center">
-        <BrandHomeLink locale={locale} theme={requestedTheme} size={30} />
+        <span className={surfaceStyles.brandAura}><BrandHomeLink locale={locale} theme={requestedTheme} size={44} variant="pulse" /></span>
         <div className={surfaceStyles.headerActions}>
           <span className="hidden text-xs font-black uppercase tracking-[0.18em] text-slate-400 md:inline">
             Demo Lab
