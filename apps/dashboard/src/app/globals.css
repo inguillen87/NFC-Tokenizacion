@@ -2979,12 +2979,19 @@ body.nexid-account-menu-open .nexid-account-layer * {
   }
 }
 
-/* CRM metric titles: long Spanish words (AUTENTICACIÓN, CONSENTIMIENTO) hyphenate
-   inside narrow cards instead of being clipped. */
+/* CRM metric titles: icon above, sentence case, so long Spanish words (Autenticación, Consentimiento) fit whole
+   inside narrow cards without hyphenation or clipping. */
+[data-testid="crm-metric-label"] {
+  flex-direction: column;
+  gap: 0.35rem !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-size: 12.5px !important;
+  line-height: 1.25 !important;
+}
 [data-testid="crm-metric-label"] > span:last-child {
-  hyphens: auto;
-  overflow-wrap: anywhere;
-  letter-spacing: 0.035em;
+  hyphens: manual;
+  overflow-wrap: break-word;
 }
 
 /* Workspace mode: the live CRM lives inside the dashboard shell (sidebar + shell
