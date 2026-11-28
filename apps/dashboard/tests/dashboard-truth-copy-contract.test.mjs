@@ -21,7 +21,7 @@ const sharedSidebar = await readFile(new URL("../../../packages/ui/src/sidebar.t
 test("global sidebars do not invent usage or realtime status", () => {
   for (const source of [dashboardShell, sharedSidebar]) {
     assert.match(source, /Uso: consultar facturación/);
-    assert.match(source, /Realtime: estado en Analytics/);
+    assert.match(source, /Tiempo real: estado en Analítica/);
     assert.doesNotMatch(source, />30%</);
     assert.doesNotMatch(source, /width:\s*"30%"/);
     assert.doesNotMatch(source, /3 de (?:tus )?10 lotes/i);

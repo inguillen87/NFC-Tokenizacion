@@ -342,10 +342,9 @@ export function DashboardShellInner({
     { destination: "recallTasks", href: DASHBOARD_DESTINATIONS.recallTasks.href, label: "Mis tareas de retiro", icon: FileCheck2 },
     { destination: "map", href: DASHBOARD_DESTINATIONS.map.href, label: "Mapa profesional", icon: Compass },
     { destination: "onboarding", href: DASHBOARD_DESTINATIONS.onboarding.href, label: "Onboarding Setup", icon: Compass },
-    { destination: "overview", href: DASHBOARD_DESTINATIONS.overview.href, label: nav.overview, icon: LayoutDashboard },
     { destination: "logistics", href: DASHBOARD_DESTINATIONS.logistics.href, label: nav.logistics, icon: Package, badge: "NUEVO" },
-    { destination: "demoLab", href: DASHBOARD_DESTINATIONS.demoLab.href, label: "Demo Mission Control", icon: FlaskConical, badge: "LAB" },
-    { destination: "proof", href: DASHBOARD_DESTINATIONS.proof.href, label: nav.proof, icon: ShieldCheck, badge: "TRUST" },
+    { destination: "demoLab", href: DASHBOARD_DESTINATIONS.demoLab.href, label: "Demo Mission Control", icon: FlaskConical },
+    { destination: "proof", href: DASHBOARD_DESTINATIONS.proof.href, label: nav.proof, icon: ShieldCheck },
     { destination: "batches", href: DASHBOARD_DESTINATIONS.batches.href, label: nav.batches, icon: Layers },
     { destination: "editorialQueue", href: DASHBOARD_DESTINATIONS.editorialQueue.href, label: "Bandeja editorial", icon: FileCheck2 },
     { destination: "supplierBatches", href: DASHBOARD_DESTINATIONS.supplierBatches.href, label: nav.supplierBatches, icon: FileCheck2 },
@@ -353,8 +352,8 @@ export function DashboardShellInner({
     { destination: "events", href: DASHBOARD_DESTINATIONS.events.href, label: nav.events, icon: Activity },
     { destination: "tokenization", href: DASHBOARD_DESTINATIONS.tokenization.href, label: "Tokenization", icon: Coins },
     { destination: "analytics", href: DASHBOARD_DESTINATIONS.analytics.href, label: nav.analytics, icon: BarChart3 },
-    { destination: "serviceLevels", href: DASHBOARD_DESTINATIONS.serviceLevels.href, label: "SLO & Runbooks", icon: Activity, badge: "SLO" },
-    { destination: "riskAnalytics", href: DASHBOARD_DESTINATIONS.riskAnalytics.href, label: "Risk Analytics", icon: ShieldAlert, badge: "RISK" },
+    { destination: "serviceLevels", href: DASHBOARD_DESTINATIONS.serviceLevels.href, label: "SLO & Runbooks", icon: Activity },
+    { destination: "riskAnalytics", href: DASHBOARD_DESTINATIONS.riskAnalytics.href, label: "Risk Analytics", icon: ShieldAlert },
     { destination: "leadsTickets", href: DASHBOARD_DESTINATIONS.leadsTickets.href, label: nav.leadsTickets, icon: LifeBuoy },
     { destination: "sdkVision", href: DASHBOARD_DESTINATIONS.sdkVision.href, label: nav.sdkVision, icon: Terminal },
   ];
@@ -576,7 +575,7 @@ export function DashboardShellInner({
             </section>
           ) : null}
           {taskGroups.map((group) => (
-            <details key={group.id} open={group.id !== "resources" || group.items.some((item) => isActiveRoute(item.href))} data-task-group={group.id} className="rounded-xl border border-white/5">
+            <details key={group.id} open={group.id === "operations" || group.items.some((item) => isActiveRoute(item.href))} data-task-group={group.id} className="rounded-xl border border-white/5">
               <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3 py-3 text-[11px] font-black uppercase tracking-[0.1em] text-slate-400 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300">
                 <span>{group.label}</span><span className="rounded-md bg-slate-900/70 px-1.5 py-0.5 text-[10px] tabular-nums" aria-hidden="true">{group.items.length}</span>
               </summary>
@@ -606,7 +605,7 @@ export function DashboardShellInner({
           >
             <span className="flex items-center gap-2">
               <BarChart3 className="h-3.5 w-3.5" />
-              <span>Realtime: estado en Analytics</span>
+              <span>Tiempo real: estado en Analítica</span>
             </span>
             <span aria-hidden="true" className="text-[11px]">&rarr;</span>
           </Link>

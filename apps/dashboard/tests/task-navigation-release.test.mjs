@@ -83,7 +83,7 @@ test("shell connects existing permission-filtered candidates to the task groups"
   for (const name of ["coreOpsItems", "globalNetworkItems", "loyaltyNetworkItems"]) assert.ok(shell.includes(`...${name}`));
   assert.match(shell, /settingsItems\.filter\(\(item\) => canOpenDestination\(item.destination\)\)/);
   assert.match(shell, /group\.items\.map\(renderNavLink\)/);
-  assert.match(shell, /group.id !== "resources"/);
+  assert.match(shell, /open=\{group\.id === "operations" \|\| group\.items\.some\(\(item\) => isActiveRoute\(item\.href\)\)\}/);
   assert.match(shell, /prefetch=\{false\}/);
 });
 test("mobile drawer handles focus, background, escape and viewport changes without polling", async () => {
