@@ -414,14 +414,18 @@ function MetricCard({
         </div>
         <span data-testid="crm-metric-delta" className={`max-w-full break-words rounded-full px-2 py-0.5 text-[10px] font-bold ${tone === "red" ? "bg-red-400/10 text-red-300" : "bg-emerald-400/10 text-emerald-300"}`}>{delta}</span>
       </div>
-      <div className="mt-2 flex items-end justify-between gap-3">
-        <p className="text-[26px] font-black leading-none tracking-[-0.035em] text-white">{value}</p>
-        <p className="pb-0.5 text-[10px] font-medium text-slate-500">ventana activa</p>
+      <div className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] items-end gap-3" title="Valor de la ventana activa">
+        <p className="nexid-crm-metric-value text-[30px] font-black leading-none tracking-[-0.04em] text-white tabular-nums">{value}</p>
+        <div className="min-w-0 opacity-90">
+          <MiniSparkline data={data} color={color} dataKey={dataKey} />
+        </div>
       </div>
-      <p className="mt-1.5 min-h-[32px] text-[10.5px] leading-4 text-slate-400">{help}</p>
-      <div className="mt-1">
-        <MiniSparkline data={data} color={color} dataKey={dataKey} />
-      </div>
+      <details className="nexid-crm-metric-help mt-2 text-[10.5px] leading-4 text-slate-400">
+        <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-md px-1 font-bold text-slate-400 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300">
+          <span aria-hidden="true" className="grid h-4 w-4 place-items-center rounded-full border border-current text-[9px]">i</span>¿Qué mide?
+        </summary>
+        <p className="mt-1">{help}</p>
+      </details>
     </div>
   );
 }
