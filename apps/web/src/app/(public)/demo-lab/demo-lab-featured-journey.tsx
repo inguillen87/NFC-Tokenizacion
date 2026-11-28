@@ -17,6 +17,7 @@ import {
   Map,
   Radio,
   RotateCcw,
+  Rotate3d,
   ShieldCheck,
   Sparkles,
   Smartphone,
@@ -24,7 +25,25 @@ import {
   Wine,
 } from "lucide-react";
 import { DemoLabScene } from "./demo-lab-scene";
+import dynamic from "next/dynamic";
 import { useState } from "react";
+import type { ProductKind } from "../../../components/hero-three-stage";
+
+const HeroThreeStage = dynamic(() => import("../../../components/hero-three-stage").then((mod) => mod.HeroThreeStage), { ssr: false });
+
+const PROFILE_TO_3D: Record<DemoProductProfileKey, ProductKind> = {
+  wine: "wine",
+  perfume: "perfume",
+  fragrance: "perfume",
+  agro: "seeds",
+  agrochem: "agro",
+};
+
+const VIEW_3D_COPY = {
+  es: { on: "Girar en 3D", off: "Ver recorrido", hint: "Arrastrá para girar el producto" },
+  en: { on: "Rotate in 3D", off: "Show journey", hint: "Drag to rotate the product" },
+  pt: { on: "Girar em 3D", off: "Ver percurso", hint: "Arraste para girar o produto" },
+} as const;
 import type { AppLocale } from "@product/config";
 import {
   DEMO_PRODUCT_PROFILES,
@@ -480,6 +499,7 @@ export function DemoLabFeaturedJourney({
   const [furthestStep, setFurthestStep] = useState<JourneyStep>(0);
   const [selectedAction, setSelectedAction] = useState<JourneyAction>("warranty");
   const [productKey, setProductKey] = useState<DemoProductProfileKey>(initialProfile);
+  const [view3d, setView3d] = useState(false);
   const product = DEMO_PRODUCT_PROFILES[productKey];
   const current = copy.steps[step];
   const actionSignal = copy.actionSignals[selectedAction];
@@ -600,8 +620,24 @@ export function DemoLabFeaturedJourney({
       </nav>
 
       <div className={styles.stage}>
-        <div className={styles.visual} role="group" aria-label={copy.visualLabels[step]}>
-          <DemoLabScene profile={productKey} step={step} locale={locale} />
+        <div className={styles.visual} role="group" aria-label={copy.visualLabels[step]} data-view3d={view3d ? "true" : undefined}>
+          {view3d ? (
+            <div className="demo-lab-3d" role="group" data-testid="demo-lab-3d" aria-label={VIEW_3D_COPY[localeKey(locale)].hint}>
+              <HeroThreeStage key={productKey} active={PROFILE_TO_3D[productKey]} product={product.name} />
+            </div>
+          ) : (
+            <DemoLabScene profile={productKey} step={step} locale={locale} />
+          )}
+          <button
+            type="button"
+            className="demo-lab-3d-toggle"
+            aria-pressed={view3d}
+            onClick={() => setView3d((value) => !value)}
+            data-testid="demo-lab-3d-toggle"
+          >
+            <Rotate3d aria-hidden="true" />
+            {view3d ? VIEW_3D_COPY[localeKey(locale)].off : VIEW_3D_COPY[localeKey(locale)].on}
+          </button>
 
           <span className={styles.demoChip}><Tag aria-hidden="true" />{product.name}</span>
 

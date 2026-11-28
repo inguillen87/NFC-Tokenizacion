@@ -273,3 +273,75 @@
   from { opacity: 0.001; transform: translateY(8px) scale(0.98); }
   to { opacity: 1; transform: none; }
 }
+
+/* Optional rotatable 3D product (three.js, loaded on demand) */
+.demo-lab-3d {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background:
+    radial-gradient(60% 55% at 50% 45%, rgba(34, 211, 238, 0.18), transparent 70%),
+    linear-gradient(160deg, #0b1f2a, #071219 70%);
+  animation: demoLab3dIn 420ms ease-out both;
+}
+.demo-lab-3d .hero-three-stage {
+  inset: 4% 6% 10%;
+}
+.demo-lab-3d-toggle {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  padding: 0 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  background: rgba(7, 23, 31, 0.82);
+  color: #f0fdfa;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px -12px rgba(8, 47, 73, 0.6);
+  transition: transform 180ms ease, background 180ms ease;
+}
+.demo-lab-3d-toggle svg {
+  width: 1rem;
+  height: 1rem;
+}
+.demo-lab-3d-toggle:hover {
+  transform: translateY(-1px);
+  background: rgba(8, 47, 60, 0.92);
+}
+.demo-lab-3d-toggle:focus-visible {
+  outline: 3px solid #22d3ee;
+  outline-offset: 2px;
+}
+.demo-lab-3d-toggle[aria-pressed="true"] {
+  background: #e6fffb;
+  color: #053b3a;
+}
+@keyframes demoLab3dIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .demo-lab-3d { animation: none; }
+  .demo-lab-3d-toggle { transition: none; }
+}
+[data-view3d="true"] > [role="status"],
+[data-view3d="true"] > [aria-hidden="true"]:not(.demo-lab-3d) {
+  display: none;
+}
+@media (max-width: 760px) {
+  [data-view3d="true"] {
+    min-height: 26rem !important;
+  }
+  .demo-lab-3d .hero-three-stage {
+    inset: 14% 4% 4%;
+  }
+}
