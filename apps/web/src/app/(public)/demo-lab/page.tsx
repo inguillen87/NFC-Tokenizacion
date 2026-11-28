@@ -1001,8 +1001,10 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
           <Link
             href="/?contact=demo#contact-modal"
             className={`${surfaceStyles.headerLink} ${surfaceStyles.scheduleLink}`}
+            aria-label={hubShellCopy.scheduleDemo}
           >
-            {hubShellCopy.scheduleDemo}
+            <span className={surfaceStyles.scheduleFull}>{hubShellCopy.scheduleDemo}</span>
+            <span className={surfaceStyles.scheduleShort} aria-hidden="true">Demo</span>
             <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
@@ -1253,13 +1255,13 @@ export default async function DemoLabPage({ searchParams }: DemoLabPageProps) {
           </Link>
           <Link
             href="/docs"
-            className="demo-lab-hub-footer-link transition-colors hover:text-cyan-200"
+            className="demo-lab-hub-footer-link inline-flex items-center justify-center gap-2 transition-colors hover:text-cyan-200"
           >
             {hubShellCopy.technicalDocs}
           </Link>
           <Link
             href="/?contact=demo#contact-modal"
-            className="demo-lab-hub-footer-link transition-colors hover:text-cyan-200"
+            className="demo-lab-hub-footer-link inline-flex items-center justify-center gap-2 transition-colors hover:text-cyan-200"
           >
             {hubShellCopy.scheduleDemo}
           </Link>

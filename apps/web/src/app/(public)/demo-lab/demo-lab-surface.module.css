@@ -553,3 +553,31 @@
   .content::before, .content::after, .hero > *, .brandAura::before, .scheduleLink::after { animation: none; }
   .scheduleLink::after { display: none; }
 }
+
+/* Schedule CTA: full label on wide screens, compact "Demo" on phones. */
+.scheduleShort { display: none; }
+
+@media (max-width: 520px) {
+  .scheduleFull { display: none; }
+  .scheduleShort { display: inline; }
+}
+
+/* Keep the brand and actions on one row on regular phones; wrap only on the narrowest. */
+@media (min-width: 361px) and (max-width: 640px) {
+  .surface:global(.demo-lab-hub-root) :global(.demo-lab-hub-nav.demo-lab-hub-nav--mobile-safe) {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    grid-template-columns: none !important;
+  }
+
+  .surface:global(.demo-lab-hub-root) :global(.demo-lab-hub-nav.demo-lab-hub-nav--mobile-safe) > .headerActions {
+    display: flex !important;
+    width: auto !important;
+    flex: 0 0 auto;
+  }
+
+  .surface:global(.demo-lab-hub-root) :global(.demo-lab-hub-nav.demo-lab-hub-nav--mobile-safe) .scheduleLink {
+    width: auto !important;
+    padding-inline: 0.75rem !important;
+  }
+}
