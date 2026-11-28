@@ -70,3 +70,17 @@
   .brandWide { display: none; }
   .brandCompact { display: inline-flex; }
 }
+
+/* The dot of the "i" leaves the mark, flies around the identity and comes home. */
+.brandWide, .brandCompact { position: relative; }
+.orbit { position: absolute; top: 0; left: 0; width: 7px; height: 7px; border-radius: 50%; background: #2fe1c3; box-shadow: 0 0 10px #2fe1c3, 0 0 22px rgb(47 225 195 / .7); offset-path: path("M 33 13 C 60 -16 170 -12 172 22 C 174 58 70 62 30 40 C 8 28 14 6 33 13 Z"); offset-rotate: 0deg; animation: orbitFly 6.5s cubic-bezier(.45, 0, .2, 1) infinite; pointer-events: none; }
+.orbit::after { content: ""; position: absolute; inset: 1px -14px 1px auto; width: 16px; border-radius: 4px; background: linear-gradient(90deg, rgb(47 225 195 / .7), transparent); opacity: .7; }
+.brandCompact .orbit { offset-path: path("M 30 12 C 52 -10 62 30 46 48 C 30 62 -6 50 0 26 C 4 8 20 4 30 12 Z"); }
+@keyframes orbitFly {
+  0%, 22% { offset-distance: 0%; opacity: 0; scale: .6; }
+  28% { opacity: 1; scale: 1; }
+  82% { offset-distance: 100%; opacity: 1; scale: 1; }
+  90%, 100% { offset-distance: 100%; opacity: 0; scale: .6; }
+}
+@media (prefers-reduced-motion: reduce) { .orbit { display: none; } }
+@supports not (offset-path: path("M 0 0 L 1 1")) { .orbit { display: none; } }

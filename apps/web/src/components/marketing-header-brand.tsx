@@ -24,8 +24,8 @@ export function MarketingHeaderBrand({ locale, onNavigate, theme }: { locale: st
         ? <StaticBrandHomeLink locale={locale} size={48} onNavigate={onNavigate} />
         : (
           <>
-            <span className={styles.brandWide}><BrandHomeLink locale={locale} size={48} theme={theme} variant="pulse" /></span>
-            <span className={styles.brandCompact}><BrandHomeLink locale={locale} size={44} theme={theme} variant="pulse" markOnly /></span>
+            <span className={styles.brandWide}><BrandHomeLink locale={locale} size={48} theme={theme} variant="pulse" /><i className={styles.orbit} aria-hidden="true" /></span>
+            <span className={styles.brandCompact}><BrandHomeLink locale={locale} size={44} theme={theme} variant="pulse" markOnly /><i className={styles.orbit} aria-hidden="true" /></span>
           </>
         )}
     </span>

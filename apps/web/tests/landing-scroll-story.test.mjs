@@ -9,7 +9,8 @@ const home = read("src/app/page.tsx");
 
 test("the scroll story is labelled as sample data and keeps the evidence boundary", () => {
   assert.match(story, /MUESTRA DEMO · SIN TAP FÍSICO/);
-  assert.match(story, /Fotografía: Valle Secreto · referencia visual de la demo/);
+  assert.match(story, /Productos ilustrativos · datos de ejemplo/);
+  assert.doesNotMatch(story + read("src/components/story-products.tsx"), /valle secreto|syngenta|profundo/i);
   assert.match(story, /Te dice qué se comprobó y qué no/);
   assert.doesNotMatch(story, /fetch\(|auténtic|authentic|autêntic|garantiz/i);
 });
@@ -26,4 +27,15 @@ test("the scroll story sits right after the hero and keeps its decoration out of
   assert.match(home, /<HeroSection content=\{content\} locale=\{locale\} \/>\s*<ScrollStory locale=\{locale\} \/>/);
   assert.match(story, /className=\{styles\.stage\}[^>]*aria-hidden="true"/);
   assert.match(story, /event\.pointerType !== "mouse"/);
+});
+
+test("the scroll story offers five illustrative products and adapts the passport to each", () => {
+  const products = read("src/components/story-products.tsx");
+  for (const key of ["wine", "seeds", "jerrycan", "perfume", "pharma"]) {
+    assert.match(products, new RegExp(`key: "${key}"`));
+    assert.equal((story.match(new RegExp(`\\b${key}: \\{ chip:`, "g")) ?? []).length, 3);
+  }
+  assert.match(story, /role="radiogroup" aria-label=\{copy\.pick\}/);
+  assert.match(story, /Abierto no significaría falsificado/);
+  assert.match(story, /Se comprobó el mensaje de la etiqueta, no el objeto físico/);
 });
