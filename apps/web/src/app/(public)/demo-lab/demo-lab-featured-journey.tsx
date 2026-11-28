@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import {
   Activity,
@@ -24,6 +23,7 @@ import {
   Tag,
   Wine,
 } from "lucide-react";
+import { DemoLabScene } from "./demo-lab-scene";
 import { useState } from "react";
 import type { AppLocale } from "@product/config";
 import {
@@ -601,25 +601,9 @@ export function DemoLabFeaturedJourney({
 
       <div className={styles.stage}>
         <div className={styles.visual} role="group" aria-label={copy.visualLabels[step]}>
-          <Image
-            key={`${productKey}-${product.images[step]}`}
-            src={product.images[step]}
-            alt={copy.visualLabels[step]}
-            fill
-            priority={step === 0}
-            sizes="(max-width: 760px) 100vw, 58vw"
-            className={styles.sceneImage}
-          />
-          <div className={styles.sceneShade} aria-hidden="true" />
+          <DemoLabScene profile={productKey} step={step} locale={locale} />
 
-          <span className={styles.demoChip}><Wine aria-hidden="true" />{product.name}</span>
-          <span className={styles.nfcChip}><Tag aria-hidden="true" />NFC</span>
-
-          {step === 0 ? (
-            <div className={styles.radioSignal} aria-hidden="true">
-              <i /><i /><i />
-            </div>
-          ) : null}
+          <span className={styles.demoChip}><Tag aria-hidden="true" />{product.name}</span>
 
           <div className={styles.visualBubble} data-step={step} role="status" aria-live="polite">
             {step === 0 ? (
