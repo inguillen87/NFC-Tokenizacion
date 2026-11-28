@@ -1,4 +1,6 @@
-import type { CSSProperties } from "react";
+"use client";
+
+import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import "./demo-lab-scene.css";
 import { BadgeCheck, CheckCircle2, Gift, Nfc, ShieldCheck, Wrench } from "lucide-react";
 import { STORY_PRODUCTS, StoryProduct, type StoryProductKey } from "../../../components/story-products";
@@ -49,15 +51,58 @@ const SCREEN_COPY: Record<SceneLocale, { ready: string; readyHint: string; read:
  * Decorative: the surrounding group carries the accessible label and the
  * live status bubble narrates each step.
  */
-export function DemoLabScene({ profile, step, locale }: { profile: string; step: number; locale: string }) {
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+export function DemoLabScene({ profile, step, locale, orbit = false }: { profile: string; step: number; locale: string; orbit?: boolean }) {
+  const [angle, setAngle] = useState({ x: -6, y: -18 });
+  const [dragging, setDragging] = useState(false);
+  const origin = useRef<{ px: number; py: number; x: number; y: number } | null>(null);
+  const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (!orbit) return;
+    origin.current = { px: event.clientX, py: event.clientY, x: angle.x, y: angle.y };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    setDragging(true);
+  };
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const start = origin.current;
+    if (!orbit || !start) return;
+    setAngle({
+      x: clamp(start.x - (event.clientY - start.py) * 0.12, -16, 10),
+      y: clamp(start.y + (event.clientX - start.px) * 0.22, -38, 38),
+    });
+  };
+  const onPointerUp = () => {
+    origin.current = null;
+    setDragging(false);
+  };
   const product = PROFILE_TO_PRODUCT[profile] ?? "wine";
   const meta = STORY_PRODUCTS.find((item) => item.key === product) ?? STORY_PRODUCTS[0];
   const copy = SCREEN_COPY[(locale in SCREEN_COPY ? locale : "es-AR") as SceneLocale];
-  const style = { "--scene-accent": meta.accent, "--tag-top": meta.tagTop, "--tag-left": meta.tagLeft } as CSSProperties;
+  const style = {
+    "--scene-accent": meta.accent,
+    "--tag-top": meta.tagTop,
+    "--tag-left": meta.tagLeft,
+    "--rx": `${orbit ? angle.x : 0}deg`,
+    "--ry": `${orbit ? angle.y : 0}deg`,
+    "--sheen": `${50 + (orbit ? angle.y : 0) * 1.4}%`,
+  } as CSSProperties;
 
   return (
-    <div className="demo-lab-scene" data-step={step} data-product={product} style={style} aria-hidden="true">
+    <div
+      className="demo-lab-scene"
+      data-step={step}
+      data-product={product}
+      data-orbit={orbit ? (dragging ? "dragging" : "idle") : undefined}
+      style={style}
+      aria-hidden="true"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+    >
+      <div className="demo-lab-scene__stage">
       <div className="demo-lab-scene__floor" />
+      <div className="demo-lab-scene__shadow" />
       <div className="demo-lab-scene__product">
         <StoryProduct product={product} idPrefix="demo-lab-scene-" />
         <span className="demo-lab-scene__tag"><i /><i /><i /></span>
@@ -95,6 +140,7 @@ export function DemoLabScene({ profile, step, locale }: { profile: string; step:
             </div>
           ) : null}
         </div>
+      </div>
       </div>
     </div>
   );

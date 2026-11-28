@@ -25,24 +25,12 @@ import {
   Wine,
 } from "lucide-react";
 import { DemoLabScene } from "./demo-lab-scene";
-import dynamic from "next/dynamic";
 import { useState } from "react";
-import type { ProductKind } from "../../../components/hero-three-stage";
-
-const HeroThreeStage = dynamic(() => import("../../../components/hero-three-stage").then((mod) => mod.HeroThreeStage), { ssr: false });
-
-const PROFILE_TO_3D: Record<DemoProductProfileKey, ProductKind> = {
-  wine: "wine",
-  perfume: "perfume",
-  fragrance: "perfume",
-  agro: "seeds",
-  agrochem: "agro",
-};
 
 const VIEW_3D_COPY = {
-  es: { on: "Girar en 3D", off: "Ver recorrido", hint: "Arrastrá para girar el producto" },
-  en: { on: "Rotate in 3D", off: "Show journey", hint: "Drag to rotate the product" },
-  pt: { on: "Girar em 3D", off: "Ver percurso", hint: "Arraste para girar o produto" },
+  es: { on: "Explorar en 3D", off: "Vista guiada", hint: "Arrastrá para girar la escena" },
+  en: { on: "Explore in 3D", off: "Guided view", hint: "Drag to rotate the scene" },
+  pt: { on: "Explorar em 3D", off: "Vista guiada", hint: "Arraste para girar a cena" },
 } as const;
 import type { AppLocale } from "@product/config";
 import {
@@ -621,13 +609,8 @@ export function DemoLabFeaturedJourney({
 
       <div className={styles.stage}>
         <div className={styles.visual} role="group" aria-label={copy.visualLabels[step]} data-view3d={view3d ? "true" : undefined}>
-          {view3d ? (
-            <div className="demo-lab-3d" role="group" data-testid="demo-lab-3d" aria-label={VIEW_3D_COPY[localeKey(locale)].hint}>
-              <HeroThreeStage key={productKey} active={PROFILE_TO_3D[productKey]} product={product.name} />
-            </div>
-          ) : (
-            <DemoLabScene profile={productKey} step={step} locale={locale} />
-          )}
+          <DemoLabScene profile={productKey} step={step} locale={locale} orbit={view3d} />
+          {view3d ? <span className="demo-lab-3d-hint" data-testid="demo-lab-3d">{VIEW_3D_COPY[localeKey(locale)].hint}</span> : null}
           <button
             type="button"
             className="demo-lab-3d-toggle"
