@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Card, SectionHeading, StatusChip } from "@product/ui";
-import { ModuleAudienceHero } from "../../../components/module-audience-hero";
 import { EnterpriseOpsState } from "../../../components/enterprise-ops-state";
 import { dashboardContent } from "../../../lib/dashboard-content";
 import { readDemoDataMetaFromResponse, type DemoDataMeta } from "../../../lib/demo-data-mode";
@@ -104,11 +103,20 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
   return (
     <main className="space-y-8">
       <SectionHeading eyebrow={copy.nav.tags} title={copy.pages.tags.title} description={copy.pages.tags.description} />
-      <ModuleAudienceHero
-        ceo={{ eyebrow: "CEO / Investor read", summary: "Registro operativo por UID: volumen de mensajes, señales de riesgo y tokenización digital asociada.", decision: "Priorizás SKU/canales con más actividad y riesgo.", cta: "Úsalo para decisiones de expansión y control." }}
-        operator={{ eyebrow: "Operator / Engineer read", summary: "Inventario con metadata declarada, último evento reportado y resultado de validación NFC.", decision: "Podés investigar por UID/BID y saltar al passport completo.", cta: "Conectá esta vista con Events y Analytics." }}
-        buyer={{ eyebrow: "Buyer / Client read", summary: "Demuestra trazabilidad digital de eventos por unidad; no prueba recorrido ni estado físico.", decision: "Validás madurez operacional y gobernanza de evidencia.", cta: "Ideal para cierre técnico/comercial con límites explícitos." }}
-      />
+      <nav aria-label="Configurar tags en cuatro pasos" data-testid="tags-setup-guide" className="grid gap-3 md:grid-cols-4">
+        {[
+          { n: 1, title: "Pedir tags", hint: "NTAG 424 DNA a fábrica", href: "/batches/supplier?intent=new" },
+          { n: 2, title: "Recibir el lote", hint: "Asignar producto y lote", href: "/batches" },
+          { n: 3, title: "Probar un toque", hint: "Celular sobre la etiqueta", href: "/events" },
+          { n: 4, title: "Medir lecturas", hint: "Países, alertas, tendencia", href: "/analytics" },
+        ].map((step) => (
+          <Link key={step.n} prefetch={false} href={step.href} className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900/60 p-3 transition hover:-translate-y-0.5 hover:border-cyan-300/40 motion-reduce:transform-none">
+            <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-cyan-400 to-emerald-400 text-sm font-black text-slate-950">{step.n}</span>
+            <span className="min-w-0"><b className="block text-sm text-slate-200">{step.title}</b><span className="block text-xs text-slate-400">{step.hint}</span></span>
+            <span aria-hidden className="ml-auto text-cyan-300 transition group-hover:translate-x-0.5">→</span>
+          </Link>
+        ))}
+      </nav>
 
       {!sourceReady ? (
         <EnterpriseOpsState
@@ -123,28 +131,28 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
 
       <Card className="p-5">
         <form className="grid gap-3 md:grid-cols-6">
-          <input suppressHydrationWarning name="q" defaultValue={query.q || ""} placeholder="UID / BID / producto / status" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
-          <select suppressHydrationWarning name="range" defaultValue={range} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">
-            <option value="24h">24h</option><option value="7d">7d</option><option value="30d">30d</option>
+          <input suppressHydrationWarning name="q" defaultValue={query.q || ""} placeholder="UID, lote o producto" aria-label="Buscar UID, lote o producto" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
+          <select suppressHydrationWarning aria-label="Período" name="range" defaultValue={range} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">
+            <option value="24h">Últimas 24 h</option><option value="7d">Últimos 7 días</option><option value="30d">Últimos 30 días</option>
           </select>
           {adminContext.canSelectTenant ? (
             <select suppressHydrationWarning name="source" defaultValue={source} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200">
-              <option value="all">all</option>
-              <option value="real">real</option>
-              <option value="simulated">simulated</option>
+              <option value="all">Todas las fuentes</option>
+              <option value="real">Reales</option>
+              <option value="simulated">Simuladas</option>
             </select>
           ) : (
             <input suppressHydrationWarning type="hidden" name="source" value="real" />
           )}
-          {adminContext.canSelectTenant ? <input suppressHydrationWarning name="tenant" defaultValue={tenantScope} placeholder="tenant slug" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" /> : <input suppressHydrationWarning type="hidden" name="tenant" value={tenantScope} />}
-          <input suppressHydrationWarning name="country" defaultValue={country} placeholder="country (AR, BR...)" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
+          {adminContext.canSelectTenant ? <input suppressHydrationWarning name="tenant" defaultValue={tenantScope} placeholder="Cliente (slug)" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" /> : <input suppressHydrationWarning type="hidden" name="tenant" value={tenantScope} />}
+          <input suppressHydrationWarning name="country" defaultValue={country} placeholder="País (AR, BR…)" aria-label="País" className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-200" />
           <input suppressHydrationWarning type="hidden" name="page" value="1" />
           <button suppressHydrationWarning className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100" type="submit">Aplicar filtros</button>
         </form>
-        <p className="mt-3 text-xs text-slate-400">Scope: <b className="text-slate-200">{tenantScope || "global"}</b> · Source: <b className="text-slate-200">{source}</b> · Total: <b className="text-slate-200">{sourceReady ? totalRows : "no disponible"}</b> · Page: <b className="text-slate-200">{page}</b></p>
+        <p className="mt-3 text-xs text-slate-400">Cliente: <b className="text-slate-200">{tenantScope || "todos"}</b> · Fuente: <b className="text-slate-200">{source === "all" ? "todas" : source === "real" ? "reales" : "simuladas"}</b> · Tags: <b className="text-slate-200">{sourceReady ? totalRows : "no disponible"}</b> · Página <b className="text-slate-200">{page}</b></p>
         {data.meta.demoMode ? (
           <p className="mt-2 inline-flex rounded-full border border-amber-300/35 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-100">
-            DEMO DATA · source={data.meta.demoSource}
+            Datos de demostración
           </p>
         ) : null}
         {sourceReady ? <a
@@ -153,17 +161,39 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
           target="_blank"
           rel="noreferrer"
         >
-          Export CSV (máx 1000 filas)
+          Exportar CSV · hasta 1000 filas
         </a> : null}
       </Card>
 
       <Card className="p-5">
-        <div className="mb-4 grid gap-3 md:grid-cols-4">
-          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-sm text-slate-200">Active tags<br /><b className="text-base text-emerald-300">{sourceReady ? Number(totals.active_tags || 0) : "—"}</b></div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-sm text-slate-200">Non-active tags<br /><b className="text-base text-amber-200">{sourceReady ? Number(totals.non_active_tags || 0) : "—"}</b></div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-sm text-slate-200">Minted<br /><b className="text-base text-cyan-200">{sourceReady ? Number(totals.minted_tags || 0) : "—"}</b></div>
-          <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-sm text-slate-200">Pending tokenization<br /><b className="text-base text-slate-100">{sourceReady ? Number(totals.pending_tokenization || 0) : "—"}</b></div>
-        </div>
+        {(() => {
+          const active = sourceReady ? Number(totals.active_tags || 0) : null;
+          const idle = sourceReady ? Number(totals.non_active_tags || 0) : null;
+          const minted = sourceReady ? Number(totals.minted_tags || 0) : null;
+          const pending = sourceReady ? Number(totals.pending_tokenization || 0) : null;
+          const pct = (part: number | null, other: number | null) => (part === null || other === null || part + other === 0 ? 0 : Math.round((part / (part + other)) * 100));
+          const cards = [
+            { label: "Activos", value: active, tone: "text-emerald-300", bar: "from-emerald-400 to-teal-400", share: pct(active, idle), note: "del inventario" },
+            { label: "Sin activar", value: idle, tone: "text-amber-200", bar: "from-amber-300 to-orange-400", share: pct(idle, active), note: "esperan su primer toque" },
+            { label: "Con registro digital", value: minted, tone: "text-cyan-200", bar: "from-cyan-400 to-sky-500", share: pct(minted, pending), note: "tokenizados" },
+            { label: "Registro pendiente", value: pending, tone: "text-slate-200", bar: "from-slate-400 to-slate-500", share: pct(pending, minted), note: "en cola" },
+          ];
+          return (
+            <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="tags-kpis">
+              {cards.map((card) => (
+                <div key={card.label} className="rounded-xl border border-white/10 bg-slate-900/60 p-3">
+                  <p className="text-xs font-semibold text-slate-400">{card.label}</p>
+                  <p className={`mt-1 text-2xl font-black tabular-nums ${card.tone}`}>{card.value === null ? "—" : card.value.toLocaleString("es-AR")}</p>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-700/40" aria-hidden>
+                    <div className={`h-full rounded-full bg-gradient-to-r ${card.bar} transition-[width] duration-700`} style={{ width: `${card.share}%` }} />
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-500">{card.value === null ? "Sin dato confirmado" : `${card.share}% ${card.note}`}</p>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+        <p className="mb-3 text-xs text-slate-400">Cada fila muestra trazabilidad digital de eventos por unidad; no prueba recorrido ni estado físico.</p>
         {!rows.length ? (
           <p className="rounded-xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-400">{sourceReady ? "La fuente no devolvió tags para este scope/filtro." : "La fuente no pudo cargarse; este estado no representa inventario cero."}</p>
         ) : (
@@ -171,7 +201,7 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
             <table className="w-full min-w-[1180px] text-left text-xs">
               <thead className="border-b border-white/10 bg-slate-950/60 text-slate-400">
                 <tr>
-                  <th className="px-3 py-2">UID</th><th className="px-3 py-2">BID</th><th className="px-3 py-2">Producto</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Eventos</th><th className="px-3 py-2">Primer evento</th><th className="px-3 py-2">Última ubicación reportada</th><th className="px-3 py-2">Tokenización digital</th>
+                  <th className="px-3 py-2">UID</th><th className="px-3 py-2">Lote</th><th className="px-3 py-2">Producto</th><th className="px-3 py-2">Estado</th><th className="px-3 py-2">Eventos</th><th className="px-3 py-2">Primer evento</th><th className="px-3 py-2">Última ubicación reportada</th><th className="px-3 py-2">Tokenización digital</th>
                 </tr>
               </thead>
               <tbody>
