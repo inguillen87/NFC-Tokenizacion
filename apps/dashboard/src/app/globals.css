@@ -3036,3 +3036,10 @@ html[data-theme="light"] .brand-surface-sidebar {
   --brand-wordmark-accent-hi: #0e7490;
   --brand-wordmark-accent-lo: #0891b2;
 }
+
+/* Light theme: the blanket white header/aside fill is for shell chrome. Section
+   headers inside a page sit on the page background, aligned with its cards. */
+html.theme-light main header:not(.dashboard-header):not(.nexid-crm-header),
+html[data-theme="light"] main header:not(.dashboard-header):not(.nexid-crm-header) {
+  background: transparent !important;
+}

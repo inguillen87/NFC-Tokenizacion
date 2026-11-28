@@ -237,9 +237,9 @@ function buildAnalyticsExcel(data: AnalyticsPanelsProps["data"]) {
 function AnalyticsExportActions({ data }: { data?: AnalyticsPanelsProps["data"] }) {
   return (
     <div className="flex flex-wrap gap-2">
-      <button suppressHydrationWarning type="button" onClick={() => downloadBlob("nexid-analytics.csv", "text/csv;charset=utf-8", buildAnalyticsCsv(data))} className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/20">Export CSV</button>
-      <button suppressHydrationWarning type="button" onClick={() => downloadBlob("nexid-analytics.xls", "application/vnd.ms-excel;charset=utf-8", buildAnalyticsExcel(data))} className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/20">Export Excel</button>
-      <button suppressHydrationWarning type="button" onClick={() => window.print()} className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 hover:bg-violet-500/20">Export PDF</button>
+      <button suppressHydrationWarning type="button" onClick={() => downloadBlob("nexid-analytics.csv", "text/csv;charset=utf-8", buildAnalyticsCsv(data))} className="rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/20">Exportar CSV</button>
+      <button suppressHydrationWarning type="button" onClick={() => downloadBlob("nexid-analytics.xls", "application/vnd.ms-excel;charset=utf-8", buildAnalyticsExcel(data))} className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/20">Exportar Excel</button>
+      <button suppressHydrationWarning type="button" onClick={() => window.print()} className="rounded-xl border border-violet-300/30 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 hover:bg-violet-500/20">Exportar PDF</button>
     </div>
   );
 }
@@ -603,7 +603,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
           <StatCard label={extra.activeBatches} value={String(api.activeBatches ?? 0)} delta={extra.activeBatchesDelta} tone="good" />
           <StatCard label={extra.activeTenants} value={String(api.activeTenants ?? 0)} delta={extra.activeTenantsDelta} tone="good" />
           <StatCard label={extra.resellerPerformance} value={resellerRevenueDisplay} delta={resellerRevenueDetail} />
-          <StatCard label={extra.geoDistribution} value={`${api.geoRegions ?? 0} regions`} delta={extra.geoDistributionDelta} />
+          <StatCard label={extra.geoDistribution} value={`${api.geoRegions ?? 0} regiones`} delta={extra.geoDistributionDelta} />
         </div>
 
         <details className="rounded-xl border border-white/10 p-3"><summary className="min-h-9 cursor-pointer text-sm font-bold">Definiciones y denominadores de los indicadores</summary><OpsPanel title="Control operativo" subtitle="KPIs del scope activo. Sin datos reales, no se inventa actividad.">
@@ -670,7 +670,7 @@ export function AnalyticsPanels({ kpis, extra, data, mapMode = "demo", dataSourc
         <StatCard label={extra.activeBatches} value={String(api.activeBatches ?? 0)} delta={extra.activeBatchesDelta} tone="good" />
         <StatCard label={extra.activeTenants} value={String(api.activeTenants ?? 0)} delta={extra.activeTenantsDelta} tone="good" />
         <StatCard label={extra.resellerPerformance} value={resellerRevenueDisplay} delta={resellerRevenueDetail} />
-        <StatCard label={extra.geoDistribution} value={`${api.geoRegions ?? 0} regions`} delta={extra.geoDistributionDelta} />
+        <StatCard label={extra.geoDistribution} value={`${api.geoRegions ?? 0} regiones`} delta={extra.geoDistributionDelta} />
       </div>
 
       <details className="rounded-xl border border-white/10 p-3"><summary className="min-h-9 cursor-pointer text-sm font-bold">Definiciones y denominadores de los indicadores</summary><OpsPanel title="Control operativo" subtitle={`Resumen calculado exclusivamente sobre ${sourceLabel.toLowerCase()}.`}>

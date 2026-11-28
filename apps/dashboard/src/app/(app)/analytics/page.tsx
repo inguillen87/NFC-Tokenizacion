@@ -173,7 +173,7 @@ async function getAnalytics({
         : payloadSource === "all"
           ? "mixed"
           : "production";
-    return { data: payload, meta, availability: "ready", source: dataSource, detail: `Dataset ${dataSource} confirmed by analytics upstream` };
+    return { data: payload, meta, availability: "ready", source: dataSource, detail: `Datos ${dataSource === "demo" ? "demo" : dataSource} confirmados por la fuente de analítica` };
   } catch {
     return {
       data: null,
@@ -214,8 +214,8 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
     <main className={`${ws.workspace} ${room.historical}`} data-testid="historical-analytics">
       <header className={room.header}><div><h1>Analítica histórica</h1><p>Tendencias y resultados del período · sin seguimiento continuo</p></div><nav aria-label="Espacios de trabajo">{canReadPilotReport(session)&&<Link prefetch={false} href={`/analytics/pilot${tenantScope?`?tenant=${encodeURIComponent(tenantScope)}`:""}`}>Informe del piloto</Link>}{dashboardSessionCanOpenDestination(session,"map") && <Link prefetch={false} href={`/analytics/map${tenantScope ? `?tenant=${encodeURIComponent(tenantScope)}` : ""}`}>Abrir mapa</Link>}<Link prefetch={false} href="/">Centro en vivo</Link></nav></header>
       <div id="analytics-active-scope" className="rounded-xl border border-white/10 bg-slate-900/40 px-3 py-2 text-xs text-slate-300">
-        Scope actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>.
-        <span className="ml-2">Fuente confirmada: <b className="text-white">{confirmedSourceLabel}</b> · Filtro solicitado: <b className="text-white">{source}</b> · Rango: <b className="text-white">{range}</b> · Country: <b className="text-white">{country || "all"}</b>.</span>
+        Alcance actual: <b className="text-white">{tenantScope ? `tenant ${tenantScope}` : "global / multi-tenant"}</b>.
+        <span className="ml-2">Fuente confirmada: <b className="text-white">{confirmedSourceLabel}</b> · Filtro solicitado: <b className="text-white">{source}</b> · Rango: <b className="text-white">{range}</b> · País: <b className="text-white">{country || "todos"}</b>.</span>
         {analyticsData.meta.demoMode ? (
           <span className="ml-2 inline-flex rounded-full border border-amber-300/35 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-100">
             DEMO DATA · source={analyticsData.meta.demoSource}
@@ -255,7 +255,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           )}
           <label className="grid gap-1.5 text-xs font-bold text-slate-300">
             País (ISO-2)
-            <input suppressHydrationWarning name="country" defaultValue={country} placeholder="AR, BR, US…" inputMode="text" maxLength={2} autoCapitalize="characters" autoComplete="country" className="min-h-11 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm uppercase text-slate-200" />
+            <input suppressHydrationWarning name="country" defaultValue={country} placeholder="AR, BR, US…" inputMode="text" maxLength={2} autoCapitalize="characters" autoComplete="country" className="w-full min-w-0 min-h-11 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm uppercase text-slate-200" />
           </label>
           <button suppressHydrationWarning type="submit" className="min-h-11 rounded-xl border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 text-sm font-black text-cyan-100 hover:bg-cyan-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">Aplicar filtros</button>
         </form>

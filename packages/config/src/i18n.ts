@@ -309,10 +309,10 @@ export const messages: Record<AppLocale, I18nSchema> = {
         },
       },
       kpis: {
-        scans: "Scans",
-        validInvalid: "Válidos / INVALID explícitos",
+        scans: "Lecturas",
+        validInvalid: "Válidas / inválidas",
         duplicates: "Duplicados",
-        tamper: "Tamper alerts",
+        tamper: "Alertas de manipulación",
         scansDelta: "Comparativo N/D",
         validInvalidDelta: "Clases independientes; pueden no sumar 100%",
         duplicatesDelta: "Comparativo N/D",
@@ -467,7 +467,7 @@ export const messages: Record<AppLocale, I18nSchema> = {
       },
       kpis: {
         scans: "Scans",
-        validInvalid: "Válidos / INVALID explícitos",
+        validInvalid: "Válidas / inválidas",
         duplicates: "Duplicatas",
         tamper: "Tamper alerts",
         scansDelta: "Comparativo N/D",
