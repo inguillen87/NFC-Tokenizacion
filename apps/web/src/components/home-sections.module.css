@@ -116,5 +116,10 @@
   .actions { align-items: stretch; flex-direction: column; gap: .3rem; }
   .secondary { justify-content: flex-start; }
 }
+@media (max-width: 480px) {
+  /* Small phones: tighter rhythm so the hero visual starts inside the first screen. */
+  .hero .grid { padding-block: 1.5rem calc(16rem + 1.5rem); }
+  .hero .media { height: 16rem !important; }
+}
 @media (prefers-reduced-motion: reduce) { .copy > * { animation: none; } .primary, .secondary, .primary::after, .primary svg { transition: none; } .primary:hover { transform: none; } .primary:active, .secondary:active { transform: none; } }
 @media (forced-colors: active) { .primary { border: 1px solid ButtonText; } .primary:focus-visible, .secondary:focus-visible { outline-color: Highlight; } }

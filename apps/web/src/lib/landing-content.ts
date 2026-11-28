@@ -52,9 +52,9 @@ export const landingContent: Record<AppLocale, LandingContent> = {
     hero: {
       badge: "Pasaporte Digital de Producto · Trazabilidad conectada",
       title: "La historia de tu producto, a un tap.",
-      body: "Tu marca publica la información. Las personas la descubren desde el producto, con NFC o QR y sin instalar una app. El pasaporte muestra identidad, historia y trazabilidad declaradas según cada rol.",
+      body: "La información la publica la marca. Las personas la descubren desde el producto, con NFC o QR y sin instalar una app. El pasaporte muestra identidad, historia y trazabilidad declaradas según cada rol.",
       primary: "Probar un pasaporte",
-      secondary: "Agendar una demo",
+      secondary: "Agendar demo para mi marca",
       tertiary: "Quiero ser reseller",
     },
     trustBar: ["Evidencia NFC/SUN", "Origen y lote declarados", "Garantía por política", "Club y beneficios", "Marketplace white-label"],

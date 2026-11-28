@@ -102,8 +102,8 @@ function productReady() {
   };
   return document.readyState === 'complete' && !document.hidden && document.fonts.status === 'loaded'
     && inView(logo) && inView(image) && image.complete && image.naturalWidth > 0
-    && image.currentSrc.includes('parcel-in-hand.')
-    && Boolean(logo.querySelector('[data-identity-variant="static"]')) && !logo.closest('[data-entering]');
+    && image.currentSrc.includes('nexid-dpp-hero')
+    && Boolean(logo.querySelector('[data-identity-variant]')) && !logo.closest('[data-entering]');
 }
 
 export function validateNativeExpressions() {
@@ -207,8 +207,9 @@ export async function verifyNativeBrandHeroHidden({chromiumExecutable,origin,out
         const before=await sample();await delay(500);const moving=await sample();
         check(!before.hidden&&before.visibilityState==='visible','Native page initially visible '+theme,{state:before.visibilityState});
         if(!probeOnly){
-          check(before.logo?.visible&&before.logo.visualSignature===moving.logo?.visualSignature&&moving.logo.loops.length===0,'Native settled logo stays still before hiding '+theme);
-          check(before.hero?.visible&&idle(before.hero)&&before.hero.visualSignature===moving.hero?.visualSignature,'Native editorial image is visible and still before hiding '+theme);
+          // The living logo and hero visual may move while visible; what matters is that they pause when hidden.
+          check(before.logo?.visible&&moving.logo?.visible,'Native logo is visible before hiding '+theme);
+          check(before.hero?.visible&&moving.hero?.visible,'Native hero visual is visible before hiding '+theme);
         }
         // Native tab selection works in Xvfb without a window manager and does
         // not introduce a focus/visibility emulation override.
@@ -230,8 +231,8 @@ export async function verifyNativeBrandHeroHidden({chromiumExecutable,origin,out
         const returned=await sample();await delay(500);const resumed=await sample();
         check(!returned.hidden&&returned.visibilityState==='visible'&&returned.events.includes('visible'),'Native restored window produces real visible event '+theme,{state:returned.visibilityState,events:returned.events});
         if(!probeOnly){
-          check(returned.logo?.visible&&returned.logo.visualSignature===resumed.logo?.visualSignature&&resumed.logo.loops.length===0,'Native logo stays still after return '+theme);
-          check(returned.hero?.visible&&idle(returned.hero)&&returned.hero.visualSignature===resumed.hero?.visualSignature,'Native editorial image stays visible and still on return '+theme);
+          check(returned.logo?.visible&&resumed.logo?.visible,'Native logo is visible again after return '+theme);
+          check(returned.hero?.visible&&resumed.hero?.visible,'Native hero visual is visible again on return '+theme);
         }
         check(resumed.geoRequests===0,'Native probe does not request GPS '+theme);
         observations.push({theme,width:1440,hideMethod:'native tab activation in the same incognito window',before,moving,hidden,stillHidden,returned,resumed});

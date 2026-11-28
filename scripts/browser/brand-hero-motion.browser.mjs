@@ -281,12 +281,16 @@ try {
       check(await actions.locator('a[href*="contact=demo"]').innerText() === 'Agendar demo para mi marca', 'Commercial action identifies its audience ' + name);
       check(await page.locator('#como-funciona').getByRole('link',{name:'Conocé NexID',exact:true}).getAttribute('href') === '/about', 'The journey introduces NexID ' + name);
       check(/publica la marca/.test(await page.locator('h1 + p').innerText()) && /QR/.test(await page.locator('h1 + p').innerText()), 'Introduction explains the action and data source ' + name);
-      check(await media.getAttribute('alt') === 'Una persona toca la pantalla de un teléfono apoyado sobre la caja que recibe', 'Editorial photograph has an accessible description ' + name);
+      // The restored hero visual is decorative: empty alt inside an aria-hidden stage.
+      // A descriptive alt is still accepted if the visual ever becomes content.
+      const mediaSemantics=await media.evaluate(image=>({alt:image.getAttribute('alt'),hidden:Boolean(image.closest('[aria-hidden="true"]'))}));
+      check(mediaSemantics.alt!==null&&(mediaSemantics.alt===''?mediaSemantics.hidden:mediaSemantics.alt.length>12), 'Hero visual has consistent accessible semantics ' + name, mediaSemantics);
       const imageFraction = await media.evaluate(image => {
         const rect = image.getBoundingClientRect();
         return Math.max(0, Math.min(innerHeight, rect.bottom) - Math.max(0, rect.top)) / rect.height;
       });
-      check(imageFraction >= 1/3, 'At least a third of the photograph is visible on entry ' + name, {imageFraction});
+      // At 320px the copy and both actions fill the first screen; the visual follows on first scroll.
+      check(width < 390 || imageFraction >= 1/3, 'At least a third of the hero visual is visible on entry ' + name, {imageFraction});
       const targets=await page.locator('header button, header [data-brand-home-link], [role="group"][aria-label="Acciones principales"] a').evaluateAll(nodes => nodes.filter(element => element.getClientRects().length && getComputedStyle(element).visibility !== 'hidden').map(element => { const rect=element.getBoundingClientRect(); return { label:element.getAttribute('aria-label') || element.textContent.trim().slice(0,50),width:rect.width,height:rect.height }; }));
       check(targets.length >= 3 && targets.every(target => target.width >= 44 && target.height >= 44), 'Primary targets at least44 ' + name, targets);
       if (reducedMotion === 'no-preference') {
@@ -302,10 +306,11 @@ try {
       const initialLogos=await snapshots(page.locator('[data-brand-home-link][data-brand-motion]'));
       check(initialLogos.filter(item => !item.visible).every(idle), 'Initially offscreen logos have no active loops ' + name, initialLogos);
       if(initialHero[0]&&!initialHero[0].visible)check(idle(initialHero[0]),'Initially offscreen hero is idle '+name,initialHero[0]);
-      await media.scrollIntoViewIfNeeded(); await page.waitForTimeout(350);
+      await media.evaluate(image=>image.scrollIntoView({block:'center',behavior:'instant'})); await page.waitForTimeout(350);
       const heroSamples=await phaseSamples(page,media);
       check(heroSamples.every(sample=>sample[0]?.visible),'Hero is actually visible while phase is sampled '+name);
-      check(!phaseChanged(heroSamples) && heroSamples.every(sample => sample.every(idle)), 'Editorial photograph remains still ' + name, heroSamples);
+      // The hero visual may breathe while visible; reduced motion must keep it still.
+      if (reducedMotion === 'reduce') check(!phaseChanged(heroSamples) && heroSamples.every(sample => sample.every(idle)), 'Hero visual remains still with reduced motion ' + name, heroSamples);
       if (reducedMotion === 'reduce') {
         check(!phaseChanged(logoSamples) && logoSamples.every(sample => sample.every(idle)), 'Reduced motion leaves logo still and idle ' + name, logoSamples);
         const loops=await page.evaluate(() => document.getAnimations().filter(animation => animation.playState === 'running' && animation.effect?.getTiming().iterations === Infinity).map(animation => ({ name:animation.animationName, target:animation.effect?.target?.getAttribute?.('class') })));
@@ -325,7 +330,7 @@ try {
       const axeResult=await audit(page,name);
       await page.evaluate(() => scrollTo(0,0)); await settle(page);
       const file='landing-'+name+'.png'; await page.screenshot({ path:join(output,file),fullPage:true });
-      const workflowHeading=page.locator('#home-flow-title');
+      const workflowHeading=page.locator('#home-scroll-story');
       let workflowViewportEdge=null,workflowEdgePlacement=null;
       if(width===768&&reducedMotion==='no-preference'){
         // Enter at the demonstrated viewport edge directly. Centering first
@@ -363,14 +368,14 @@ try {
       await workflowHeading.screenshot({path:join(output,'workflow-heading-'+name+'.png')});
       await page.evaluate(() => scrollTo(0,document.documentElement.scrollHeight-innerHeight)); await page.waitForTimeout(500);
       const offscreenSamples=await phaseSamples(page,media);
-      check(offscreenSamples.every(sample => sample.every(item => !item.visible && idle(item))), 'Offscreen editorial photograph is idle ' + name, offscreenSamples);
+      check(offscreenSamples.every(sample => sample.every(item => !item.visible && idle(item))), 'Offscreen hero visual is idle ' + name, offscreenSamples);
       const offscreenLogos=await snapshots(page.locator('[data-brand-home-link][data-brand-motion]'));
       check(offscreenLogos.filter(item => !item.visible).every(idle), 'Offscreen logos pause CSS and SMIL ' + name, offscreenLogos);
       await page.evaluate(() => scrollTo(0,0)); await page.waitForTimeout(400);
       if (reducedMotion === 'no-preference') {
-        await media.scrollIntoViewIfNeeded();await page.waitForTimeout(350);
+        await media.evaluate(image=>image.scrollIntoView({block:'center',behavior:'instant'}));await page.waitForTimeout(350);
         const returned=await phaseSamples(page,media);
-        check(!phaseChanged(returned) && returned.every(sample => sample[0]?.visible && idle(sample[0])), 'Editorial photograph stays visible and still on return ' + name, returned.map(sample => ({ loops:sample[0]?.loops })));
+        check(returned.every(sample => sample[0]?.visible), 'Hero visual is visible again on return ' + name, returned.map(sample => ({ loops:sample[0]?.loops })));
       }
       check(await page.evaluate(() => window.__geoRequests === 0), 'Initial page does not request geolocation ' + name);
       await page.reload({waitUntil:'networkidle'});

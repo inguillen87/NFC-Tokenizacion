@@ -9,7 +9,7 @@ const proofSection = await readFile(new URL("../src/components/landing-proof-sec
 
 test("landing content scopes tap validation to digital evidence in ES, EN and PT", () => {
   const heroBodies = [...content.matchAll(/hero:\s*\{[^{}]*badge:\s*"[^"]+"[^{}]*body:\s*"([^"]+)"[^{}]*\}/g)].map((match) => match[1]);
-  assert.match(content, /Tu marca publica la información/);
+  assert.match(content, /La información la publica la marca/);
   assert.match(content, /Sua marca publica a informação/);
   assert.match(content, /Your brand publishes the information/);
   assert.equal(heroBodies.length, 3);
