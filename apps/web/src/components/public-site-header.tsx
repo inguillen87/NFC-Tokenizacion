@@ -26,7 +26,7 @@ export async function PublicSiteHeader() {
       <a href="#main-content" className={styles.skipLink}>{skipLabel}</a>
       <header className={styles.header}>
         <div className={styles.row}>
-          <MarketingHeaderBrand locale={locale} />
+          <MarketingHeaderBrand locale={locale} theme={initialTheme} />
           <MarketingMegaNav
             locale={locale}
             locales={locales}

@@ -61,3 +61,12 @@
 @media (prefers-reduced-motion: reduce) {
   .brand[data-entering]::after { animation: none; content: none; }
 }
+
+/* Animated identity: full lockup on wide headers, mark only where space is tight. */
+.brandWide, .brandCompact { display: inline-flex; }
+.brandCompact { display: none; }
+.brandWide svg, .brandCompact svg { width: auto; height: auto; }
+@media (max-width: 640px) {
+  .brandWide { display: none; }
+  .brandCompact { display: inline-flex; }
+}

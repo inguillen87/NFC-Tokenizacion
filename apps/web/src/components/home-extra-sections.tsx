@@ -157,7 +157,7 @@ export function DemoLauncherSection({ locale }: { locale: string }) {
   const copy = isEn
     ? {
         eyebrow: "Try it with a product", title: "Pick an industry. Open its passport.", scope: "Guided demos · sample data",
-        open: "Open the demo", all: "See every demo", platform: "How the platform works", compare: "Compare approaches",
+        open: "Open the demo", all: "See every demo", platform: "How it works and why it is secure", compare: "Compare approaches",
         demos: [
           { key: "wine", name: "Wine and beverages", body: "Origin, seal status and service from the bottle." },
           { key: "agro", name: "Agro", body: "Batch, documentation and guidance in the field." },
@@ -167,7 +167,7 @@ export function DemoLauncherSection({ locale }: { locale: string }) {
     : isBr
       ? {
           eyebrow: "Teste com um produto", title: "Escolha um setor. Abra o passaporte.", scope: "Demos guiadas · dados de exemplo",
-          open: "Abrir a demo", all: "Ver todas as demos", platform: "Como a plataforma funciona", compare: "Comparar abordagens",
+          open: "Abrir a demo", all: "Ver todas as demos", platform: "Como funciona e por que é seguro", compare: "Comparar abordagens",
           demos: [
             { key: "wine", name: "Vinhos e bebidas", body: "Origem, estado do lacre e serviço a partir da garrafa." },
             { key: "agro", name: "Agro", body: "Lote, documentação e orientação no campo." },
@@ -176,7 +176,7 @@ export function DemoLauncherSection({ locale }: { locale: string }) {
         }
       : {
           eyebrow: "Probalo con un producto", title: "Elegí un rubro. Abrí su pasaporte.", scope: "Demos guiadas · datos de ejemplo",
-          open: "Abrir la demo", all: "Ver todas las demos", platform: "Cómo funciona la plataforma", compare: "Comparar enfoques",
+          open: "Abrir la demo", all: "Ver todas las demos", platform: "Cómo funciona y por qué es seguro", compare: "Comparar enfoques",
           demos: [
             { key: "wine", name: "Vinos y bebidas", body: "Origen, estado del sello y servicio desde la botella." },
             { key: "agro", name: "Agro", body: "Lote, documentación y guía en el campo." },

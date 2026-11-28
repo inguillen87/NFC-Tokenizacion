@@ -6,6 +6,7 @@ import { CommercialValueSection, SimpleTrustFlowSection } from "../../components
 import homeStyles from "../../components/home-sections.module.css";
 import { LandingMotion } from "../../components/landing-motion";
 import { PublicSiteHeader } from "../../components/public-site-header";
+import { SecurityExplainer } from "../../components/security-explainer";
 import { getWebI18n } from "../../lib/locale";
 
 const metadataByLocale = {
@@ -47,6 +48,7 @@ export default async function PlatformPage() {
         <ConnectedProductIndustryProvider>
           <SimpleTrustFlowSection locale={locale} />
           <ReadingOutcomesSection locale={locale} />
+          <SecurityExplainer locale={locale} />
           <CommercialValueSection locale={locale} />
           <ControlCenterSection locale={locale} />
         </ConnectedProductIndustryProvider>

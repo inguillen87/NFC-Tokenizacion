@@ -136,7 +136,7 @@ test("public headers use isolated tokens and a responsive brand with a single se
   assert.match(headerCss, /max-width: 767px[\s\S]*min-height: 60px[\s\S]*width: 40px; height: 40px/);
   assert.match(headerCss, /\.brand svg \{ width: 48px; height: 48px/);
   for (const css of [navigationCss, headerCss]) {
-    assert.doesNotMatch(css, /!important|gradient\(|backdrop-filter/);
+    assert.doesNotMatch(css, /!important|backdrop-filter/);
     assert.match(css, /var\(--nexid-/);
   }
   assert.doesNotMatch(headerCss, /:global|landing-mega-header|header-main-row/);

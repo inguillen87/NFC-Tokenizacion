@@ -114,7 +114,7 @@ export default async function HomePage() {
       <a href="#main-content" className={headerStyles.skipLink}>{skipLabel}</a>
       <header className={headerStyles.header}>
         <div className={headerStyles.row}>
-          <MarketingHeaderBrand locale={locale} />
+          <MarketingHeaderBrand locale={locale} theme={initialTheme} />
           <MarketingMegaNav
             locale={locale}
             locales={locales}
