@@ -617,10 +617,13 @@ export function ExecutiveRealtimeCrm({
     }
   }, [canReadIncidents, queryTenant]);
 
+  // Only the full-screen control room hides the dashboard shell; the workspace CRM
+  // lives inside it (sidebar, shell header and mobile dock stay available).
   useEffect(() => {
+    if (!controlRoom.enabled) return;
     document.body.classList.add("nexid-crm-overlay-active");
     return () => document.body.classList.remove("nexid-crm-overlay-active");
-  }, []);
+  }, [controlRoom.enabled]);
 
   const selectActiveView = useCallback((nextView: ExecutiveCrmView) => {
     setActiveView(nextView);
@@ -1121,8 +1124,8 @@ export function ExecutiveRealtimeCrm({
   ];
 
   return (
-    <div ref={controlRoom.rootRef} data-display-mode={controlRoom.enabled ? "room" : "workspace"} className={`${room.roomShell} nexid-crm-shell fixed inset-0 z-[120] overflow-y-auto overflow-x-hidden bg-[#030a16] text-slate-100 lg:overflow-hidden`}>
-      <div className="nexid-crm-backdrop pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_72%_10%,rgba(14,165,233,.16),transparent_32%),linear-gradient(180deg,#05101f,#030713_55%,#030713)]" />
+    <div ref={controlRoom.rootRef} data-display-mode={controlRoom.enabled ? "room" : "workspace"} className={`${room.roomShell} nexid-crm-shell ${controlRoom.enabled ? "fixed inset-0 z-[120]" : "relative z-0"} overflow-y-auto overflow-x-hidden bg-[#030a16] text-slate-100 lg:overflow-hidden`}>
+      <div className={`nexid-crm-backdrop pointer-events-none ${controlRoom.enabled ? "fixed" : "absolute"} inset-0 bg-[radial-gradient(circle_at_72%_10%,rgba(14,165,233,.16),transparent_32%),linear-gradient(180deg,#05101f,#030713_55%,#030713)]`} />
       <header data-testid="crm-responsive-header" className="nexid-crm-header relative z-[640] flex min-h-[70px] flex-wrap items-center gap-3 border-b border-cyan-200/10 bg-[#06101d]/90 px-3 py-3 shadow-[0_1px_0_rgba(255,255,255,.04)] lg:px-4">
         <div className="nexid-crm-identity order-1 flex min-w-0 flex-1 items-center gap-4 lg:gap-5">
           <div className="pr-4 text-[24px] font-black tracking-[-0.04em] text-white lg:pr-6 lg:text-[28px]">
