@@ -1764,6 +1764,32 @@ html.theme-light .admin-notification-bell__badge {
   }
 }
 
+/* Phones and tablets: the status row takes the full width and starts at the left,
+   so source, room mode, theme and account never overflow off-screen. */
+@media (max-width: 1023px) {
+  .nexid-crm-shell .nexid-crm-header-status {
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .nexid-crm-shell .nexid-crm-header-status [data-testid="control-room-toggle"] {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 639px) {
+  /* The footer already reports the stream state. */
+  .nexid-crm-header-status > span:first-child {
+    display: none;
+  }
+
+  .nexid-crm-shell .nexid-crm-header-status > .nexid-crm-account-menu {
+    flex: 1 1 100%;
+  }
+}
+
 .nexid-crm-kpi-column,
 .nexid-crm-workspace {
   scrollbar-gutter: stable;
@@ -2951,4 +2977,12 @@ body.nexid-account-menu-open .nexid-account-layer * {
   .nexid-account-layer .tenant-account-panel__footer {
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom)) !important;
   }
+}
+
+/* CRM metric titles: long Spanish words (AUTENTICACIÓN, CONSENTIMIENTO) hyphenate
+   inside narrow cards instead of being clipped. */
+[data-testid="crm-metric-label"] > span:last-child {
+  hyphens: auto;
+  overflow-wrap: anywhere;
+  letter-spacing: 0.035em;
 }

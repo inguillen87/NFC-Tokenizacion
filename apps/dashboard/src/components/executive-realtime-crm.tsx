@@ -1348,7 +1348,12 @@ export function ExecutiveRealtimeCrm({
                     ? ["Esperar la respuesta del scope seleccionado", "No usar los indicadores hasta completar la sincronización"]
                     : streamDataUnconfirmed
                       ? ["Esperar reconexión o revisar la fuente antes de decidir", `Última actualización: ${timeAgo(lastUpdateAt)}`]
-                      : ["Ampliar el rango temporal", "Cambiar tenant o realizar un tap NFC de control"]}
+                      : [timeRange === "24h" ? "Revisar el historial completo de lecturas" : "Ampliar el rango temporal", "Cambiar tenant o realizar un tap NFC de control"]}
+                  action={!requestTransitionPending && !streamDataUnconfirmed ? (
+                    <button type="button" data-testid="crm-empty-history-action" title="Abrir el historial completo de eventos del tenant" onClick={() => { if (timeRange !== "24h") { selectTimeRange("24h"); return; } router.push(DASHBOARD_DESTINATIONS.events.href); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-4 text-sm font-bold text-cyan-100 hover:bg-cyan-400/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">
+                      {timeRange === "24h" ? "Ver historial de lecturas" : "Ver últimas 24h"}
+                    </button>
+                  ) : undefined}
                   testId="crm-realtime-data-state"
                 />}
               </div>
